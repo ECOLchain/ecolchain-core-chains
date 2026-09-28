@@ -1,6 +1,6 @@
 # ADR 0010 — Lote de origem (com ou sem coletor) e lote de venda
 
-- **Status:** proposta (aguardando a implementação; perguntas em aberto no fim)
+- **Status:** aceita (implementação pendente)
 - **Data:** 2026-09-28
 
 ## Contexto
@@ -41,7 +41,7 @@ Montagem em etapas, com a pesagem **depois** da união (hoje ela acontece na cri
 | Anunciar / reanunciar | `cooperativa_list_lote` | `Anunciado` |
 
 - **Sempre** via lote de venda, mesmo com um único lote de origem: um só fluxo de venda, logística e crédito.
-- No fechamento, o programa confere o peso consolidado contra a soma dos lotes de origem (faixa de tolerância no config; ver perguntas).
+- No fechamento, o programa confere o peso consolidado contra a soma dos lotes de origem: aceito entre **soma − 10%** (umidade, rejeito) e **soma + 2%** (erro de balança). Os dois limites ficam no config (`perda_max_bps = 1000`, `excesso_max_bps = 200`).
 - O **Core asset** (NFT) existe só no lote de venda e nasce no fechamento. Os lotes de origem são apenas PDAs, mais baratos para centenas de registros.
 
 ### Desfazer a união
@@ -75,7 +75,7 @@ Montagem em etapas, com a pesagem **depois** da união (hoje ela acontece na cri
   - "Meus lotes" vira **Lotes de venda** (montar → pesar e fechar → anunciar; desfazer);
   - nova página de **trilha pública** por lote de venda.
 
-## Perguntas em aberto
-1. **Tolerância da nova pesagem:** proposta de aceitar o peso consolidado entre **soma − 10%** (umidade, rejeito) e **soma + 2%** (erro de balança), com os dois limites no config.
-2. **Dados existentes na devnet:** tratar todas as entregas já registradas como origem `Coletor`?
-3. **Comprovante ao doador:** a trilha pública deve permitir a busca pela referência da doação ("seu material virou o lote X, reciclado em tal data")?
+## Decisões complementares (2026-09-28)
+1. **Tolerância da nova pesagem:** entre soma − 10% e soma + 2%, configurável (ver Lote de venda).
+2. **Dados existentes na devnet:** todas as entregas já registradas são tratadas como origem `Coletor` (o campo novo é zero nas contas antigas).
+3. **Comprovante ao doador:** a trilha pública permite buscar pela referência da doação: quem tem o texto da referência (nota, recibo) calcula o hash e encontra o lote de origem, o lote de venda, a indústria e a data do consumo. O texto nunca vai on-chain.

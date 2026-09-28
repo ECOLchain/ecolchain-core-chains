@@ -11,4 +11,4 @@ Decisões de 2026-09-28. Formato: contexto, decisão, consequências.
 - [0007 — Direito por participante on-chain; Zupy só resgata](0007-direito-on-chain-zupy-resgata.md)
 - [0008 — Governança por multisig Squads com terceiros + timelock](0008-governanca-multisig-com-terceiros.md) (substituída pela 0009)
 - [0009 — Governança por multisig 3 de 5 só com chaves da EcolChain](0009-governanca-multisig-so-ecolchain.md)
-- [0010 — Lote de origem (com ou sem coletor) e lote de venda](0010-lote-de-origem-e-lote-de-venda.md) (proposta)
+- [0010 — Lote de origem (com ou sem coletor) e lote de venda](0010-lote-de-origem-e-lote-de-venda.md)
