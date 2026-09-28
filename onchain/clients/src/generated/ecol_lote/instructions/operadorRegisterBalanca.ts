@@ -7,6 +7,8 @@
  */
 
 import {
+  addDecoderSizePrefix,
+  addEncoderSizePrefix,
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
@@ -16,15 +18,19 @@ import {
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU32Decoder,
+  getU32Encoder,
+  getUtf8Decoder,
+  getUtf8Encoder,
   SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
   SolanaError,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
   type Address,
-  type FixedSizeCodec,
-  type FixedSizeDecoder,
-  type FixedSizeEncoder,
+  type Codec,
+  type Decoder,
+  type Encoder,
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
@@ -104,17 +110,20 @@ export type OperadorRegisterBalancaInstruction<
 export type OperadorRegisterBalancaInstructionData = {
   discriminator: ReadonlyUint8Array;
   dispositivo: Address;
+  nome: string;
 };
 
 export type OperadorRegisterBalancaInstructionDataArgs = {
   dispositivo: Address;
+  nome: string;
 };
 
-export function getOperadorRegisterBalancaInstructionDataEncoder(): FixedSizeEncoder<OperadorRegisterBalancaInstructionDataArgs> {
+export function getOperadorRegisterBalancaInstructionDataEncoder(): Encoder<OperadorRegisterBalancaInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["dispositivo", getAddressEncoder()],
+      ["nome", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
     ]),
     (value) => ({
       ...value,
@@ -123,14 +132,15 @@ export function getOperadorRegisterBalancaInstructionDataEncoder(): FixedSizeEnc
   );
 }
 
-export function getOperadorRegisterBalancaInstructionDataDecoder(): FixedSizeDecoder<OperadorRegisterBalancaInstructionData> {
+export function getOperadorRegisterBalancaInstructionDataDecoder(): Decoder<OperadorRegisterBalancaInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["dispositivo", getAddressDecoder()],
+    ["nome", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
   ]);
 }
 
-export function getOperadorRegisterBalancaInstructionDataCodec(): FixedSizeCodec<
+export function getOperadorRegisterBalancaInstructionDataCodec(): Codec<
   OperadorRegisterBalancaInstructionDataArgs,
   OperadorRegisterBalancaInstructionData
 > {
@@ -161,6 +171,7 @@ export type OperadorRegisterBalancaAsyncInput<
   eventAuthority: TAccountEventAuthority;
   program: TAccountProgram;
   dispositivo: OperadorRegisterBalancaInstructionDataArgs["dispositivo"];
+  nome: OperadorRegisterBalancaInstructionDataArgs["nome"];
 };
 
 export async function getOperadorRegisterBalancaInstructionAsync<
@@ -364,6 +375,7 @@ export type OperadorRegisterBalancaInput<
   eventAuthority: TAccountEventAuthority;
   program: TAccountProgram;
   dispositivo: OperadorRegisterBalancaInstructionDataArgs["dispositivo"];
+  nome: OperadorRegisterBalancaInstructionDataArgs["nome"];
 };
 
 export function getOperadorRegisterBalancaInstruction<

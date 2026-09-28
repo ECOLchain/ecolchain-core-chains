@@ -29,6 +29,7 @@ export * from "./operadorCreateMaterial";
 export * from "./operadorRegisterBalanca";
 export * from "./operadorRegisterParticipante";
 export * from "./operadorSetBalancaAtiva";
+export * from "./operadorSetBalancaNome";
 export * from "./operadorSetParticipanteAtivo";
 export * from "./operadorSetParticipanteNome";
 export * from "./operadorUpdateMaterial";

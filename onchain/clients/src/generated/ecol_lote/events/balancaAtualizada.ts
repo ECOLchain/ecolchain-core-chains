@@ -9,11 +9,13 @@
 import {
   combineCodec,
   containsBytes,
+  fixDecoderSize,
   fixEncoderSize,
   getAddressDecoder,
   getAddressEncoder,
   getBooleanDecoder,
   getBooleanEncoder,
+  getBytesDecoder,
   getBytesEncoder,
   getConstantDecoder,
   getConstantEncoder,
@@ -42,6 +44,7 @@ export type BalancaAtualizadaEvent = {
   dono: Address;
   dispositivo: Address;
   ativa: boolean;
+  nome: ReadonlyUint8Array;
 };
 
 export type BalancaAtualizadaEventArgs = BalancaAtualizadaEvent;
@@ -54,6 +57,7 @@ export function getBalancaAtualizadaEventEncoder(): FixedSizeEncoder<BalancaAtua
       ["dono", getAddressEncoder()],
       ["dispositivo", getAddressEncoder()],
       ["ativa", getBooleanEncoder()],
+      ["nome", fixEncoderSize(getBytesEncoder(), 32)],
     ]),
     [getConstantEncoder(BALANCA_ATUALIZADA_EVENT_DISCRIMINATOR)],
   );
@@ -67,6 +71,7 @@ export function getBalancaAtualizadaEventDecoder(): FixedSizeDecoder<BalancaAtua
       ["dono", getAddressDecoder()],
       ["dispositivo", getAddressDecoder()],
       ["ativa", getBooleanDecoder()],
+      ["nome", fixDecoderSize(getBytesDecoder(), 32)],
     ]),
     [getConstantDecoder(BALANCA_ATUALIZADA_EVENT_DISCRIMINATOR)],
   );

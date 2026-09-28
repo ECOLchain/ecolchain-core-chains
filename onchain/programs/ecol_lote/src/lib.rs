@@ -87,8 +87,9 @@ pub mod ecol_lote {
     pub fn operador_register_balanca(
         ctx: Context<OperadorRegisterBalanca>,
         dispositivo: Pubkey,
+        nome: String,
     ) -> Result<()> {
-        instructions::balancas::handle_operador_register_balanca(ctx, dispositivo)
+        instructions::balancas::handle_operador_register_balanca(ctx, dispositivo, nome)
     }
 
     pub fn operador_set_balanca_ativa(
@@ -96,6 +97,13 @@ pub mod ecol_lote {
         ativa: bool,
     ) -> Result<()> {
         instructions::balancas::handle_operador_set_balanca_ativa(ctx, ativa)
+    }
+
+    pub fn operador_set_balanca_nome(
+        ctx: Context<OperadorSetBalancaNome>,
+        nome: String,
+    ) -> Result<()> {
+        instructions::balancas::handle_operador_set_balanca_nome(ctx, nome)
     }
 
     pub fn operador_create_material(

@@ -55,7 +55,8 @@ export type Balanca = {
   dispositivo: Address;
   ativa: boolean;
   bump: number;
-  reserved: ReadonlyUint8Array;
+  /** Nome de exibição, ex.: "Balança do galpão 2" (ver `NomeFixo`). */
+  nome: ReadonlyUint8Array;
 };
 
 export type BalancaArgs = {
@@ -65,7 +66,8 @@ export type BalancaArgs = {
   dispositivo: Address;
   ativa: boolean;
   bump: number;
-  reserved: ReadonlyUint8Array;
+  /** Nome de exibição, ex.: "Balança do galpão 2" (ver `NomeFixo`). */
+  nome: ReadonlyUint8Array;
 };
 
 /** Gets the encoder for {@link BalancaArgs} account data. */
@@ -77,7 +79,7 @@ export function getBalancaEncoder(): FixedSizeEncoder<BalancaArgs> {
       ["dispositivo", getAddressEncoder()],
       ["ativa", getBooleanEncoder()],
       ["bump", getU8Encoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 32)],
+      ["nome", fixEncoderSize(getBytesEncoder(), 32)],
     ]),
     (value) => ({ ...value, discriminator: BALANCA_DISCRIMINATOR }),
   );
@@ -91,7 +93,7 @@ export function getBalancaDecoder(): FixedSizeDecoder<Balanca> {
     ["dispositivo", getAddressDecoder()],
     ["ativa", getBooleanDecoder()],
     ["bump", getU8Decoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 32)],
+    ["nome", fixDecoderSize(getBytesDecoder(), 32)],
   ]);
 }
 

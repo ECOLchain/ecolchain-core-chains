@@ -273,9 +273,21 @@ impl Ambiente {
         dono: Pubkey,
         dispositivo: Pubkey,
     ) -> Result<TransactionMetadata, TransactionError> {
+        self.registrar_balanca_com_nome(dono, dispositivo, "Balança")
+    }
+
+    pub fn registrar_balanca_com_nome(
+        &mut self,
+        dono: Pubkey,
+        dispositivo: Pubkey,
+        nome: &str,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let operador = self.operador.insecure_clone();
         let ix = self.ix(
-            ixs::OperadorRegisterBalanca { dispositivo },
+            ixs::OperadorRegisterBalanca {
+                dispositivo,
+                nome: nome.into(),
+            },
             ctas::OperadorRegisterBalanca {
                 payer: self.patrocinador.pubkey(),
                 operador: operador.pubkey(),
@@ -526,6 +538,25 @@ impl Ambiente {
             },
         );
         self.enviar(ix, &[&operador])
+    }
+
+    pub fn set_balanca_nome_por(
+        &mut self,
+        operador: &Keypair,
+        dispositivo: Pubkey,
+        nome: &str,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix(
+            ixs::OperadorSetBalancaNome { nome: nome.into() },
+            ctas::OperadorSetBalancaNome {
+                operador: operador.pubkey(),
+                config: config_pda(),
+                balanca: balanca_pda(&dispositivo),
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[operador])
     }
 
     pub fn set_nome_por(

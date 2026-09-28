@@ -78,6 +78,7 @@ import {
   getOperadorRegisterBalancaInstructionAsync,
   getOperadorRegisterParticipanteInstructionAsync,
   getOperadorSetBalancaAtivaInstructionAsync,
+  getOperadorSetBalancaNomeInstructionAsync,
   getOperadorSetParticipanteAtivoInstructionAsync,
   getOperadorSetParticipanteNomeInstructionAsync,
   getOperadorUpdateMaterialInstructionAsync,
@@ -107,6 +108,7 @@ import {
   parseOperadorRegisterBalancaInstruction,
   parseOperadorRegisterParticipanteInstruction,
   parseOperadorSetBalancaAtivaInstruction,
+  parseOperadorSetBalancaNomeInstruction,
   parseOperadorSetParticipanteAtivoInstruction,
   parseOperadorSetParticipanteNomeInstruction,
   parseOperadorUpdateMaterialInstruction,
@@ -136,6 +138,7 @@ import {
   type OperadorRegisterBalancaAsyncInput,
   type OperadorRegisterParticipanteAsyncInput,
   type OperadorSetBalancaAtivaAsyncInput,
+  type OperadorSetBalancaNomeAsyncInput,
   type OperadorSetParticipanteAtivoAsyncInput,
   type OperadorSetParticipanteNomeAsyncInput,
   type OperadorUpdateMaterialAsyncInput,
@@ -162,6 +165,7 @@ import {
   type ParsedOperadorRegisterBalancaInstruction,
   type ParsedOperadorRegisterParticipanteInstruction,
   type ParsedOperadorSetBalancaAtivaInstruction,
+  type ParsedOperadorSetBalancaNomeInstruction,
   type ParsedOperadorSetParticipanteAtivoInstruction,
   type ParsedOperadorSetParticipanteNomeInstruction,
   type ParsedOperadorUpdateMaterialInstruction,
@@ -452,6 +456,7 @@ export enum EcolLoteInstruction {
   OperadorRegisterBalanca,
   OperadorRegisterParticipante,
   OperadorSetBalancaAtiva,
+  OperadorSetBalancaNome,
   OperadorSetParticipanteAtivo,
   OperadorSetParticipanteNome,
   OperadorUpdateMaterial,
@@ -721,6 +726,17 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([154, 93, 15, 4, 72, 39, 157, 63]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.OperadorSetBalancaNome;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([165, 233, 199, 76, 249, 198, 50, 83]),
       ),
       0,
@@ -861,6 +877,9 @@ export type ParsedEcolLoteInstruction<
   | ({
       instructionType: EcolLoteInstruction.OperadorSetBalancaAtiva;
     } & ParsedOperadorSetBalancaAtivaInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.OperadorSetBalancaNome;
+    } & ParsedOperadorSetBalancaNomeInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.OperadorSetParticipanteAtivo;
     } & ParsedOperadorSetParticipanteAtivoInstruction<TProgram>)
@@ -1046,6 +1065,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseOperadorSetBalancaAtivaInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.OperadorSetBalancaNome: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.OperadorSetBalancaNome,
+        ...parseOperadorSetBalancaNomeInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.OperadorSetParticipanteAtivo: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -1211,6 +1237,10 @@ export type EcolLotePluginInstructions = {
   operadorSetBalancaAtiva: (
     input: OperadorSetBalancaAtivaAsyncInput,
   ) => ReturnType<typeof getOperadorSetBalancaAtivaInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  operadorSetBalancaNome: (
+    input: OperadorSetBalancaNomeAsyncInput,
+  ) => ReturnType<typeof getOperadorSetBalancaNomeInstructionAsync> &
     SelfPlanAndSendFunctions;
   operadorSetParticipanteAtivo: (
     input: OperadorSetParticipanteAtivoAsyncInput,
@@ -1407,6 +1437,11 @@ export function ecolLoteProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getOperadorSetBalancaAtivaInstructionAsync(input),
+            ),
+          operadorSetBalancaNome: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getOperadorSetBalancaNomeInstructionAsync(input),
             ),
           operadorSetParticipanteAtivo: (input) =>
             addSelfPlanAndSendFunctions(

@@ -128,6 +128,7 @@ await enviar(
         eventAuthority: ev,
         program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
         dispositivo: balanca.address,
+        nome: 'Balança de teste',
     }),
 );
 for (const [codigo, nome] of [

@@ -4,7 +4,7 @@ use crate::{
     constants::{SEED_BALANCA, SEED_GLOBAL, SEED_PARTICIPANTE},
     error::EcolLoteError,
     events::BalancaAtualizada,
-    state::{Balanca, GlobalConfig, Papel, Participante},
+    state::{codificar_nome, Balanca, GlobalConfig, Papel, Participante},
 };
 
 #[event_cpi]
@@ -32,8 +32,10 @@ pub struct OperadorRegisterBalanca<'info> {
 pub fn handle_operador_register_balanca(
     ctx: Context<OperadorRegisterBalanca>,
     dispositivo: Pubkey,
+    nome: String,
 ) -> Result<()> {
     ctx.accounts.config.exigir_modo_normal()?;
+    let nome = codificar_nome(&nome)?;
     let dono_part = &ctx.accounts.dono_part;
     require!(dono_part.ativo, EcolLoteError::ParticipanteInativo);
     require!(
@@ -46,11 +48,13 @@ pub fn handle_operador_register_balanca(
     balanca.dispositivo = dispositivo;
     balanca.ativa = true;
     balanca.bump = ctx.bumps.balanca;
+    balanca.nome = nome;
     emit_cpi!(BalancaAtualizada {
         balanca: balanca.key(),
         dono,
         dispositivo,
-        ativa: true
+        ativa: true,
+        nome,
     });
     Ok(())
 }
@@ -81,6 +85,38 @@ pub fn handle_operador_set_balanca_ativa(
         dono: balanca.dono,
         dispositivo: balanca.dispositivo,
         ativa,
+        nome: balanca.nome,
+    });
+    Ok(())
+}
+
+/// Define ou corrige o nome de exibição de uma balança (também preenche cadastros antigos, sem nome).
+#[event_cpi]
+#[derive(Accounts)]
+pub struct OperadorSetBalancaNome<'info> {
+    pub operador: Signer<'info>,
+    #[account(seeds = [SEED_GLOBAL], bump = config.bump, has_one = operador @ EcolLoteError::NaoEhOperador)]
+    pub config: Account<'info, GlobalConfig>,
+    #[account(
+        mut,
+        seeds = [SEED_BALANCA, balanca.dispositivo.as_ref()],
+        bump = balanca.bump
+    )]
+    pub balanca: Account<'info, Balanca>,
+}
+
+pub fn handle_operador_set_balanca_nome(
+    ctx: Context<OperadorSetBalancaNome>,
+    nome: String,
+) -> Result<()> {
+    let balanca = &mut ctx.accounts.balanca;
+    balanca.nome = codificar_nome(&nome)?;
+    emit_cpi!(BalancaAtualizada {
+        balanca: balanca.key(),
+        dono: balanca.dono,
+        dispositivo: balanca.dispositivo,
+        ativa: balanca.ativa,
+        nome: balanca.nome,
     });
     Ok(())
 }

@@ -157,6 +157,7 @@ before(async () => {
                 eventAuthority: ev.lote,
                 program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
                 dispositivo: balanca.address,
+                nome: `Balança de ${dono === k.cooperativa ? 'origem' : 'recebimento'}`,
             }),
         );
     }

@@ -4,7 +4,7 @@ use crate::{
     constants::{SEED_GLOBAL, SEED_PARTICIPANTE},
     error::EcolLoteError,
     events::ParticipanteAtualizado,
-    state::{GlobalConfig, Papel, Participante},
+    state::{codificar_nome, GlobalConfig, Papel, Participante},
 };
 
 #[event_cpi]
@@ -45,7 +45,7 @@ pub fn handle_operador_register_participante(
         !config.eh_chave_de_papel(&carteira),
         EcolLoteError::CarteiraReservada
     );
-    let nome = Participante::codificar_nome(&nome)?;
+    let nome = codificar_nome(&nome)?;
     let participante = &mut ctx.accounts.participante;
     participante.carteira = carteira;
     participante.papel = papel;
@@ -114,7 +114,7 @@ pub fn handle_operador_set_participante_nome(
     nome: String,
 ) -> Result<()> {
     let participante = &mut ctx.accounts.participante;
-    participante.nome = Participante::codificar_nome(&nome)?;
+    participante.nome = codificar_nome(&nome)?;
     emit_cpi!(ParticipanteAtualizado {
         carteira: participante.carteira,
         papel: participante.papel,

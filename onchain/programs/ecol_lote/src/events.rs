@@ -89,6 +89,7 @@ pub struct BalancaAtualizada {
     pub dono: Pubkey,
     pub dispositivo: Pubkey,
     pub ativa: bool,
+    pub nome: [u8; 32],
 }
 
 /// Pesagem atestada por balança (origem ou recebimento).

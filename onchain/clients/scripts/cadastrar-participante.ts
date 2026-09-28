@@ -15,7 +15,7 @@ import { type Address, createClient, createKeyPairSignerFromBytes, isAddress } f
 import { solanaRpc } from '@solana/kit-plugin-rpc';
 import { signerFromFile } from '@solana/kit-plugin-signer';
 import * as lote from '../src/generated/ecol_lote';
-import { bytesDoNome, PARTICIPANTE_NOME_MAX } from '../src/participante';
+import { bytesDoNome, NOME_FIXO_MAX } from '../src/nome';
 import { eventAuthority, lote as pLote } from '../src/pdas';
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.devnet');
@@ -39,7 +39,7 @@ const [carteiraArg, papelArg, nome, kycArg] = process.argv.slice(2);
 if (!carteiraArg || !papelArg || !nome?.trim()) {
     falha('uso: npx tsx scripts/cadastrar-participante.ts <carteira> <coletor|cooperativa|transportador|industria> <nome> [referencia-kyc]');
 }
-if (bytesDoNome(nome) > PARTICIPANTE_NOME_MAX) falha(`nome com mais de ${PARTICIPANTE_NOME_MAX} bytes: ${nome}`);
+if (bytesDoNome(nome) > NOME_FIXO_MAX) falha(`nome com mais de ${NOME_FIXO_MAX} bytes: ${nome}`);
 if (RPC.includes('mainnet')) falha(`este script é só para devnet/localnet (RPC=${RPC})`);
 if (!isAddress(carteiraArg)) falha(`endereço inválido: ${carteiraArg}`);
 const papel = PAPEIS[papelArg.toLowerCase()];
