@@ -355,6 +355,10 @@ papel: 0 = Coletor, 1 = Cooperativa, 2 = Transportador, 3 = Indústria
 
 **Divisão dentro de cada papel (`montarDireitos`):** coletores na proporção do peso das **entregas** vinculadas aos lotes do crédito; cooperativa, transportador e indústria na proporção do peso dos **lotes**. Arredonda para baixo e distribui os centavos restantes pelo maior resto; no empate, vence o endereço menor. As folhas são ordenadas por papel e endereço, então qualquer auditor reconstrói a raiz a partir dos lotes, das entregas e do mapeamento `coletor_ref → carteira`.
 
+### Referência do coletor nas entregas
+
+`coletor_ref = sha256("ECOLCHAIN:COLETOR:v1" ‖ carteira_do_coletor)` (`onchain/clients/src/coletor.ts`). Determinística: a repartição liga cada entrega à carteira que recebe os cupons sem tabela extra. Nenhum dado pessoal vai on-chain; o cadastro do coletor (nome, CPF) fica off-chain, com só o hash do KYC no `Participante`. A carteira é pseudônima e já apareceria de qualquer forma nos resgates.
+
 ### Hash encadeado das entregas do lote
 
 `entregas_hash` começa em zero e, a cada entrega vinculada, vira `sha256(entregas_hash ‖ endereço_da_entrega ‖ peso_g (u64 LE))`. Dá para reconstruir a partir dos eventos `EntregaNoLote`. O lote guarda também `peso_entregas_g` (soma das entregas) ao lado de `peso_g` (pesagem do lote montado); a diferença mostra perdas na triagem.

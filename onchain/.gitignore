@@ -9,3 +9,4 @@ test-ledger
 
 # chaves de teste da devnet (privadas, nunca versionar)
 .devnet
+.surfpool-demo.json

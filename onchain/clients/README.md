@@ -7,6 +7,8 @@ Clientes `@solana/kit` 8 gerados pelo Codama a partir das IDLs, mais os módulos
 | `src/generated/<programa>` | Clientes gerados (não editar; `npm run gerar` após `anchor build`) |
 | `src/pdas.ts` | Endereços derivados dos três programas |
 | `src/pesagem.ts` | Instrução Ed25519 da balança (mesmo formato de `pesagem.rs`) e anexo de contas graváveis |
+| `src/coletor.ts` | `coletorRef(carteira)`: referência on-chain do coletor nas entregas (`sha256("ECOLCHAIN:COLETOR:v1" ‖ carteira)`) |
+| `scripts/rede-local.ts` | rede local de demonstração (Surfpool) já com configs, cooperativa, coletores, materiais e balança |
 | `src/arvore.ts` | Totais por papel e árvore de direitos determinística (mesmo hash de `ecol_reparticao::merkle`) |
 | `e2e/` | Ciclo completo no Surfpool embarcado |
 
