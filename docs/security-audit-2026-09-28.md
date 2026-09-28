@@ -38,7 +38,7 @@ Caminhos relativos a `onchain/programs/ecol_lote/src/`. Cada correção tem test
 | 11 | Info | Corrida entre encerrar leilão e vender | Backend/intermediador checam estado antes de aceitar depósito | — (operacional) |
 | 12 | Info | `eh_parte` aceitava `Pubkey::default()` | Ignora chave nula | coberto pela matriz |
 | 13 | Info | Rent de `Lote` nunca recuperado | **Aberto**: instrução `close` para lotes terminais após período de retenção | — |
-| 14 | Info | `credito_mark_agregado` confia inteiramente na PDA do `ecol_credito` | **Aberto**: tratar na F3 (PDA só assina nesse fluxo; conta do crédito com checagem de owner) | — |
+| 14 | Info | `credito_mark_agregado` confia inteiramente na PDA do `ecol_credito` | **Corrigido na F3**: a PDA `["autoridade_credito"]` só assina em `operador_add_lotes`, depois de validar estado do crédito, owner/discriminator e material de cada lote; o estado do lote é relido após a CPI | `ecol_credito/tests/credito.rs` |
 
 ## Achados da F2 (balança e Core asset)
 
@@ -60,6 +60,20 @@ Caminhos relativos a `onchain/programs/ecol_lote/src/`. Cada correção tem test
 - Compute units (`tests/compute_units.rs`): criação 61,8k CU (Ed25519 + Core create); demais < 33k CU.
 - `cargo audit` (v0.22.2): 2 vulnerabilidades — RUSTSEC-2022-0093 (`ed25519-dalek` 1.0.1) e RUSTSEC-2024-0344 (`curve25519-dalek` 3.2.0) — **ambas só em dev-dependency** (`litesvm` → `agave-precompiles`, usado nos testes); o programa on-chain usa `curve25519-dalek` 4.1.3. 6 avisos de crates sem manutenção (`bincode`, `paste`, `derivative`, `ansi_term`, `libsecp256k1`, `rand` 0.7), todos transitivos do ecossistema Solana/Anchor. Nenhuma ação no programa.
 - Fuzz (Trident): não executado; previsto na F5.
+
+## Adendo F3 — `ecol_credito`
+
+Revisão com o mesmo checklist. Sem achados técnicos: CPI só para o `ecol_lote` (`Program<EcolLote>` + ID fixo),
+seeds da PDA nunca repassadas a outro programa, `remaining_accounts` com owner + discriminator checados e limite de 10,
+estado relido após a CPI, aritmética checada, init restrito à upgrade authority, admin em dois passos,
+serial único por PDA `["serial", padrão, sha256(serial)]`.
+
+**Decisões de negócio em aberto (risco residual):**
+
+| # | Sev. | Tema | Situação |
+|---|---|---|---|
+| C1 | Média | O operador sozinho pode agregar lotes a um crédito que nunca é submetido ou que é rejeitado: os lotes ficam `Agregado` para sempre e a cooperativa perde o direito ao crédito | Opções: prazo máximo em `EmFormacao` + instrução de desagregação no `ecol_lote` (CPI da mesma PDA) na rejeição/abandono; ou consentimento da cooperativa por lote |
+| C2 | Média | O valor da venda do crédito (base da repartição) é declarado por operador + comprador | Opção: exigir atestação do intermediador de pagamento, como no escrow do lote. Decidir antes da F4 |
 
 ## Veredito
 

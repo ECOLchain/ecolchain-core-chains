@@ -7,6 +7,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
+ecol_credito = "FZtf8txpz79i4dcXcwP1NqqSMJUoZJKwjJSfjD3Y1doQ"
 ecol_lote = "AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD"
 
 [provider]

@@ -1232,6 +1232,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecol_credito"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "ecol_lote",
+ "litesvm",
+ "mpl-core",
+ "solana-account",
+ "solana-ed25519-program",
+ "solana-instructions-sysvar",
+ "solana-keypair",
+ "solana-message",
+ "solana-sdk-ids",
+ "solana-sha256-hasher",
+ "solana-signer",
+ "solana-transaction",
+ "solana-transaction-error",
+]
+
+[[package]]
 name = "ecol_lote"
 version = "0.1.0"
 dependencies = [
