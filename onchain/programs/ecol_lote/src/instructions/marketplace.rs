@@ -35,6 +35,11 @@ pub fn handle_cooperativa_list_lote(
     // Cooperativa desativada não assume novos compromissos comerciais.
     ctx.accounts.cooperativa_part.exigir(Papel::Cooperativa)?;
     require!(preco_minimo_centavos > 0, EcolLoteError::ParametroInvalido);
+    // Só vai a leilão um lote montado com entregas de coletores (base da repartição).
+    require!(
+        ctx.accounts.lote.qtd_entregas > 0,
+        EcolLoteError::LoteSemEntregas
+    );
     let agora = Clock::get()?.unix_timestamp;
     let limite = agora
         .checked_add(DURACAO_LEILAO_MAX_S)

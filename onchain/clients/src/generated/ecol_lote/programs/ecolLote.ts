@@ -36,15 +36,21 @@ import {
 } from "@solana/program-client-core";
 import {
   getBalancaCodec,
+  getEntregaCodec,
   getGlobalConfigCodec,
   getLoteCodec,
+  getMaterialCodec,
   getParticipanteCodec,
   type Balanca,
   type BalancaArgs,
+  type Entrega,
+  type EntregaArgs,
   type GlobalConfig,
   type GlobalConfigArgs,
   type Lote,
   type LoteArgs,
+  type Material,
+  type MaterialArgs,
   type Participante,
   type ParticipanteArgs,
 } from "../accounts";
@@ -52,85 +58,109 @@ import {
   getAdminAcceptAdminInstructionAsync,
   getAdminInitGlobalInstructionAsync,
   getAdminProposeAdminInstructionAsync,
+  getAdminSetGuardiaoInstructionAsync,
   getAdminSetModoInstructionAsync,
   getAdminUpdateGlobalInstructionAsync,
   getArbitroResolveDisputaInstructionAsync,
+  getCooperativaAddEntregasInstructionAsync,
   getCooperativaCancelAnuncioInstructionAsync,
   getCooperativaCreateLoteInstructionAsync,
   getCooperativaListLoteInstructionAsync,
+  getCooperativaRegisterEntregaInstructionAsync,
   getCreditoMarkAgregadoInstructionAsync,
   getCreditoMarkDesagregadoInstructionAsync,
+  getGuardiaoPausarInstructionAsync,
   getIndustriaAcceptVendaInstructionAsync,
   getIndustriaConfirmRecebimentoInstructionAsync,
   getIntermediadorConfirmLiberacaoInstructionAsync,
   getOperadorCloseLeilaoSemLanceInstructionAsync,
+  getOperadorCreateMaterialInstructionAsync,
   getOperadorRegisterBalancaInstructionAsync,
   getOperadorRegisterParticipanteInstructionAsync,
   getOperadorSetBalancaAtivaInstructionAsync,
   getOperadorSetParticipanteAtivoInstructionAsync,
+  getOperadorUpdateMaterialInstructionAsync,
   getParteOpenDisputaInstructionAsync,
   getPublicCrankPrazoExpiradoInstructionAsync,
   getTransportadorPickupLoteInstructionAsync,
   parseAdminAcceptAdminInstruction,
   parseAdminInitGlobalInstruction,
   parseAdminProposeAdminInstruction,
+  parseAdminSetGuardiaoInstruction,
   parseAdminSetModoInstruction,
   parseAdminUpdateGlobalInstruction,
   parseArbitroResolveDisputaInstruction,
+  parseCooperativaAddEntregasInstruction,
   parseCooperativaCancelAnuncioInstruction,
   parseCooperativaCreateLoteInstruction,
   parseCooperativaListLoteInstruction,
+  parseCooperativaRegisterEntregaInstruction,
   parseCreditoMarkAgregadoInstruction,
   parseCreditoMarkDesagregadoInstruction,
+  parseGuardiaoPausarInstruction,
   parseIndustriaAcceptVendaInstruction,
   parseIndustriaConfirmRecebimentoInstruction,
   parseIntermediadorConfirmLiberacaoInstruction,
   parseOperadorCloseLeilaoSemLanceInstruction,
+  parseOperadorCreateMaterialInstruction,
   parseOperadorRegisterBalancaInstruction,
   parseOperadorRegisterParticipanteInstruction,
   parseOperadorSetBalancaAtivaInstruction,
   parseOperadorSetParticipanteAtivoInstruction,
+  parseOperadorUpdateMaterialInstruction,
   parseParteOpenDisputaInstruction,
   parsePublicCrankPrazoExpiradoInstruction,
   parseTransportadorPickupLoteInstruction,
   type AdminAcceptAdminAsyncInput,
   type AdminInitGlobalAsyncInput,
   type AdminProposeAdminAsyncInput,
+  type AdminSetGuardiaoAsyncInput,
   type AdminSetModoAsyncInput,
   type AdminUpdateGlobalAsyncInput,
   type ArbitroResolveDisputaAsyncInput,
+  type CooperativaAddEntregasAsyncInput,
   type CooperativaCancelAnuncioAsyncInput,
   type CooperativaCreateLoteAsyncInput,
   type CooperativaListLoteAsyncInput,
+  type CooperativaRegisterEntregaAsyncInput,
   type CreditoMarkAgregadoAsyncInput,
   type CreditoMarkDesagregadoAsyncInput,
+  type GuardiaoPausarAsyncInput,
   type IndustriaAcceptVendaAsyncInput,
   type IndustriaConfirmRecebimentoAsyncInput,
   type IntermediadorConfirmLiberacaoAsyncInput,
   type OperadorCloseLeilaoSemLanceAsyncInput,
+  type OperadorCreateMaterialAsyncInput,
   type OperadorRegisterBalancaAsyncInput,
   type OperadorRegisterParticipanteAsyncInput,
   type OperadorSetBalancaAtivaAsyncInput,
   type OperadorSetParticipanteAtivoAsyncInput,
+  type OperadorUpdateMaterialAsyncInput,
   type ParsedAdminAcceptAdminInstruction,
   type ParsedAdminInitGlobalInstruction,
   type ParsedAdminProposeAdminInstruction,
+  type ParsedAdminSetGuardiaoInstruction,
   type ParsedAdminSetModoInstruction,
   type ParsedAdminUpdateGlobalInstruction,
   type ParsedArbitroResolveDisputaInstruction,
+  type ParsedCooperativaAddEntregasInstruction,
   type ParsedCooperativaCancelAnuncioInstruction,
   type ParsedCooperativaCreateLoteInstruction,
   type ParsedCooperativaListLoteInstruction,
+  type ParsedCooperativaRegisterEntregaInstruction,
   type ParsedCreditoMarkAgregadoInstruction,
   type ParsedCreditoMarkDesagregadoInstruction,
+  type ParsedGuardiaoPausarInstruction,
   type ParsedIndustriaAcceptVendaInstruction,
   type ParsedIndustriaConfirmRecebimentoInstruction,
   type ParsedIntermediadorConfirmLiberacaoInstruction,
   type ParsedOperadorCloseLeilaoSemLanceInstruction,
+  type ParsedOperadorCreateMaterialInstruction,
   type ParsedOperadorRegisterBalancaInstruction,
   type ParsedOperadorRegisterParticipanteInstruction,
   type ParsedOperadorSetBalancaAtivaInstruction,
   type ParsedOperadorSetParticipanteAtivoInstruction,
+  type ParsedOperadorUpdateMaterialInstruction,
   type ParsedParteOpenDisputaInstruction,
   type ParsedPublicCrankPrazoExpiradoInstruction,
   type ParsedTransportadorPickupLoteInstruction,
@@ -145,6 +175,7 @@ import {
   findConfigPda,
   findCooperativaPartPda,
   findIndustriaPartPda,
+  findMaterialPda,
   findParticipantePda,
   findTransportadorPartPda,
 } from "../pdas";
@@ -154,8 +185,10 @@ export const ECOL_LOTE_PROGRAM_ADDRESS =
 
 export enum EcolLoteAccount {
   Balanca,
+  Entrega,
   GlobalConfig,
   Lote,
+  Material,
   Participante,
 }
 
@@ -173,6 +206,17 @@ export function identifyEcolLoteAccount(
     )
   ) {
     return EcolLoteAccount.Balanca;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([232, 207, 55, 163, 172, 42, 86, 184]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteAccount.Entrega;
   }
   if (
     containsBytes(
@@ -200,6 +244,17 @@ export function identifyEcolLoteAccount(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([160, 177, 196, 114, 114, 46, 54, 201]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteAccount.Material;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([0, 99, 20, 52, 237, 100, 238, 85]),
       ),
       0,
@@ -216,11 +271,14 @@ export function identifyEcolLoteAccount(
 export enum EcolLoteEvent {
   BalancaAtualizada,
   ConfigAtualizada,
+  EntregaNoLote,
+  EntregaRegistrada,
   EscrowMovimentado,
   LoteCriado,
   LotePesoAlterado,
   LoteTransicionado,
   LoteVendido,
+  MaterialAtualizado,
   ParticipanteAtualizado,
   PesagemAtestada,
 }
@@ -250,6 +308,28 @@ export function identifyEcolLoteEvent(
     )
   ) {
     return EcolLoteEvent.ConfigAtualizada;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([19, 47, 121, 222, 77, 108, 228, 20]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteEvent.EntregaNoLote;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([47, 160, 89, 212, 25, 146, 231, 230]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteEvent.EntregaRegistrada;
   }
   if (
     containsBytes(
@@ -310,6 +390,17 @@ export function identifyEcolLoteEvent(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([222, 50, 63, 31, 127, 116, 178, 108]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteEvent.MaterialAtualizado;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([50, 198, 128, 219, 129, 80, 169, 85]),
       ),
       0,
@@ -337,22 +428,28 @@ export enum EcolLoteInstruction {
   AdminAcceptAdmin,
   AdminInitGlobal,
   AdminProposeAdmin,
+  AdminSetGuardiao,
   AdminSetModo,
   AdminUpdateGlobal,
   ArbitroResolveDisputa,
+  CooperativaAddEntregas,
   CooperativaCancelAnuncio,
   CooperativaCreateLote,
   CooperativaListLote,
+  CooperativaRegisterEntrega,
   CreditoMarkAgregado,
   CreditoMarkDesagregado,
+  GuardiaoPausar,
   IndustriaAcceptVenda,
   IndustriaConfirmRecebimento,
   IntermediadorConfirmLiberacao,
   OperadorCloseLeilaoSemLance,
+  OperadorCreateMaterial,
   OperadorRegisterBalanca,
   OperadorRegisterParticipante,
   OperadorSetBalancaAtiva,
   OperadorSetParticipanteAtivo,
+  OperadorUpdateMaterial,
   ParteOpenDisputa,
   PublicCrankPrazoExpirado,
   TransportadorPickupLote,
@@ -399,6 +496,17 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([66, 138, 61, 62, 33, 141, 21, 20]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.AdminSetGuardiao;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([121, 85, 13, 183, 8, 209, 95, 147]),
       ),
       0,
@@ -427,6 +535,17 @@ export function identifyEcolLoteInstruction(
     )
   ) {
     return EcolLoteInstruction.ArbitroResolveDisputa;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([5, 210, 37, 184, 223, 79, 114, 16]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.CooperativaAddEntregas;
   }
   if (
     containsBytes(
@@ -465,6 +584,17 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([194, 194, 2, 179, 177, 240, 111, 221]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.CooperativaRegisterEntrega;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([117, 176, 117, 129, 142, 202, 87, 8]),
       ),
       0,
@@ -482,6 +612,17 @@ export function identifyEcolLoteInstruction(
     )
   ) {
     return EcolLoteInstruction.CreditoMarkDesagregado;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([25, 19, 24, 39, 94, 155, 59, 92]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.GuardiaoPausar;
   }
   if (
     containsBytes(
@@ -531,6 +672,17 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([95, 190, 33, 85, 42, 117, 185, 137]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.OperadorCreateMaterial;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([136, 83, 136, 16, 221, 130, 139, 159]),
       ),
       0,
@@ -570,6 +722,17 @@ export function identifyEcolLoteInstruction(
     )
   ) {
     return EcolLoteInstruction.OperadorSetParticipanteAtivo;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([212, 15, 185, 226, 254, 3, 188, 204]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.OperadorUpdateMaterial;
   }
   if (
     containsBytes(
@@ -623,6 +786,9 @@ export type ParsedEcolLoteInstruction<
       instructionType: EcolLoteInstruction.AdminProposeAdmin;
     } & ParsedAdminProposeAdminInstruction<TProgram>)
   | ({
+      instructionType: EcolLoteInstruction.AdminSetGuardiao;
+    } & ParsedAdminSetGuardiaoInstruction<TProgram>)
+  | ({
       instructionType: EcolLoteInstruction.AdminSetModo;
     } & ParsedAdminSetModoInstruction<TProgram>)
   | ({
@@ -631,6 +797,9 @@ export type ParsedEcolLoteInstruction<
   | ({
       instructionType: EcolLoteInstruction.ArbitroResolveDisputa;
     } & ParsedArbitroResolveDisputaInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.CooperativaAddEntregas;
+    } & ParsedCooperativaAddEntregasInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.CooperativaCancelAnuncio;
     } & ParsedCooperativaCancelAnuncioInstruction<TProgram>)
@@ -641,11 +810,17 @@ export type ParsedEcolLoteInstruction<
       instructionType: EcolLoteInstruction.CooperativaListLote;
     } & ParsedCooperativaListLoteInstruction<TProgram>)
   | ({
+      instructionType: EcolLoteInstruction.CooperativaRegisterEntrega;
+    } & ParsedCooperativaRegisterEntregaInstruction<TProgram>)
+  | ({
       instructionType: EcolLoteInstruction.CreditoMarkAgregado;
     } & ParsedCreditoMarkAgregadoInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.CreditoMarkDesagregado;
     } & ParsedCreditoMarkDesagregadoInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.GuardiaoPausar;
+    } & ParsedGuardiaoPausarInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.IndustriaAcceptVenda;
     } & ParsedIndustriaAcceptVendaInstruction<TProgram>)
@@ -659,6 +834,9 @@ export type ParsedEcolLoteInstruction<
       instructionType: EcolLoteInstruction.OperadorCloseLeilaoSemLance;
     } & ParsedOperadorCloseLeilaoSemLanceInstruction<TProgram>)
   | ({
+      instructionType: EcolLoteInstruction.OperadorCreateMaterial;
+    } & ParsedOperadorCreateMaterialInstruction<TProgram>)
+  | ({
       instructionType: EcolLoteInstruction.OperadorRegisterBalanca;
     } & ParsedOperadorRegisterBalancaInstruction<TProgram>)
   | ({
@@ -670,6 +848,9 @@ export type ParsedEcolLoteInstruction<
   | ({
       instructionType: EcolLoteInstruction.OperadorSetParticipanteAtivo;
     } & ParsedOperadorSetParticipanteAtivoInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.OperadorUpdateMaterial;
+    } & ParsedOperadorUpdateMaterialInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.ParteOpenDisputa;
     } & ParsedParteOpenDisputaInstruction<TProgram>)
@@ -706,6 +887,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseAdminProposeAdminInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.AdminSetGuardiao: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.AdminSetGuardiao,
+        ...parseAdminSetGuardiaoInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.AdminSetModo: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -725,6 +913,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
       return {
         instructionType: EcolLoteInstruction.ArbitroResolveDisputa,
         ...parseArbitroResolveDisputaInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.CooperativaAddEntregas: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.CooperativaAddEntregas,
+        ...parseCooperativaAddEntregasInstruction(instruction),
       };
     }
     case EcolLoteInstruction.CooperativaCancelAnuncio: {
@@ -748,6 +943,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseCooperativaListLoteInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.CooperativaRegisterEntrega: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.CooperativaRegisterEntrega,
+        ...parseCooperativaRegisterEntregaInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.CreditoMarkAgregado: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -760,6 +962,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
       return {
         instructionType: EcolLoteInstruction.CreditoMarkDesagregado,
         ...parseCreditoMarkDesagregadoInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.GuardiaoPausar: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.GuardiaoPausar,
+        ...parseGuardiaoPausarInstruction(instruction),
       };
     }
     case EcolLoteInstruction.IndustriaAcceptVenda: {
@@ -790,6 +999,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseOperadorCloseLeilaoSemLanceInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.OperadorCreateMaterial: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.OperadorCreateMaterial,
+        ...parseOperadorCreateMaterialInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.OperadorRegisterBalanca: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -816,6 +1032,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
       return {
         instructionType: EcolLoteInstruction.OperadorSetParticipanteAtivo,
         ...parseOperadorSetParticipanteAtivoInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.OperadorUpdateMaterial: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.OperadorUpdateMaterial,
+        ...parseOperadorUpdateMaterialInstruction(instruction),
       };
     }
     case EcolLoteInstruction.ParteOpenDisputa: {
@@ -859,9 +1082,13 @@ export type EcolLotePlugin = {
 export type EcolLotePluginAccounts = {
   balanca: ReturnType<typeof getBalancaCodec> &
     SelfFetchFunctions<BalancaArgs, Balanca>;
+  entrega: ReturnType<typeof getEntregaCodec> &
+    SelfFetchFunctions<EntregaArgs, Entrega>;
   globalConfig: ReturnType<typeof getGlobalConfigCodec> &
     SelfFetchFunctions<GlobalConfigArgs, GlobalConfig>;
   lote: ReturnType<typeof getLoteCodec> & SelfFetchFunctions<LoteArgs, Lote>;
+  material: ReturnType<typeof getMaterialCodec> &
+    SelfFetchFunctions<MaterialArgs, Material>;
   participante: ReturnType<typeof getParticipanteCodec> &
     SelfFetchFunctions<ParticipanteArgs, Participante>;
 };
@@ -879,6 +1106,10 @@ export type EcolLotePluginInstructions = {
     input: AdminProposeAdminAsyncInput,
   ) => ReturnType<typeof getAdminProposeAdminInstructionAsync> &
     SelfPlanAndSendFunctions;
+  adminSetGuardiao: (
+    input: AdminSetGuardiaoAsyncInput,
+  ) => ReturnType<typeof getAdminSetGuardiaoInstructionAsync> &
+    SelfPlanAndSendFunctions;
   adminSetModo: (
     input: AdminSetModoAsyncInput,
   ) => ReturnType<typeof getAdminSetModoInstructionAsync> &
@@ -890,6 +1121,10 @@ export type EcolLotePluginInstructions = {
   arbitroResolveDisputa: (
     input: ArbitroResolveDisputaAsyncInput,
   ) => ReturnType<typeof getArbitroResolveDisputaInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  cooperativaAddEntregas: (
+    input: CooperativaAddEntregasAsyncInput,
+  ) => ReturnType<typeof getCooperativaAddEntregasInstructionAsync> &
     SelfPlanAndSendFunctions;
   cooperativaCancelAnuncio: (
     input: CooperativaCancelAnuncioAsyncInput,
@@ -903,6 +1138,10 @@ export type EcolLotePluginInstructions = {
     input: CooperativaListLoteAsyncInput,
   ) => ReturnType<typeof getCooperativaListLoteInstructionAsync> &
     SelfPlanAndSendFunctions;
+  cooperativaRegisterEntrega: (
+    input: MakeOptional<CooperativaRegisterEntregaAsyncInput, "payer">,
+  ) => ReturnType<typeof getCooperativaRegisterEntregaInstructionAsync> &
+    SelfPlanAndSendFunctions;
   creditoMarkAgregado: (
     input: CreditoMarkAgregadoAsyncInput,
   ) => ReturnType<typeof getCreditoMarkAgregadoInstructionAsync> &
@@ -910,6 +1149,10 @@ export type EcolLotePluginInstructions = {
   creditoMarkDesagregado: (
     input: CreditoMarkDesagregadoAsyncInput,
   ) => ReturnType<typeof getCreditoMarkDesagregadoInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  guardiaoPausar: (
+    input: GuardiaoPausarAsyncInput,
+  ) => ReturnType<typeof getGuardiaoPausarInstructionAsync> &
     SelfPlanAndSendFunctions;
   industriaAcceptVenda: (
     input: IndustriaAcceptVendaAsyncInput,
@@ -927,6 +1170,10 @@ export type EcolLotePluginInstructions = {
     input: OperadorCloseLeilaoSemLanceAsyncInput,
   ) => ReturnType<typeof getOperadorCloseLeilaoSemLanceInstructionAsync> &
     SelfPlanAndSendFunctions;
+  operadorCreateMaterial: (
+    input: MakeOptional<OperadorCreateMaterialAsyncInput, "payer">,
+  ) => ReturnType<typeof getOperadorCreateMaterialInstructionAsync> &
+    SelfPlanAndSendFunctions;
   operadorRegisterBalanca: (
     input: MakeOptional<OperadorRegisterBalancaAsyncInput, "payer">,
   ) => ReturnType<typeof getOperadorRegisterBalancaInstructionAsync> &
@@ -942,6 +1189,10 @@ export type EcolLotePluginInstructions = {
   operadorSetParticipanteAtivo: (
     input: OperadorSetParticipanteAtivoAsyncInput,
   ) => ReturnType<typeof getOperadorSetParticipanteAtivoInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  operadorUpdateMaterial: (
+    input: OperadorUpdateMaterialAsyncInput,
+  ) => ReturnType<typeof getOperadorUpdateMaterialInstructionAsync> &
     SelfPlanAndSendFunctions;
   parteOpenDisputa: (
     input: ParteOpenDisputaAsyncInput,
@@ -963,6 +1214,7 @@ export type EcolLotePluginPdas = {
   asset: typeof findAssetPda;
   autoridadeAsset: typeof findAutoridadeAssetPda;
   industriaPart: typeof findIndustriaPartPda;
+  material: typeof findMaterialPda;
   balanca: typeof findBalancaPda;
   participante: typeof findParticipantePda;
   transportadorPart: typeof findTransportadorPartPda;
@@ -983,8 +1235,10 @@ export function ecolLoteProgram() {
       ecolLote: <EcolLotePlugin>{
         accounts: {
           balanca: addSelfFetchFunctions(client, getBalancaCodec()),
+          entrega: addSelfFetchFunctions(client, getEntregaCodec()),
           globalConfig: addSelfFetchFunctions(client, getGlobalConfigCodec()),
           lote: addSelfFetchFunctions(client, getLoteCodec()),
+          material: addSelfFetchFunctions(client, getMaterialCodec()),
           participante: addSelfFetchFunctions(client, getParticipanteCodec()),
         },
         instructions: {
@@ -1006,6 +1260,11 @@ export function ecolLoteProgram() {
               client,
               getAdminProposeAdminInstructionAsync(input),
             ),
+          adminSetGuardiao: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getAdminSetGuardiaoInstructionAsync(input),
+            ),
           adminSetModo: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -1020,6 +1279,11 @@ export function ecolLoteProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getArbitroResolveDisputaInstructionAsync(input),
+            ),
+          cooperativaAddEntregas: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCooperativaAddEntregasInstructionAsync(input),
             ),
           cooperativaCancelAnuncio: (input) =>
             addSelfPlanAndSendFunctions(
@@ -1039,6 +1303,14 @@ export function ecolLoteProgram() {
               client,
               getCooperativaListLoteInstructionAsync(input),
             ),
+          cooperativaRegisterEntrega: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCooperativaRegisterEntregaInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              }),
+            ),
           creditoMarkAgregado: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -1048,6 +1320,11 @@ export function ecolLoteProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getCreditoMarkDesagregadoInstructionAsync(input),
+            ),
+          guardiaoPausar: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getGuardiaoPausarInstructionAsync(input),
             ),
           industriaAcceptVenda: (input) =>
             addSelfPlanAndSendFunctions(
@@ -1071,6 +1348,14 @@ export function ecolLoteProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getOperadorCloseLeilaoSemLanceInstructionAsync(input),
+            ),
+          operadorCreateMaterial: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getOperadorCreateMaterialInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              }),
             ),
           operadorRegisterBalanca: (input) =>
             addSelfPlanAndSendFunctions(
@@ -1098,6 +1383,11 @@ export function ecolLoteProgram() {
               client,
               getOperadorSetParticipanteAtivoInstructionAsync(input),
             ),
+          operadorUpdateMaterial: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getOperadorUpdateMaterialInstructionAsync(input),
+            ),
           parteOpenDisputa: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -1123,6 +1413,7 @@ export function ecolLoteProgram() {
           asset: findAssetPda,
           autoridadeAsset: findAutoridadeAssetPda,
           industriaPart: findIndustriaPartPda,
+          material: findMaterialPda,
           balanca: findBalancaPda,
           participante: findParticipantePda,
           transportadorPart: findTransportadorPartPda,

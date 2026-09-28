@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{EstadoLote, Material, ModoOperacao, Papel};
+use crate::state::{EstadoLote, ModoOperacao, Papel};
 
 /// Todo evento de lote carrega `seq`, sequencial por lote, para o indexador detectar lacunas ou reordenação.
 #[event]
@@ -9,9 +9,8 @@ pub struct LoteCriado {
     pub seq: u64,
     pub cooperativa: Pubkey,
     pub lote_id: u64,
-    pub material: Material,
+    pub material: u16,
     pub peso_g: u64,
-    pub coletor_ref: [u8; 32],
     pub evidencias_hash: [u8; 32],
     pub ts: i64,
 }
@@ -80,6 +79,7 @@ pub struct ConfigAtualizada {
     pub prazo_entrega_s: i64,
     pub tolerancia_peso_bps: u16,
     pub modo: ModoOperacao,
+    pub guardiao: Pubkey,
 }
 
 #[event]
@@ -99,4 +99,34 @@ pub struct PesagemAtestada {
     pub peso_g: u64,
     pub ts_pesagem: i64,
     pub recebimento: bool,
+}
+
+#[event]
+pub struct MaterialAtualizado {
+    pub material: Pubkey,
+    pub codigo: u16,
+    pub nome: String,
+    pub ativo: bool,
+}
+
+#[event]
+pub struct EntregaRegistrada {
+    pub entrega: Pubkey,
+    pub cooperativa: Pubkey,
+    pub entrega_id: u64,
+    pub coletor_ref: [u8; 32],
+    pub material: u16,
+    pub peso_g: u64,
+    pub balanca: Pubkey,
+    pub ts_pesagem: i64,
+}
+
+/// Um evento por entrega vinculada, em ordem: reconstrói `entregas_hash` do lote.
+#[event]
+pub struct EntregaNoLote {
+    pub lote: Pubkey,
+    pub seq: u64,
+    pub entrega: Pubkey,
+    pub coletor_ref: [u8; 32],
+    pub peso_g: u64,
 }

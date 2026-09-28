@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use ecol_lote::Material;
 
 use crate::{constants::SERIAL_MAX_LEN, error::EcolCreditoError};
 
@@ -102,7 +101,8 @@ pub struct Credito {
     pub credito_id: u64,
     pub padrao: PadraoRegistro,
     /// Material de todos os lotes agregados (ex.: crédito de plástico só com lotes de plástico).
-    pub material: Material,
+    /// Código do material (conta `Material` do `ecol_lote`).
+    pub material: u16,
     pub vintage: u16,
     /// Hash do documento de metodologia/projeto submetido ao validador.
     pub metodologia_hash: [u8; 32],

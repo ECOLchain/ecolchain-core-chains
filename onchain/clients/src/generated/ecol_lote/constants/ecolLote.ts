@@ -20,12 +20,20 @@ export const SEED_BALANCA: ReadonlyUint8Array = new Uint8Array([
   98, 97, 108, 97, 110, 99, 97,
 ]);
 
+export const SEED_ENTREGA: ReadonlyUint8Array = new Uint8Array([
+  101, 110, 116, 114, 101, 103, 97,
+]);
+
 export const SEED_GLOBAL: ReadonlyUint8Array = new Uint8Array([
   103, 108, 111, 98, 97, 108,
 ]);
 
 export const SEED_LOTE: ReadonlyUint8Array = new Uint8Array([
   108, 111, 116, 101,
+]);
+
+export const SEED_MATERIAL: ReadonlyUint8Array = new Uint8Array([
+  109, 97, 116, 101, 114, 105, 97, 108,
 ]);
 
 export const SEED_PARTICIPANTE: ReadonlyUint8Array = new Uint8Array([

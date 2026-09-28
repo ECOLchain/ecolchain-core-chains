@@ -55,6 +55,7 @@ export type ConfigAtualizadaEvent = {
   prazoEntregaS: bigint;
   toleranciaPesoBps: number;
   modo: ModoOperacao;
+  guardiao: Address;
 };
 
 export type ConfigAtualizadaEventArgs = {
@@ -67,6 +68,7 @@ export type ConfigAtualizadaEventArgs = {
   prazoEntregaS: number | bigint;
   toleranciaPesoBps: number;
   modo: ModoOperacaoArgs;
+  guardiao: Address;
 };
 
 /** Gets the encoder for {@link ConfigAtualizadaEventArgs} event data. */
@@ -82,6 +84,7 @@ export function getConfigAtualizadaEventEncoder(): FixedSizeEncoder<ConfigAtuali
       ["prazoEntregaS", getI64Encoder()],
       ["toleranciaPesoBps", getU16Encoder()],
       ["modo", getModoOperacaoEncoder()],
+      ["guardiao", getAddressEncoder()],
     ]),
     [getConstantEncoder(CONFIG_ATUALIZADA_EVENT_DISCRIMINATOR)],
   );
@@ -100,6 +103,7 @@ export function getConfigAtualizadaEventDecoder(): FixedSizeDecoder<ConfigAtuali
       ["prazoEntregaS", getI64Decoder()],
       ["toleranciaPesoBps", getU16Decoder()],
       ["modo", getModoOperacaoDecoder()],
+      ["guardiao", getAddressDecoder()],
     ]),
     [getConstantDecoder(CONFIG_ATUALIZADA_EVENT_DISCRIMINATOR)],
   );

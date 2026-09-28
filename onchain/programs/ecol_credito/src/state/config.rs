@@ -19,7 +19,10 @@ pub struct CreditoConfig {
     pub intermediador: Pubkey,
     pub pausado: bool,
     pub bump: u8,
-    pub _reserved: [u8; 64],
+    /// Guardião: só pode pausar, nunca despausar nem mudar config. `Pubkey::default()` = sem guardião.
+    /// Ocupa parte do antigo espaço reservado (layout inalterado).
+    pub guardiao: Pubkey,
+    pub _reserved: [u8; 32],
 }
 
 impl CreditoConfig {
@@ -31,6 +34,7 @@ impl CreditoConfig {
             self.intermediador,
         ]
         .contains(chave)
+            || (self.guardiao != Pubkey::default() && *chave == self.guardiao)
     }
 
     pub fn exigir_ativo(&self) -> Result<()> {

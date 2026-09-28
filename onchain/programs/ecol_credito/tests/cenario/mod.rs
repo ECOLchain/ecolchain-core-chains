@@ -16,7 +16,6 @@ use {
         accounts as ctas, error::EcolCreditoError as C, instruction as ixs, Credito,
         PadraoRegistro, SEED_AUTORIDADE, SEED_CONFIG, SEED_CREDITO, SEED_SERIAL,
     },
-    ecol_lote::Material,
     litesvm::types::TransactionMetadata,
     solana_keypair::Keypair,
     solana_signer::Signer,
@@ -57,6 +56,9 @@ pub fn assert_erro_credito(res: Result<TransactionMetadata, TransactionError>, e
     }
 }
 
+/// Segundo material cadastrado no cenário (o `Ambiente` já cadastra `PLASTICO`).
+pub const PAPEL: u16 = 2;
+
 pub struct Cenario {
     pub amb: Ambiente,
     pub registrador: Keypair,
@@ -87,6 +89,7 @@ impl Cenario {
         let mut p = amb.params();
         p.credito_autoridade = autoridade();
         amb.update_global(&admin, p).unwrap();
+        amb.criar_material(PAPEL, "Papel").unwrap();
 
         let mut c = Cenario {
             amb,
@@ -136,7 +139,7 @@ impl Cenario {
         &mut self,
         operador: &Keypair,
         id: u64,
-        material: Material,
+        material: u16,
     ) -> Result<TransactionMetadata, TransactionError> {
         let ix = self.ix(
             ixs::OperadorCreateCredito {
@@ -150,6 +153,7 @@ impl Cenario {
                 payer: self.amb.patrocinador.pubkey(),
                 operador: operador.pubkey(),
                 config: config_credito(),
+                material_cadastro: material_pda(material),
                 credito: credito_pda(id),
                 system_program: system_program::ID,
                 event_authority: event_authority_credito(),
@@ -161,7 +165,7 @@ impl Cenario {
 
     pub fn criar_credito(&mut self, id: u64) {
         let op = self.amb.operador.insecure_clone();
-        self.criar_credito_por(&op, id, Material::Plastico).unwrap();
+        self.criar_credito_por(&op, id, PLASTICO).unwrap();
     }
 
     pub fn ix_add_lotes(&self, id: u64, lotes: &[Pubkey]) -> Instruction {

@@ -44,4 +44,6 @@ pub enum EcolCreditoError {
     LoteDeOutroCredito,
     #[msg("Assinante não é o intermediador de pagamento")]
     NaoEhIntermediador,
+    #[msg("Assinante não é o guardião")]
+    NaoEhGuardiao,
 }

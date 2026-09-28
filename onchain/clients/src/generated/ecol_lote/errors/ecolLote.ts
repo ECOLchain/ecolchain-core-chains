@@ -88,6 +88,26 @@ export const ECOL_LOTE_ERROR__SEM_ADMIN_PENDENTE = 0x1792; // 6034
 export const ECOL_LOTE_ERROR__VALOR_LIBERADO_INVALIDO = 0x1793; // 6035
 /** LoteDeOutroCredito: Lote não está agregado a este crédito */
 export const ECOL_LOTE_ERROR__LOTE_DE_OUTRO_CREDITO = 0x1794; // 6036
+/** NomeInvalido: Nome inválido: vazio ou com mais de 32 bytes */
+export const ECOL_LOTE_ERROR__NOME_INVALIDO = 0x1795; // 6037
+/** MaterialInativo: Material inativo */
+export const ECOL_LOTE_ERROR__MATERIAL_INATIVO = 0x1796; // 6038
+/** NaoEhGuardiao: Assinante não é o guardião */
+export const ECOL_LOTE_ERROR__NAO_EH_GUARDIAO = 0x1797; // 6039
+/** GuardiaoSoRestringe: O guardião só pode deixar o modo mais restritivo */
+export const ECOL_LOTE_ERROR__GUARDIAO_SO_RESTRINGE = 0x1798; // 6040
+/** EntregaJaVinculada: Entrega já vinculada a um lote */
+export const ECOL_LOTE_ERROR__ENTREGA_JA_VINCULADA = 0x1799; // 6041
+/** EntregaDeOutraCooperativa: Entrega de outra cooperativa */
+export const ECOL_LOTE_ERROR__ENTREGA_DE_OUTRA_COOPERATIVA = 0x179a; // 6042
+/** MaterialDiferente: Material da entrega difere do material do lote */
+export const ECOL_LOTE_ERROR__MATERIAL_DIFERENTE = 0x179b; // 6043
+/** LoteSemEntregas: Lote sem entregas vinculadas */
+export const ECOL_LOTE_ERROR__LOTE_SEM_ENTREGAS = 0x179c; // 6044
+/** QuantidadeDeEntregasInvalida: Quantidade de entregas inválida nesta transação */
+export const ECOL_LOTE_ERROR__QUANTIDADE_DE_ENTREGAS_INVALIDA = 0x179d; // 6045
+/** EntregaInvalida: Conta informada não é uma entrega válida */
+export const ECOL_LOTE_ERROR__ENTREGA_INVALIDA = 0x179e; // 6046
 
 export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__ASSET_INCORRETO
@@ -100,17 +120,26 @@ export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__CHAVES_DE_CONFIG_INVALIDAS
   | typeof ECOL_LOTE_ERROR__DISPUTA_JA_JULGADA
   | typeof ECOL_LOTE_ERROR__EM_CARENCIA
+  | typeof ECOL_LOTE_ERROR__ENTREGA_DE_OUTRA_COOPERATIVA
+  | typeof ECOL_LOTE_ERROR__ENTREGA_INVALIDA
+  | typeof ECOL_LOTE_ERROR__ENTREGA_JA_VINCULADA
+  | typeof ECOL_LOTE_ERROR__GUARDIAO_SO_RESTRINGE
   | typeof ECOL_LOTE_ERROR__LEILAO_EM_ANDAMENTO
   | typeof ECOL_LOTE_ERROR__LOTE_DE_OUTRO_CREDITO
+  | typeof ECOL_LOTE_ERROR__LOTE_SEM_ENTREGAS
+  | typeof ECOL_LOTE_ERROR__MATERIAL_DIFERENTE
+  | typeof ECOL_LOTE_ERROR__MATERIAL_INATIVO
   | typeof ECOL_LOTE_ERROR__NAO_EH_ADMIN
   | typeof ECOL_LOTE_ERROR__NAO_EH_ARBITRO
   | typeof ECOL_LOTE_ERROR__NAO_EH_AUTORIDADE_CREDITO
   | typeof ECOL_LOTE_ERROR__NAO_EH_COOPERATIVA_DO_LOTE
+  | typeof ECOL_LOTE_ERROR__NAO_EH_GUARDIAO
   | typeof ECOL_LOTE_ERROR__NAO_EH_INDUSTRIA_DO_LOTE
   | typeof ECOL_LOTE_ERROR__NAO_EH_INTERMEDIADOR
   | typeof ECOL_LOTE_ERROR__NAO_EH_OPERADOR
   | typeof ECOL_LOTE_ERROR__NAO_EH_PARTE_DO_LOTE
   | typeof ECOL_LOTE_ERROR__NAO_EH_UPGRADE_AUTHORITY
+  | typeof ECOL_LOTE_ERROR__NOME_INVALIDO
   | typeof ECOL_LOTE_ERROR__OVERFLOW
   | typeof ECOL_LOTE_ERROR__PAPEL_INCORRETO
   | typeof ECOL_LOTE_ERROR__PARAMETRO_INVALIDO
@@ -121,6 +150,7 @@ export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__PRAZO_INVALIDO
   | typeof ECOL_LOTE_ERROR__PRAZO_NAO_EXPIRADO
   | typeof ECOL_LOTE_ERROR__PROGRAMA_PAUSADO
+  | typeof ECOL_LOTE_ERROR__QUANTIDADE_DE_ENTREGAS_INVALIDA
   | typeof ECOL_LOTE_ERROR__REFERENCIA_VAZIA
   | typeof ECOL_LOTE_ERROR__SEM_ADMIN_PENDENTE
   | typeof ECOL_LOTE_ERROR__TRANSICAO_INVALIDA
@@ -141,17 +171,26 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_LOTE_ERROR__CHAVES_DE_CONFIG_INVALIDAS]: `Chaves de papéis do config devem ser distintas e não nulas`,
     [ECOL_LOTE_ERROR__DISPUTA_JA_JULGADA]: `Esta etapa já teve disputa julgada; só o árbitro pode reabri-la`,
     [ECOL_LOTE_ERROR__EM_CARENCIA]: `Crank de prazo em carência após retomada do programa`,
+    [ECOL_LOTE_ERROR__ENTREGA_DE_OUTRA_COOPERATIVA]: `Entrega de outra cooperativa`,
+    [ECOL_LOTE_ERROR__ENTREGA_INVALIDA]: `Conta informada não é uma entrega válida`,
+    [ECOL_LOTE_ERROR__ENTREGA_JA_VINCULADA]: `Entrega já vinculada a um lote`,
+    [ECOL_LOTE_ERROR__GUARDIAO_SO_RESTRINGE]: `O guardião só pode deixar o modo mais restritivo`,
     [ECOL_LOTE_ERROR__LEILAO_EM_ANDAMENTO]: `Leilão ainda em andamento`,
     [ECOL_LOTE_ERROR__LOTE_DE_OUTRO_CREDITO]: `Lote não está agregado a este crédito`,
+    [ECOL_LOTE_ERROR__LOTE_SEM_ENTREGAS]: `Lote sem entregas vinculadas`,
+    [ECOL_LOTE_ERROR__MATERIAL_DIFERENTE]: `Material da entrega difere do material do lote`,
+    [ECOL_LOTE_ERROR__MATERIAL_INATIVO]: `Material inativo`,
     [ECOL_LOTE_ERROR__NAO_EH_ADMIN]: `Assinante não é o admin`,
     [ECOL_LOTE_ERROR__NAO_EH_ARBITRO]: `Assinante não é o árbitro`,
     [ECOL_LOTE_ERROR__NAO_EH_AUTORIDADE_CREDITO]: `Assinante não é a autoridade do programa de créditos`,
     [ECOL_LOTE_ERROR__NAO_EH_COOPERATIVA_DO_LOTE]: `Assinante não é a cooperativa dona do lote`,
+    [ECOL_LOTE_ERROR__NAO_EH_GUARDIAO]: `Assinante não é o guardião`,
     [ECOL_LOTE_ERROR__NAO_EH_INDUSTRIA_DO_LOTE]: `Assinante não é a indústria compradora do lote`,
     [ECOL_LOTE_ERROR__NAO_EH_INTERMEDIADOR]: `Assinante não é o intermediador de pagamento`,
     [ECOL_LOTE_ERROR__NAO_EH_OPERADOR]: `Assinante não é o operador`,
     [ECOL_LOTE_ERROR__NAO_EH_PARTE_DO_LOTE]: `Assinante não é parte do lote`,
     [ECOL_LOTE_ERROR__NAO_EH_UPGRADE_AUTHORITY]: `Somente a upgrade authority do programa pode inicializar a configuração`,
+    [ECOL_LOTE_ERROR__NOME_INVALIDO]: `Nome inválido: vazio ou com mais de 32 bytes`,
     [ECOL_LOTE_ERROR__OVERFLOW]: `Estouro aritmético`,
     [ECOL_LOTE_ERROR__PAPEL_INCORRETO]: `Participante não tem o papel exigido`,
     [ECOL_LOTE_ERROR__PARAMETRO_INVALIDO]: `Parâmetro de configuração inválido`,
@@ -162,6 +201,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_LOTE_ERROR__PRAZO_INVALIDO]: `Prazo inválido`,
     [ECOL_LOTE_ERROR__PRAZO_NAO_EXPIRADO]: `Prazo de entrega ainda não expirou`,
     [ECOL_LOTE_ERROR__PROGRAMA_PAUSADO]: `Programa pausado para esta operação`,
+    [ECOL_LOTE_ERROR__QUANTIDADE_DE_ENTREGAS_INVALIDA]: `Quantidade de entregas inválida nesta transação`,
     [ECOL_LOTE_ERROR__REFERENCIA_VAZIA]: `Referência (hash) obrigatória não informada`,
     [ECOL_LOTE_ERROR__SEM_ADMIN_PENDENTE]: `Nenhuma troca de admin pendente para este assinante`,
     [ECOL_LOTE_ERROR__TRANSICAO_INVALIDA]: `Transição de estado inválida para o estado atual do lote`,

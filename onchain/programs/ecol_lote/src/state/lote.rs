@@ -3,16 +3,6 @@ use anchor_lang::prelude::*;
 use crate::{constants::BPS_BASE, error::EcolLoteError};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
-pub enum Material {
-    Plastico,
-    Papel,
-    Vidro,
-    Aluminio,
-    Metal,
-    Outros,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
 pub enum MotivoDisputa {
     DivergenciaPeso,
     ClassificacaoContestada,
@@ -205,13 +195,18 @@ impl EstadoLote {
 pub struct Lote {
     pub cooperativa: Pubkey,
     pub lote_id: u64,
-    pub material: Material,
+    /// Código do material cadastrado (conta `Material`), imutável depois da criação.
+    pub material: u16,
     /// Peso vigente em gramas (da balança da cooperativa, ou reclassificado pelo árbitro).
     pub peso_g: u64,
     /// Peso informado pela indústria no recebimento.
     pub peso_recebido_g: u64,
-    /// Referência ao coletor como hash com salt (LGPD): identifica sem expor a carteira.
-    pub coletor_ref: [u8; 32],
+    /// Entregas de coletores vinculadas ao lote (montagem). Os coletores estão nas entregas.
+    pub qtd_entregas: u32,
+    /// Soma dos pesos das entregas (o `peso_g` é a pesagem do lote montado).
+    pub peso_entregas_g: u64,
+    /// Hash encadeado das entregas: `h = sha256(h || entrega || peso_g)`, na ordem de vinculação.
+    pub entregas_hash: [u8; 32],
     /// Hash das evidências off-chain (fotos, ticket da balança).
     pub evidencias_hash: [u8; 32],
     pub preco_minimo_centavos: u64,
@@ -416,10 +411,12 @@ mod testes {
         let lote = Lote {
             cooperativa: Pubkey::default(),
             lote_id: 0,
-            material: Material::Plastico,
+            material: 1,
             peso_g: 1_000_000,
             peso_recebido_g: 0,
-            coletor_ref: [0; 32],
+            qtd_entregas: 0,
+            peso_entregas_g: 0,
+            entregas_hash: [0; 32],
             evidencias_hash: [0; 32],
             preco_minimo_centavos: 0,
             industria: Pubkey::default(),
@@ -480,10 +477,12 @@ mod propriedades {
         Lote {
             cooperativa: Pubkey::default(),
             lote_id: 0,
-            material: Material::Plastico,
+            material: 1,
             peso_g,
             peso_recebido_g: 0,
-            coletor_ref: [0; 32],
+            qtd_entregas: 0,
+            peso_entregas_g: 0,
+            entregas_hash: [0; 32],
             evidencias_hash: [0; 32],
             preco_minimo_centavos: 0,
             industria: Pubkey::default(),

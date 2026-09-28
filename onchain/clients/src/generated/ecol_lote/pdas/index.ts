@@ -12,5 +12,6 @@ export * from "./balanca";
 export * from "./config";
 export * from "./cooperativaPart";
 export * from "./industriaPart";
+export * from "./material";
 export * from "./participante";
 export * from "./transportadorPart";

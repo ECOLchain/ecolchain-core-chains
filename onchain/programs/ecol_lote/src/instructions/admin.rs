@@ -61,6 +61,7 @@ impl GlobalConfig {
             prazo_entrega_s: self.prazo_entrega_s,
             tolerancia_peso_bps: self.tolerancia_peso_bps,
             modo: self.modo,
+            guardiao: self.guardiao,
         }
     }
 }
@@ -174,6 +175,46 @@ pub fn handle_admin_accept_admin(ctx: Context<AdminAcceptAdmin>) -> Result<()> {
     let config = &mut ctx.accounts.config;
     config.admin = ctx.accounts.novo_admin.key();
     config.admin_pendente = Pubkey::default();
+    let evento = config.evento();
+    emit_cpi!(evento);
+    Ok(())
+}
+
+/// Define (ou remove, com `Pubkey::default()`) o guardião, que só pode pausar.
+pub fn handle_admin_set_guardiao(ctx: Context<AdminUpdateGlobal>, guardiao: Pubkey) -> Result<()> {
+    let config = &mut ctx.accounts.config;
+    require!(
+        guardiao != config.admin,
+        EcolLoteError::ChavesDeConfigInvalidas
+    );
+    config.guardiao = guardiao;
+    let evento = config.evento();
+    emit_cpi!(evento);
+    Ok(())
+}
+
+/// O guardião restringe o modo sem timelock (ex.: incidente). Voltar ao Normal só pelo admin.
+#[event_cpi]
+#[derive(Accounts)]
+pub struct GuardiaoPausar<'info> {
+    pub guardiao: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [SEED_GLOBAL],
+        bump = config.bump,
+        constraint = config.guardiao != Pubkey::default()
+            && config.guardiao == guardiao.key() @ EcolLoteError::NaoEhGuardiao
+    )]
+    pub config: Account<'info, GlobalConfig>,
+}
+
+pub fn handle_guardiao_pausar(ctx: Context<GuardiaoPausar>, modo: ModoOperacao) -> Result<()> {
+    let config = &mut ctx.accounts.config;
+    require!(
+        modo.restricao() > config.modo.restricao(),
+        EcolLoteError::GuardiaoSoRestringe
+    );
+    config.modo = modo;
     let evento = config.evento();
     emit_cpi!(evento);
     Ok(())

@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use ecol_lote::{program::EcolLote, EstadoLote, GlobalConfig, Lote, Material};
+use ecol_lote::{program::EcolLote, EstadoLote, GlobalConfig, Lote, Material, SEED_MATERIAL};
 use solana_sha256_hasher::hashv;
 
 use crate::{
@@ -11,13 +11,20 @@ use crate::{
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(credito_id: u64)]
+#[instruction(credito_id: u64, padrao: PadraoRegistro, material: u16)]
 pub struct OperadorCreateCredito<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub operador: Signer<'info>,
     #[account(seeds = [SEED_CONFIG], bump = config.bump, has_one = operador @ EcolCreditoError::NaoEhOperador)]
     pub config: Account<'info, CreditoConfig>,
+    /// Material cadastrado no `ecol_lote` (owner checado pelo `Account`); precisa estar ativo.
+    #[account(
+        seeds = [SEED_MATERIAL, &material.to_le_bytes()],
+        bump = material_cadastro.bump,
+        seeds::program = ecol_lote::ID
+    )]
+    pub material_cadastro: Account<'info, Material>,
     #[account(
         init,
         payer = payer,
@@ -33,11 +40,12 @@ pub fn handle_operador_create_credito(
     ctx: Context<OperadorCreateCredito>,
     credito_id: u64,
     padrao: PadraoRegistro,
-    material: Material,
+    material: u16,
     vintage: u16,
     metodologia_hash: [u8; 32],
 ) -> Result<()> {
     ctx.accounts.config.exigir_ativo()?;
+    ctx.accounts.material_cadastro.exigir_ativo()?;
     require!(
         metodologia_hash != [0; 32],
         EcolCreditoError::ReferenciaVazia

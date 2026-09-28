@@ -42,6 +42,14 @@ pub mod ecol_reparticao {
         instructions::admin::handle_admin_set_pausado(ctx, pausado)
     }
 
+    pub fn admin_set_guardiao(ctx: Context<AdminUpdateConfig>, guardiao: Pubkey) -> Result<()> {
+        instructions::admin::handle_admin_set_guardiao(ctx, guardiao)
+    }
+
+    pub fn guardiao_pausar(ctx: Context<GuardiaoPausar>) -> Result<()> {
+        instructions::admin::handle_guardiao_pausar(ctx)
+    }
+
     pub fn admin_propose_admin(ctx: Context<AdminUpdateConfig>, novo_admin: Pubkey) -> Result<()> {
         instructions::admin::handle_admin_propose_admin(ctx, novo_admin)
     }

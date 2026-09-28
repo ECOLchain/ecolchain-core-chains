@@ -18,13 +18,19 @@ export interface BpsFixos {
     transportador: number;
 }
 
-/** Lote agregado ao crédito, com a carteira do coletor resolvida off-chain (o lote guarda só `coletor_ref`). */
+/** Entrega de um coletor vinculada ao lote, com a carteira resolvida off-chain (a entrega guarda só `coletor_ref`). */
+export interface EntregaDoLote {
+    coletor: Address;
+    pesoG: bigint;
+}
+
+/** Lote agregado ao crédito: peso do lote e as entregas de coletores que o formaram. */
 export interface LoteDoCredito {
     cooperativa: Address;
     transportador: Address;
     industria: Address;
-    coletor: Address;
     pesoG: bigint;
+    entregas: EntregaDoLote[];
 }
 
 export interface Direito {
@@ -54,28 +60,29 @@ function compararBytes(a: Uint8Array, b: Uint8Array): number {
 }
 
 /**
- * Divide o total de cada papel entre os beneficiários na proporção do peso dos lotes.
- * Arredonda para baixo e distribui os centavos restantes pelo maior resto (empate: endereço
- * em ordem crescente). A soma de cada papel é exatamente o seu total.
- * Folhas ordenadas por papel e, dentro do papel, por endereço.
+ * Divide o total de cada papel entre os beneficiários: coletores pelo peso das **entregas**;
+ * cooperativa, transportador e indústria pelo peso dos **lotes**. Arredonda para baixo e distribui
+ * os centavos restantes pelo maior resto (empate: endereço em ordem crescente). A soma de cada
+ * papel é exatamente o seu total. Folhas ordenadas por papel e, dentro do papel, por endereço.
  */
 export function montarDireitos(lotes: LoteDoCredito[], totais: bigint[]): Direito[] {
-    const pesoTotal = lotes.reduce((a, l) => a + l.pesoG, 0n);
-    if (pesoTotal === 0n) throw new Error('crédito sem peso');
     const enc = getAddressEncoder();
-    const campo: Record<PapelDireito, keyof LoteDoCredito> = {
-        [PapelDireito.Coletor]: 'coletor',
-        [PapelDireito.Cooperativa]: 'cooperativa',
-        [PapelDireito.Transportador]: 'transportador',
-        [PapelDireito.Industria]: 'industria',
+    const pesosDoPapel = (papel: PapelDireito): Map<Address, bigint> => {
+        const pesos = new Map<Address, bigint>();
+        const somar = (b: Address, p: bigint) => pesos.set(b, (pesos.get(b) ?? 0n) + p);
+        for (const l of lotes) {
+            if (papel === PapelDireito.Coletor) l.entregas.forEach((e) => somar(e.coletor, e.pesoG));
+            else if (papel === PapelDireito.Cooperativa) somar(l.cooperativa, l.pesoG);
+            else if (papel === PapelDireito.Transportador) somar(l.transportador, l.pesoG);
+            else somar(l.industria, l.pesoG);
+        }
+        return pesos;
     };
     const direitos: Omit<Direito, 'indice'>[] = [];
     for (const papel of [PapelDireito.Coletor, PapelDireito.Cooperativa, PapelDireito.Transportador, PapelDireito.Industria]) {
-        const pesos = new Map<Address, bigint>();
-        for (const l of lotes) {
-            const b = l[campo[papel]] as Address;
-            pesos.set(b, (pesos.get(b) ?? 0n) + l.pesoG);
-        }
+        const pesos = pesosDoPapel(papel);
+        const pesoTotal = [...pesos.values()].reduce((a, b) => a + b, 0n);
+        if (pesoTotal === 0n) throw new Error(papel === PapelDireito.Coletor ? 'crédito sem entregas de coletores' : 'crédito sem peso');
         const total = totais[papel];
         const linhas = [...pesos.entries()]
             .map(([beneficiario, peso]) => ({

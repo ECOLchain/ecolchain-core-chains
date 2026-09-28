@@ -8,9 +8,9 @@ import { Keypair } from '@solana/web3.js';
 export const DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '.devnet');
 export const RPC_DEVNET = process.env.RPC_DEVNET ?? 'https://api.devnet.solana.com';
 
-/** Papéis operacionais (chaves simples) e membros do Squads (3 de 5). */
+/** Papéis operacionais (chaves simples) e membros do Squads (3 de 5), todos da EcolChain (ADR 0009). */
 export const PAPEIS = ['operador', 'intermediador', 'registrador', 'zupy'] as const;
-export const MEMBROS = ['membro-ecolchain', 'membro-cooperativas', 'membro-industria', 'membro-auditor', 'membro-reserva'] as const;
+export const MEMBROS = ['ecolchain-diretoria', 'ecolchain-tecnologia', 'ecolchain-operacoes', 'ecolchain-financeiro', 'ecolchain-reserva'] as const;
 
 export function carregarOuGerar(nome: string): Keypair {
     mkdirSync(DIR, { recursive: true, mode: 0o700 });

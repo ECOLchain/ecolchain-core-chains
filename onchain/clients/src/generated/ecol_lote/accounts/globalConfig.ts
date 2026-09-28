@@ -79,6 +79,11 @@ export type GlobalConfig = {
   /** Último retorno ao modo Normal (início da carência do crank). */
   retomadoEm: bigint;
   bump: number;
+  /**
+   * Guardião: só pode restringir o modo (pausar), nunca liberar nem mudar config.
+   * `Pubkey::default()` = sem guardião. Ocupa parte do antigo espaço reservado (layout inalterado).
+   */
+  guardiao: Address;
   reserved: ReadonlyUint8Array;
 };
 
@@ -103,6 +108,11 @@ export type GlobalConfigArgs = {
   /** Último retorno ao modo Normal (início da carência do crank). */
   retomadoEm: number | bigint;
   bump: number;
+  /**
+   * Guardião: só pode restringir o modo (pausar), nunca liberar nem mudar config.
+   * `Pubkey::default()` = sem guardião. Ocupa parte do antigo espaço reservado (layout inalterado).
+   */
+  guardiao: Address;
   reserved: ReadonlyUint8Array;
 };
 
@@ -122,7 +132,8 @@ export function getGlobalConfigEncoder(): FixedSizeEncoder<GlobalConfigArgs> {
       ["adminPendente", getAddressEncoder()],
       ["retomadoEm", getI64Encoder()],
       ["bump", getU8Encoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 64)],
+      ["guardiao", getAddressEncoder()],
+      ["reserved", fixEncoderSize(getBytesEncoder(), 32)],
     ]),
     (value) => ({ ...value, discriminator: GLOBAL_CONFIG_DISCRIMINATOR }),
   );
@@ -143,7 +154,8 @@ export function getGlobalConfigDecoder(): FixedSizeDecoder<GlobalConfig> {
     ["adminPendente", getAddressDecoder()],
     ["retomadoEm", getI64Decoder()],
     ["bump", getU8Decoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 64)],
+    ["guardiao", getAddressDecoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 32)],
   ]);
 }
 

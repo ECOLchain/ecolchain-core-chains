@@ -66,6 +66,11 @@ export type CreditoConfig = {
   intermediador: Address;
   pausado: boolean;
   bump: number;
+  /**
+   * Guardião: só pode pausar, nunca despausar nem mudar config. `Pubkey::default()` = sem guardião.
+   * Ocupa parte do antigo espaço reservado (layout inalterado).
+   */
+  guardiao: Address;
   reserved: ReadonlyUint8Array;
 };
 
@@ -85,6 +90,11 @@ export type CreditoConfigArgs = {
   intermediador: Address;
   pausado: boolean;
   bump: number;
+  /**
+   * Guardião: só pode pausar, nunca despausar nem mudar config. `Pubkey::default()` = sem guardião.
+   * Ocupa parte do antigo espaço reservado (layout inalterado).
+   */
+  guardiao: Address;
   reserved: ReadonlyUint8Array;
 };
 
@@ -100,7 +110,8 @@ export function getCreditoConfigEncoder(): FixedSizeEncoder<CreditoConfigArgs> {
       ["intermediador", getAddressEncoder()],
       ["pausado", getBooleanEncoder()],
       ["bump", getU8Encoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 64)],
+      ["guardiao", getAddressEncoder()],
+      ["reserved", fixEncoderSize(getBytesEncoder(), 32)],
     ]),
     (value) => ({ ...value, discriminator: CREDITO_CONFIG_DISCRIMINATOR }),
   );
@@ -117,7 +128,8 @@ export function getCreditoConfigDecoder(): FixedSizeDecoder<CreditoConfig> {
     ["intermediador", getAddressDecoder()],
     ["pausado", getBooleanDecoder()],
     ["bump", getU8Decoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 64)],
+    ["guardiao", getAddressDecoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 32)],
   ]);
 }
 

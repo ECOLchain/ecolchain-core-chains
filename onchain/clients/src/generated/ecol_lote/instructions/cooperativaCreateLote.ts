@@ -18,6 +18,8 @@ import {
   getI64Encoder,
   getStructDecoder,
   getStructEncoder,
+  getU16Decoder,
+  getU16Encoder,
   getU32Decoder,
   getU32Encoder,
   getU64Decoder,
@@ -58,12 +60,6 @@ import {
   findCooperativaPartPda,
 } from "../pdas";
 import { ECOL_LOTE_PROGRAM_ADDRESS } from "../programs";
-import {
-  getMaterialDecoder,
-  getMaterialEncoder,
-  type Material,
-  type MaterialArgs,
-} from "../types";
 
 export const COOPERATIVA_CREATE_LOTE_DISCRIMINATOR: ReadonlyUint8Array =
   new Uint8Array([243, 105, 229, 91, 8, 199, 24, 222]);
@@ -81,6 +77,7 @@ export type CooperativaCreateLoteInstruction<
   TAccountCooperativaPart extends string | AccountMeta<string> = string,
   TAccountConfig extends string | AccountMeta<string> = string,
   TAccountBalanca extends string | AccountMeta<string> = string,
+  TAccountMaterialCadastro extends string | AccountMeta<string> = string,
   TAccountLote extends string | AccountMeta<string> = string,
   TAccountAsset extends string | AccountMeta<string> = string,
   TAccountAutoridadeAsset extends string | AccountMeta<string> = string,
@@ -114,6 +111,9 @@ export type CooperativaCreateLoteInstruction<
       TAccountBalanca extends string
         ? ReadonlyAccount<TAccountBalanca>
         : TAccountBalanca,
+      TAccountMaterialCadastro extends string
+        ? ReadonlyAccount<TAccountMaterialCadastro>
+        : TAccountMaterialCadastro,
       TAccountLote extends string
         ? WritableAccount<TAccountLote>
         : TAccountLote,
@@ -145,12 +145,12 @@ export type CooperativaCreateLoteInstruction<
 export type CooperativaCreateLoteInstructionData = {
   discriminator: ReadonlyUint8Array;
   loteId: bigint;
-  material: Material;
+  /** Código do material cadastrado; a conta `material` correspondente deve estar ativa. */
+  material: number;
   /** Peso em gramas, exatamente como assinado pela balança. */
   pesoG: bigint;
   /** Timestamp assinado pela balança. */
   tsPesagem: bigint;
-  coletorRef: ReadonlyUint8Array;
   evidenciasHash: ReadonlyUint8Array;
   /** Metadados off-chain do Core asset (JSON em Arweave/IPFS). */
   uri: string;
@@ -158,12 +158,12 @@ export type CooperativaCreateLoteInstructionData = {
 
 export type CooperativaCreateLoteInstructionDataArgs = {
   loteId: number | bigint;
-  material: MaterialArgs;
+  /** Código do material cadastrado; a conta `material` correspondente deve estar ativa. */
+  material: number;
   /** Peso em gramas, exatamente como assinado pela balança. */
   pesoG: number | bigint;
   /** Timestamp assinado pela balança. */
   tsPesagem: number | bigint;
-  coletorRef: ReadonlyUint8Array;
   evidenciasHash: ReadonlyUint8Array;
   /** Metadados off-chain do Core asset (JSON em Arweave/IPFS). */
   uri: string;
@@ -174,10 +174,9 @@ export function getCooperativaCreateLoteInstructionDataEncoder(): Encoder<Cooper
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["loteId", getU64Encoder()],
-      ["material", getMaterialEncoder()],
+      ["material", getU16Encoder()],
       ["pesoG", getU64Encoder()],
       ["tsPesagem", getI64Encoder()],
-      ["coletorRef", fixEncoderSize(getBytesEncoder(), 32)],
       ["evidenciasHash", fixEncoderSize(getBytesEncoder(), 32)],
       ["uri", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
     ]),
@@ -192,10 +191,9 @@ export function getCooperativaCreateLoteInstructionDataDecoder(): Decoder<Cooper
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["loteId", getU64Decoder()],
-    ["material", getMaterialDecoder()],
+    ["material", getU16Decoder()],
     ["pesoG", getU64Decoder()],
     ["tsPesagem", getI64Decoder()],
-    ["coletorRef", fixDecoderSize(getBytesDecoder(), 32)],
     ["evidenciasHash", fixDecoderSize(getBytesDecoder(), 32)],
     ["uri", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
   ]);
@@ -218,6 +216,8 @@ export type CooperativaCreateLoteAsyncInput<
     InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMaterialCadastro extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountLote extends InstructionAccountInput = InstructionAccountInput,
   TAccountAsset extends InstructionAccountInput = InstructionAccountInput,
   TAccountAutoridadeAsset extends InstructionAccountInput =
@@ -237,6 +237,7 @@ export type CooperativaCreateLoteAsyncInput<
   cooperativaPart?: TAccountCooperativaPart;
   config?: TAccountConfig;
   balanca: TAccountBalanca;
+  materialCadastro: TAccountMaterialCadastro;
   lote: TAccountLote;
   asset?: TAccountAsset;
   autoridadeAsset?: TAccountAutoridadeAsset;
@@ -249,7 +250,6 @@ export type CooperativaCreateLoteAsyncInput<
   material: CooperativaCreateLoteInstructionDataArgs["material"];
   pesoG: CooperativaCreateLoteInstructionDataArgs["pesoG"];
   tsPesagem: CooperativaCreateLoteInstructionDataArgs["tsPesagem"];
-  coletorRef: CooperativaCreateLoteInstructionDataArgs["coletorRef"];
   evidenciasHash: CooperativaCreateLoteInstructionDataArgs["evidenciasHash"];
   uri: CooperativaCreateLoteInstructionDataArgs["uri"];
 };
@@ -260,6 +260,7 @@ export async function getCooperativaCreateLoteInstructionAsync<
   TAccountCooperativaPart extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput,
+  TAccountMaterialCadastro extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
   TAccountAsset extends InstructionAccountInput,
   TAccountAutoridadeAsset extends InstructionAccountInput,
@@ -276,6 +277,7 @@ export async function getCooperativaCreateLoteInstructionAsync<
     TAccountCooperativaPart,
     TAccountConfig,
     TAccountBalanca,
+    TAccountMaterialCadastro,
     TAccountLote,
     TAccountAsset,
     TAccountAutoridadeAsset,
@@ -308,6 +310,10 @@ export async function getCooperativaCreateLoteInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountBalanca,
       InstructionAccountInputAddress<TAccountBalanca>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMaterialCadastro,
+      InstructionAccountInputAddress<TAccountMaterialCadastro>
     >,
     ResolvedInstructionAccountMeta<
       TAccountLote,
@@ -365,6 +371,11 @@ export async function getCooperativaCreateLoteInstructionAsync<
     config: { value: input.config ?? null, isSigner: false, isWritable: false },
     balanca: {
       value: input.balanca ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    materialCadastro: {
+      value: input.materialCadastro ?? null,
       isSigner: false,
       isWritable: false,
     },
@@ -460,6 +471,7 @@ export async function getCooperativaCreateLoteInstructionAsync<
       getAccountMeta("cooperativaPart", accounts.cooperativaPart),
       getAccountMeta("config", accounts.config),
       getAccountMeta("balanca", accounts.balanca),
+      getAccountMeta("materialCadastro", accounts.materialCadastro),
       getAccountMeta("lote", accounts.lote),
       getAccountMeta("asset", accounts.asset),
       getAccountMeta("autoridadeAsset", accounts.autoridadeAsset),
@@ -494,6 +506,10 @@ export async function getCooperativaCreateLoteInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountBalanca,
       InstructionAccountInputAddress<TAccountBalanca>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMaterialCadastro,
+      InstructionAccountInputAddress<TAccountMaterialCadastro>
     >,
     ResolvedInstructionAccountMeta<
       TAccountLote,
@@ -537,6 +553,8 @@ export type CooperativaCreateLoteInput<
     InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMaterialCadastro extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountLote extends InstructionAccountInput = InstructionAccountInput,
   TAccountAsset extends InstructionAccountInput = InstructionAccountInput,
   TAccountAutoridadeAsset extends InstructionAccountInput =
@@ -556,6 +574,7 @@ export type CooperativaCreateLoteInput<
   cooperativaPart: TAccountCooperativaPart;
   config: TAccountConfig;
   balanca: TAccountBalanca;
+  materialCadastro: TAccountMaterialCadastro;
   lote: TAccountLote;
   asset: TAccountAsset;
   autoridadeAsset: TAccountAutoridadeAsset;
@@ -568,7 +587,6 @@ export type CooperativaCreateLoteInput<
   material: CooperativaCreateLoteInstructionDataArgs["material"];
   pesoG: CooperativaCreateLoteInstructionDataArgs["pesoG"];
   tsPesagem: CooperativaCreateLoteInstructionDataArgs["tsPesagem"];
-  coletorRef: CooperativaCreateLoteInstructionDataArgs["coletorRef"];
   evidenciasHash: CooperativaCreateLoteInstructionDataArgs["evidenciasHash"];
   uri: CooperativaCreateLoteInstructionDataArgs["uri"];
 };
@@ -579,6 +597,7 @@ export function getCooperativaCreateLoteInstruction<
   TAccountCooperativaPart extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput,
+  TAccountMaterialCadastro extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
   TAccountAsset extends InstructionAccountInput,
   TAccountAutoridadeAsset extends InstructionAccountInput,
@@ -595,6 +614,7 @@ export function getCooperativaCreateLoteInstruction<
     TAccountCooperativaPart,
     TAccountConfig,
     TAccountBalanca,
+    TAccountMaterialCadastro,
     TAccountLote,
     TAccountAsset,
     TAccountAutoridadeAsset,
@@ -626,6 +646,10 @@ export function getCooperativaCreateLoteInstruction<
   ResolvedInstructionAccountMeta<
     TAccountBalanca,
     InstructionAccountInputAddress<TAccountBalanca>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountMaterialCadastro,
+    InstructionAccountInputAddress<TAccountMaterialCadastro>
   >,
   ResolvedInstructionAccountMeta<
     TAccountLote,
@@ -682,6 +706,11 @@ export function getCooperativaCreateLoteInstruction<
     config: { value: input.config ?? null, isSigner: false, isWritable: false },
     balanca: {
       value: input.balanca ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    materialCadastro: {
+      value: input.materialCadastro ?? null,
       isSigner: false,
       isWritable: false,
     },
@@ -747,6 +776,7 @@ export function getCooperativaCreateLoteInstruction<
       getAccountMeta("cooperativaPart", accounts.cooperativaPart),
       getAccountMeta("config", accounts.config),
       getAccountMeta("balanca", accounts.balanca),
+      getAccountMeta("materialCadastro", accounts.materialCadastro),
       getAccountMeta("lote", accounts.lote),
       getAccountMeta("asset", accounts.asset),
       getAccountMeta("autoridadeAsset", accounts.autoridadeAsset),
@@ -781,6 +811,10 @@ export function getCooperativaCreateLoteInstruction<
     ResolvedInstructionAccountMeta<
       TAccountBalanca,
       InstructionAccountInputAddress<TAccountBalanca>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMaterialCadastro,
+      InstructionAccountInputAddress<TAccountMaterialCadastro>
     >,
     ResolvedInstructionAccountMeta<
       TAccountLote,
@@ -828,14 +862,15 @@ export type ParsedCooperativaCreateLoteInstruction<
     cooperativaPart: TAccountMetas[2];
     config: TAccountMetas[3];
     balanca: TAccountMetas[4];
-    lote: TAccountMetas[5];
-    asset: TAccountMetas[6];
-    autoridadeAsset: TAccountMetas[7];
-    mplCoreProgram: TAccountMetas[8];
-    instrucoesSysvar: TAccountMetas[9];
-    systemProgram: TAccountMetas[10];
-    eventAuthority: TAccountMetas[11];
-    program: TAccountMetas[12];
+    materialCadastro: TAccountMetas[5];
+    lote: TAccountMetas[6];
+    asset: TAccountMetas[7];
+    autoridadeAsset: TAccountMetas[8];
+    mplCoreProgram: TAccountMetas[9];
+    instrucoesSysvar: TAccountMetas[10];
+    systemProgram: TAccountMetas[11];
+    eventAuthority: TAccountMetas[12];
+    program: TAccountMetas[13];
   };
   data: CooperativaCreateLoteInstructionData;
 };
@@ -848,12 +883,12 @@ export function parseCooperativaCreateLoteInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCooperativaCreateLoteInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 13) {
+  if (instruction.accounts.length < 14) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 13,
+        expectedAccountMetas: 14,
       },
     );
   }
@@ -871,6 +906,7 @@ export function parseCooperativaCreateLoteInstruction<
       cooperativaPart: getNextAccount(),
       config: getNextAccount(),
       balanca: getNextAccount(),
+      materialCadastro: getNextAccount(),
       lote: getNextAccount(),
       asset: getNextAccount(),
       autoridadeAsset: getNextAccount(),

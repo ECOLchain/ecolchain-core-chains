@@ -16,6 +16,10 @@ npm run gerar      # regenera os clientes a partir de ../target/idl
 npm run typecheck
 npm test           # gerador da árvore (inclui vetor compartilhado com o Rust)
 npm run e2e        # Surfpool: lote → crédito → repartição → resgates; time travel + crank
+
+# cadastrar uma carteira como participante na devnet, assinando com a chave local .devnet/operador.json
+# (só funciona enquanto ela for o operador; com o operador na sua carteira, use a tela Participantes da interface)
+npx tsx scripts/cadastrar-participante.ts <carteira> <coletor|cooperativa|transportador|industria> [referencia-kyc]
 ```
 
 **Divisão dentro de cada papel (`montarDireitos`)**: proporcional ao peso dos lotes do crédito; arredonda para baixo e distribui os centavos restantes pelo maior resto (empate: endereço crescente). Folhas ordenadas por papel e endereço. Qualquer auditor reconstrói a raiz a partir dos lotes e do mapeamento `coletor_ref → carteira`.

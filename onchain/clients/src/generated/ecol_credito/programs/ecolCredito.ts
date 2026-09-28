@@ -49,8 +49,10 @@ import {
   getAdminAcceptAdminInstructionAsync,
   getAdminInitConfigInstructionAsync,
   getAdminProposeAdminInstructionAsync,
+  getAdminSetGuardiaoInstructionAsync,
   getAdminSetPausadoInstructionAsync,
   getAdminUpdateConfigInstructionAsync,
+  getGuardiaoPausarInstructionAsync,
   getOperadorAddLotesInstructionAsync,
   getOperadorCreateCreditoInstructionAsync,
   getOperadorRecordVendaInstructionAsync,
@@ -62,8 +64,10 @@ import {
   parseAdminAcceptAdminInstruction,
   parseAdminInitConfigInstruction,
   parseAdminProposeAdminInstruction,
+  parseAdminSetGuardiaoInstruction,
   parseAdminSetPausadoInstruction,
   parseAdminUpdateConfigInstruction,
+  parseGuardiaoPausarInstruction,
   parseOperadorAddLotesInstruction,
   parseOperadorCreateCreditoInstruction,
   parseOperadorRecordVendaInstruction,
@@ -75,8 +79,10 @@ import {
   type AdminAcceptAdminAsyncInput,
   type AdminInitConfigAsyncInput,
   type AdminProposeAdminAsyncInput,
+  type AdminSetGuardiaoAsyncInput,
   type AdminSetPausadoAsyncInput,
   type AdminUpdateConfigAsyncInput,
+  type GuardiaoPausarAsyncInput,
   type OperadorAddLotesAsyncInput,
   type OperadorCreateCreditoAsyncInput,
   type OperadorRecordVendaAsyncInput,
@@ -84,8 +90,10 @@ import {
   type ParsedAdminAcceptAdminInstruction,
   type ParsedAdminInitConfigInstruction,
   type ParsedAdminProposeAdminInstruction,
+  type ParsedAdminSetGuardiaoInstruction,
   type ParsedAdminSetPausadoInstruction,
   type ParsedAdminUpdateConfigInstruction,
+  type ParsedGuardiaoPausarInstruction,
   type ParsedOperadorAddLotesInstruction,
   type ParsedOperadorCreateCreditoInstruction,
   type ParsedOperadorRecordVendaInstruction,
@@ -277,8 +285,10 @@ export enum EcolCreditoInstruction {
   AdminAcceptAdmin,
   AdminInitConfig,
   AdminProposeAdmin,
+  AdminSetGuardiao,
   AdminSetPausado,
   AdminUpdateConfig,
+  GuardiaoPausar,
   OperadorAddLotes,
   OperadorCreateCredito,
   OperadorRecordVenda,
@@ -330,6 +340,17 @@ export function identifyEcolCreditoInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([66, 138, 61, 62, 33, 141, 21, 20]),
+      ),
+      0,
+    )
+  ) {
+    return EcolCreditoInstruction.AdminSetGuardiao;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([186, 142, 185, 22, 218, 57, 69, 112]),
       ),
       0,
@@ -347,6 +368,17 @@ export function identifyEcolCreditoInstruction(
     )
   ) {
     return EcolCreditoInstruction.AdminUpdateConfig;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([25, 19, 24, 39, 94, 155, 59, 92]),
+      ),
+      0,
+    )
+  ) {
+    return EcolCreditoInstruction.GuardiaoPausar;
   }
   if (
     containsBytes(
@@ -455,11 +487,17 @@ export type ParsedEcolCreditoInstruction<
       instructionType: EcolCreditoInstruction.AdminProposeAdmin;
     } & ParsedAdminProposeAdminInstruction<TProgram>)
   | ({
+      instructionType: EcolCreditoInstruction.AdminSetGuardiao;
+    } & ParsedAdminSetGuardiaoInstruction<TProgram>)
+  | ({
       instructionType: EcolCreditoInstruction.AdminSetPausado;
     } & ParsedAdminSetPausadoInstruction<TProgram>)
   | ({
       instructionType: EcolCreditoInstruction.AdminUpdateConfig;
     } & ParsedAdminUpdateConfigInstruction<TProgram>)
+  | ({
+      instructionType: EcolCreditoInstruction.GuardiaoPausar;
+    } & ParsedGuardiaoPausarInstruction<TProgram>)
   | ({
       instructionType: EcolCreditoInstruction.OperadorAddLotes;
     } & ParsedOperadorAddLotesInstruction<TProgram>)
@@ -511,6 +549,13 @@ export function parseEcolCreditoInstruction<TProgram extends string>(
         ...parseAdminProposeAdminInstruction(instruction),
       };
     }
+    case EcolCreditoInstruction.AdminSetGuardiao: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolCreditoInstruction.AdminSetGuardiao,
+        ...parseAdminSetGuardiaoInstruction(instruction),
+      };
+    }
     case EcolCreditoInstruction.AdminSetPausado: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -523,6 +568,13 @@ export function parseEcolCreditoInstruction<TProgram extends string>(
       return {
         instructionType: EcolCreditoInstruction.AdminUpdateConfig,
         ...parseAdminUpdateConfigInstruction(instruction),
+      };
+    }
+    case EcolCreditoInstruction.GuardiaoPausar: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolCreditoInstruction.GuardiaoPausar,
+        ...parseGuardiaoPausarInstruction(instruction),
       };
     }
     case EcolCreditoInstruction.OperadorAddLotes: {
@@ -623,6 +675,10 @@ export type EcolCreditoPluginInstructions = {
     input: AdminProposeAdminAsyncInput,
   ) => ReturnType<typeof getAdminProposeAdminInstructionAsync> &
     SelfPlanAndSendFunctions;
+  adminSetGuardiao: (
+    input: AdminSetGuardiaoAsyncInput,
+  ) => ReturnType<typeof getAdminSetGuardiaoInstructionAsync> &
+    SelfPlanAndSendFunctions;
   adminSetPausado: (
     input: AdminSetPausadoAsyncInput,
   ) => ReturnType<typeof getAdminSetPausadoInstructionAsync> &
@@ -630,6 +686,10 @@ export type EcolCreditoPluginInstructions = {
   adminUpdateConfig: (
     input: AdminUpdateConfigAsyncInput,
   ) => ReturnType<typeof getAdminUpdateConfigInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  guardiaoPausar: (
+    input: GuardiaoPausarAsyncInput,
+  ) => ReturnType<typeof getGuardiaoPausarInstructionAsync> &
     SelfPlanAndSendFunctions;
   operadorAddLotes: (
     input: OperadorAddLotesAsyncInput,
@@ -711,6 +771,11 @@ export function ecolCreditoProgram() {
               client,
               getAdminProposeAdminInstructionAsync(input),
             ),
+          adminSetGuardiao: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getAdminSetGuardiaoInstructionAsync(input),
+            ),
           adminSetPausado: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -720,6 +785,11 @@ export function ecolCreditoProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getAdminUpdateConfigInstructionAsync(input),
+            ),
+          guardiaoPausar: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getGuardiaoPausarInstructionAsync(input),
             ),
           operadorAddLotes: (input) =>
             addSelfPlanAndSendFunctions(

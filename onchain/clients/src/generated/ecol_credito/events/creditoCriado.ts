@@ -32,12 +32,8 @@ import {
   type ReadonlyUint8Array,
 } from "@solana/kit";
 import {
-  getMaterialDecoder,
-  getMaterialEncoder,
   getPadraoRegistroDecoder,
   getPadraoRegistroEncoder,
-  type Material,
-  type MaterialArgs,
   type PadraoRegistro,
   type PadraoRegistroArgs,
 } from "../types";
@@ -56,7 +52,7 @@ export type CreditoCriadoEvent = {
   seq: bigint;
   creditoId: bigint;
   padrao: PadraoRegistro;
-  material: Material;
+  material: number;
   vintage: number;
   metodologiaHash: ReadonlyUint8Array;
 };
@@ -66,7 +62,7 @@ export type CreditoCriadoEventArgs = {
   seq: number | bigint;
   creditoId: number | bigint;
   padrao: PadraoRegistroArgs;
-  material: MaterialArgs;
+  material: number;
   vintage: number;
   metodologiaHash: ReadonlyUint8Array;
 };
@@ -79,7 +75,7 @@ export function getCreditoCriadoEventEncoder(): FixedSizeEncoder<CreditoCriadoEv
       ["seq", getU64Encoder()],
       ["creditoId", getU64Encoder()],
       ["padrao", getPadraoRegistroEncoder()],
-      ["material", getMaterialEncoder()],
+      ["material", getU16Encoder()],
       ["vintage", getU16Encoder()],
       ["metodologiaHash", fixEncoderSize(getBytesEncoder(), 32)],
     ]),
@@ -95,7 +91,7 @@ export function getCreditoCriadoEventDecoder(): FixedSizeDecoder<CreditoCriadoEv
       ["seq", getU64Decoder()],
       ["creditoId", getU64Decoder()],
       ["padrao", getPadraoRegistroDecoder()],
-      ["material", getMaterialDecoder()],
+      ["material", getU16Decoder()],
       ["vintage", getU16Decoder()],
       ["metodologiaHash", fixDecoderSize(getBytesDecoder(), 32)],
     ]),

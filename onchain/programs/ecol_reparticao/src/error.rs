@@ -42,4 +42,6 @@ pub enum EcolReparticaoError {
     ReferenciaVazia,
     #[msg("Estouro aritmético")]
     Overflow,
+    #[msg("Assinante não é o guardião")]
+    NaoEhGuardiao,
 }

@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use ecol_lote::Material;
 
 use crate::state::{EstadoCredito, PadraoRegistro};
 
@@ -9,7 +8,7 @@ pub struct CreditoCriado {
     pub seq: u64,
     pub credito_id: u64,
     pub padrao: PadraoRegistro,
-    pub material: Material,
+    pub material: u16,
     pub vintage: u16,
     pub metodologia_hash: [u8; 32],
 }
@@ -80,4 +79,5 @@ pub struct CreditoConfigAtualizada {
     pub registrador: Pubkey,
     pub intermediador: Pubkey,
     pub pausado: bool,
+    pub guardiao: Pubkey,
 }

@@ -51,6 +51,7 @@ export type ReparticaoConfigAtualizadaEvent = {
   intermediador: Address;
   bps: BpsReparticao;
   pausado: boolean;
+  guardiao: Address;
 };
 
 export type ReparticaoConfigAtualizadaEventArgs = {
@@ -61,6 +62,7 @@ export type ReparticaoConfigAtualizadaEventArgs = {
   intermediador: Address;
   bps: BpsReparticaoArgs;
   pausado: boolean;
+  guardiao: Address;
 };
 
 /** Gets the encoder for {@link ReparticaoConfigAtualizadaEventArgs} event data. */
@@ -74,6 +76,7 @@ export function getReparticaoConfigAtualizadaEventEncoder(): FixedSizeEncoder<Re
       ["intermediador", getAddressEncoder()],
       ["bps", getBpsReparticaoEncoder()],
       ["pausado", getBooleanEncoder()],
+      ["guardiao", getAddressEncoder()],
     ]),
     [getConstantEncoder(REPARTICAO_CONFIG_ATUALIZADA_EVENT_DISCRIMINATOR)],
   );
@@ -90,6 +93,7 @@ export function getReparticaoConfigAtualizadaEventDecoder(): FixedSizeDecoder<Re
       ["intermediador", getAddressDecoder()],
       ["bps", getBpsReparticaoDecoder()],
       ["pausado", getBooleanDecoder()],
+      ["guardiao", getAddressDecoder()],
     ]),
     [getConstantDecoder(REPARTICAO_CONFIG_ATUALIZADA_EVENT_DISCRIMINATOR)],
   );

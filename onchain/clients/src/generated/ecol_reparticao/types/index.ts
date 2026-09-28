@@ -10,7 +10,6 @@ export * from "./bpsReparticao";
 export * from "./credito";
 export * from "./estadoCredito";
 export * from "./estadoDistribuicao";
-export * from "./material";
 export * from "./padraoRegistro";
 export * from "./papel";
 export * from "./paramsReparticao";

@@ -46,4 +46,5 @@ pub struct ReparticaoConfigAtualizada {
     pub intermediador: Pubkey,
     pub bps: BpsReparticao,
     pub pausado: bool,
+    pub guardiao: Pubkey,
 }

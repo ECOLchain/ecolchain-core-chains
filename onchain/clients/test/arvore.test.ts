@@ -15,10 +15,10 @@ test('totais batem com o exemplo do diagrama (US$ 50)', () => {
 test('divisão por peso fecha o total de cada papel e é determinística', async () => {
     const [c1, c2, c3, coop, t, ind1, ind2] = await Promise.all(Array.from({ length: 7 }, novo));
     const lotes: LoteDoCredito[] = [
-        { coletor: c1, cooperativa: coop, transportador: t, industria: ind1, pesoG: 333_333n },
-        { coletor: c2, cooperativa: coop, transportador: t, industria: ind2, pesoG: 333_333n },
-        { coletor: c3, cooperativa: coop, transportador: t, industria: ind1, pesoG: 333_334n },
-        { coletor: c1, cooperativa: coop, transportador: t, industria: ind2, pesoG: 1n },
+        { cooperativa: coop, transportador: t, industria: ind1, pesoG: 333_333n, entregas: [{ coletor: c1, pesoG: 333_333n }] },
+        { cooperativa: coop, transportador: t, industria: ind2, pesoG: 333_333n, entregas: [{ coletor: c2, pesoG: 333_333n }] },
+        { cooperativa: coop, transportador: t, industria: ind1, pesoG: 333_334n, entregas: [{ coletor: c3, pesoG: 333_334n }] },
+        { cooperativa: coop, transportador: t, industria: ind2, pesoG: 1n, entregas: [{ coletor: c1, pesoG: 1n }] },
     ];
     const { totais } = calcularTotais(12_347n, BPS, 7_000);
     const d = montarDireitos(lotes, totais);
@@ -44,4 +44,25 @@ test('vetor fixo compartilhado com o Rust (ecol_reparticao::merkle::vetor_compar
     const b = 'US517G5965aydkZ46HS38QLi7UQiSojurfbQfKCELFx' as Address; // base58 de [7; 32]
     const h = Buffer.from(folha({ indice: 3, beneficiario: b, papel: PapelDireito.Industria, valorCentavos: 3_250n })).toString('hex');
     assert.equal(h, '0bc16b3d8ce1484b7b16cabbad84e58357203e433e806442ad12b59549280d3c');
+});
+
+test('coletores dividem pelo peso das entregas; demais papéis pelo peso do lote', async () => {
+    const [c1, c2, coop, t, ind] = (await Promise.all(Array.from({ length: 5 }, () => generateKeyPairSigner()))).map(
+        (k) => k.address,
+    );
+    // Um lote de 1 t formado por duas entregas: 700 kg de c1 e 300 kg de c2 (o fardo pesou 990 kg).
+    const lotes: LoteDoCredito[] = [
+        { cooperativa: coop, transportador: t, industria: ind, pesoG: 990_000n, entregas: [
+            { coletor: c1, pesoG: 700_000n },
+            { coletor: c2, pesoG: 300_000n },
+        ] },
+    ];
+    const { totais } = calcularTotais(5_000n, BPS, 6_500);
+    const d = montarDireitos(lotes, totais);
+    const coletores = d.filter((x) => x.papel === PapelDireito.Coletor);
+    assert.deepEqual(
+        coletores.map((x) => [x.beneficiario, x.valorCentavos]).sort(),
+        [[c1, 175n], [c2, 75n]].sort(),
+    );
+    assert.equal(d.find((x) => x.papel === PapelDireito.Cooperativa)?.valorCentavos, 500n);
 });

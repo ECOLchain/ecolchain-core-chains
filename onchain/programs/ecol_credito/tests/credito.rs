@@ -11,7 +11,7 @@ use {
         accounts as ctas, error::EcolCreditoError as C, instruction as ixs, EstadoCredito,
         PadraoRegistro,
     },
-    ecol_lote::{error::EcolLoteError, EstadoLote, Material},
+    ecol_lote::{error::EcolLoteError, EstadoLote},
     solana_keypair::Keypair,
     solana_signer::Signer,
 };
@@ -89,7 +89,7 @@ fn so_lotes_reciclados_do_mesmo_material() {
     );
 
     let op = c.amb.operador.insecure_clone();
-    c.criar_credito_por(&op, 2, Material::Papel).unwrap();
+    c.criar_credito_por(&op, 2, PAPEL).unwrap();
     c.amb.liberar(recebido).unwrap();
     assert_erro_credito(c.add_lotes(2, &[recebido]), C::MaterialDiferente);
 }
@@ -168,10 +168,7 @@ fn rejeicao_encerra_sem_emissao() {
 fn papeis_conferidos() {
     let mut c = Cenario::novo();
     let intruso = Keypair::new();
-    assert_erro_credito(
-        c.criar_credito_por(&intruso, 1, Material::Plastico),
-        C::NaoEhOperador,
-    );
+    assert_erro_credito(c.criar_credito_por(&intruso, 1, PLASTICO), C::NaoEhOperador);
 
     let lote = c.lote_reciclado(1);
     c.criar_credito(1);
@@ -220,10 +217,7 @@ fn init_exige_upgrade_authority_e_pausa_bloqueia() {
     );
     c.amb.enviar(ix, &[&admin]).unwrap();
     let op = c.amb.operador.insecure_clone();
-    assert_erro_credito(
-        c.criar_credito_por(&op, 1, Material::Plastico),
-        C::ProgramaPausado,
-    );
+    assert_erro_credito(c.criar_credito_por(&op, 1, PLASTICO), C::ProgramaPausado);
 
     let ix = c.ix(
         ixs::AdminUpdateConfig {
@@ -371,4 +365,69 @@ fn venda_exige_intermediador() {
     );
     c.vender(1).unwrap();
     assert_eq!(c.credito(1).pagamento_ref_hash, h("pix-venda-credito"));
+}
+
+#[test]
+fn credito_exige_material_cadastrado_e_ativo() {
+    let mut c = Cenario::novo();
+    let op = c.amb.operador.insecure_clone();
+    // Material inexistente: a conta não existe e a instrução falha.
+    assert!(c.criar_credito_por(&op, 1, 99).is_err());
+    c.amb.atualizar_material(PAPEL, "Papel", false).unwrap();
+    assert_erro(
+        c.criar_credito_por(&op, 2, PAPEL),
+        EcolLoteError::MaterialInativo,
+    );
+    c.criar_credito_por(&op, 3, PLASTICO).unwrap();
+    assert_eq!(c.credito(3).material, PLASTICO);
+}
+
+#[test]
+fn guardiao_pausa_e_so_admin_despausa() {
+    let mut c = Cenario::novo();
+    let admin = c.amb.admin.insecure_clone();
+    let guardiao = Keypair::new();
+    let set = c.ix(
+        ixs::AdminSetGuardiao {
+            guardiao: guardiao.pubkey(),
+        },
+        ctas::AdminUpdateConfig {
+            admin: admin.pubkey(),
+            config: config_credito(),
+            event_authority: event_authority_credito(),
+            program: ecol_credito::id(),
+        },
+    );
+    c.amb.enviar(set, &[&admin]).unwrap();
+
+    let pausar = |c: &Cenario, quem: &Keypair| {
+        c.ix(
+            ixs::GuardiaoPausar {},
+            ctas::GuardiaoPausar {
+                guardiao: quem.pubkey(),
+                config: config_credito(),
+                event_authority: event_authority_credito(),
+                program: ecol_credito::id(),
+            },
+        )
+    };
+    let intruso = Keypair::new();
+    let ix = pausar(&c, &intruso);
+    assert_erro_credito(c.amb.enviar(ix, &[&intruso]), C::NaoEhGuardiao);
+    let ix = pausar(&c, &guardiao);
+    c.amb.enviar(ix, &[&guardiao]).unwrap();
+    let op = c.amb.operador.insecure_clone();
+    assert_erro_credito(c.criar_credito_por(&op, 1, PLASTICO), C::ProgramaPausado);
+
+    let despausar = c.ix(
+        ixs::AdminSetPausado { pausado: false },
+        ctas::AdminUpdateConfig {
+            admin: admin.pubkey(),
+            config: config_credito(),
+            event_authority: event_authority_credito(),
+            program: ecol_credito::id(),
+        },
+    );
+    c.amb.enviar(despausar, &[&admin]).unwrap();
+    c.criar_credito_por(&op, 1, PLASTICO).unwrap();
 }

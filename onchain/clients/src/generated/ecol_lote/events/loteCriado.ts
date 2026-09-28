@@ -23,6 +23,8 @@ import {
   getI64Encoder,
   getStructDecoder,
   getStructEncoder,
+  getU16Decoder,
+  getU16Encoder,
   getU64Decoder,
   getU64Encoder,
   type Address,
@@ -31,12 +33,6 @@ import {
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
 } from "@solana/kit";
-import {
-  getMaterialDecoder,
-  getMaterialEncoder,
-  type Material,
-  type MaterialArgs,
-} from "../types";
 
 export const LOTE_CRIADO_EVENT_DISCRIMINATOR: ReadonlyUint8Array =
   new Uint8Array([43, 216, 194, 203, 129, 15, 178, 207]);
@@ -52,9 +48,8 @@ export type LoteCriadoEvent = {
   seq: bigint;
   cooperativa: Address;
   loteId: bigint;
-  material: Material;
+  material: number;
   pesoG: bigint;
-  coletorRef: ReadonlyUint8Array;
   evidenciasHash: ReadonlyUint8Array;
   ts: bigint;
 };
@@ -64,9 +59,8 @@ export type LoteCriadoEventArgs = {
   seq: number | bigint;
   cooperativa: Address;
   loteId: number | bigint;
-  material: MaterialArgs;
+  material: number;
   pesoG: number | bigint;
-  coletorRef: ReadonlyUint8Array;
   evidenciasHash: ReadonlyUint8Array;
   ts: number | bigint;
 };
@@ -79,9 +73,8 @@ export function getLoteCriadoEventEncoder(): FixedSizeEncoder<LoteCriadoEventArg
       ["seq", getU64Encoder()],
       ["cooperativa", getAddressEncoder()],
       ["loteId", getU64Encoder()],
-      ["material", getMaterialEncoder()],
+      ["material", getU16Encoder()],
       ["pesoG", getU64Encoder()],
-      ["coletorRef", fixEncoderSize(getBytesEncoder(), 32)],
       ["evidenciasHash", fixEncoderSize(getBytesEncoder(), 32)],
       ["ts", getI64Encoder()],
     ]),
@@ -97,9 +90,8 @@ export function getLoteCriadoEventDecoder(): FixedSizeDecoder<LoteCriadoEvent> {
       ["seq", getU64Decoder()],
       ["cooperativa", getAddressDecoder()],
       ["loteId", getU64Decoder()],
-      ["material", getMaterialDecoder()],
+      ["material", getU16Decoder()],
       ["pesoG", getU64Decoder()],
-      ["coletorRef", fixDecoderSize(getBytesDecoder(), 32)],
       ["evidenciasHash", fixDecoderSize(getBytesDecoder(), 32)],
       ["ts", getI64Decoder()],
     ]),

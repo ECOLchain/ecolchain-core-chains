@@ -559,3 +559,34 @@ fn init_por_intruso_falha() {
     };
     assert_erro_rep(r.init(&Keypair::new()), R::NaoEhUpgradeAuthority);
 }
+
+#[test]
+fn guardiao_pausa_resgates() {
+    let mut r = Rep::novo();
+    let (credito, direitos) = r.financiada(1);
+    let admin = r.c.amb.admin.insecure_clone();
+    let guardiao = Keypair::new();
+    let set = r.ix(
+        ixs::AdminSetGuardiao {
+            guardiao: guardiao.pubkey(),
+        },
+        ctas::AdminUpdateConfig {
+            admin: admin.pubkey(),
+            config: config_rep(),
+            event_authority: event_authority_rep(),
+            program: ecol_reparticao::id(),
+        },
+    );
+    r.c.amb.enviar(set, &[&admin]).unwrap();
+    let pausar = r.ix(
+        ixs::GuardiaoPausar {},
+        ctas::GuardiaoPausar {
+            guardiao: guardiao.pubkey(),
+            config: config_rep(),
+            event_authority: event_authority_rep(),
+            program: ecol_reparticao::id(),
+        },
+    );
+    r.c.amb.enviar(pausar, &[&guardiao]).unwrap();
+    assert_erro_rep(r.resgatar(credito, &direitos, 0), R::ProgramaPausado);
+}

@@ -16,6 +16,8 @@ pub enum TipoPesagem {
     Origem = 0,
     /// Pesagem na indústria, no recebimento.
     Recebimento = 1,
+    /// Pesagem da entrega de um coletor na cooperativa (a mensagem leva a conta `Entrega`).
+    Entrega = 2,
 }
 
 pub const MENSAGEM_LEN: usize = 17 + 1 + 32 + 8 + 8;

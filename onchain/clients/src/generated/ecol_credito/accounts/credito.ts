@@ -51,14 +51,10 @@ import {
 import {
   getEstadoCreditoDecoder,
   getEstadoCreditoEncoder,
-  getMaterialDecoder,
-  getMaterialEncoder,
   getPadraoRegistroDecoder,
   getPadraoRegistroEncoder,
   type EstadoCredito,
   type EstadoCreditoArgs,
-  type Material,
-  type MaterialArgs,
   type PadraoRegistro,
   type PadraoRegistroArgs,
 } from "../types";
@@ -75,8 +71,11 @@ export type Credito = {
   discriminator: ReadonlyUint8Array;
   creditoId: bigint;
   padrao: PadraoRegistro;
-  /** Material de todos os lotes agregados (ex.: crédito de plástico só com lotes de plástico). */
-  material: Material;
+  /**
+   * Material de todos os lotes agregados (ex.: crédito de plástico só com lotes de plástico).
+   * Código do material (conta `Material` do `ecol_lote`).
+   */
+  material: number;
   vintage: number;
   /** Hash do documento de metodologia/projeto submetido ao validador. */
   metodologiaHash: ReadonlyUint8Array;
@@ -112,8 +111,11 @@ export type Credito = {
 export type CreditoArgs = {
   creditoId: number | bigint;
   padrao: PadraoRegistroArgs;
-  /** Material de todos os lotes agregados (ex.: crédito de plástico só com lotes de plástico). */
-  material: MaterialArgs;
+  /**
+   * Material de todos os lotes agregados (ex.: crédito de plástico só com lotes de plástico).
+   * Código do material (conta `Material` do `ecol_lote`).
+   */
+  material: number;
   vintage: number;
   /** Hash do documento de metodologia/projeto submetido ao validador. */
   metodologiaHash: ReadonlyUint8Array;
@@ -153,7 +155,7 @@ export function getCreditoEncoder(): Encoder<CreditoArgs> {
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["creditoId", getU64Encoder()],
       ["padrao", getPadraoRegistroEncoder()],
-      ["material", getMaterialEncoder()],
+      ["material", getU16Encoder()],
       ["vintage", getU16Encoder()],
       ["metodologiaHash", fixEncoderSize(getBytesEncoder(), 32)],
       ["qtdLotes", getU32Encoder()],
@@ -184,7 +186,7 @@ export function getCreditoDecoder(): Decoder<Credito> {
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["creditoId", getU64Decoder()],
     ["padrao", getPadraoRegistroDecoder()],
-    ["material", getMaterialDecoder()],
+    ["material", getU16Decoder()],
     ["vintage", getU16Decoder()],
     ["metodologiaHash", fixDecoderSize(getBytesDecoder(), 32)],
     ["qtdLotes", getU32Decoder()],

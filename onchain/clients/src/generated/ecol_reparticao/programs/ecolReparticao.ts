@@ -46,31 +46,39 @@ import {
   getAdminAcceptAdminInstructionAsync,
   getAdminInitConfigInstructionAsync,
   getAdminProposeAdminInstructionAsync,
+  getAdminSetGuardiaoInstructionAsync,
   getAdminSetPausadoInstructionAsync,
   getAdminUpdateConfigInstructionAsync,
+  getGuardiaoPausarInstructionAsync,
   getIntermediadorRecordRepasseInstructionAsync,
   getOperadorCreateDistribuicaoInstructionAsync,
   getZupyRecordResgateInstructionAsync,
   parseAdminAcceptAdminInstruction,
   parseAdminInitConfigInstruction,
   parseAdminProposeAdminInstruction,
+  parseAdminSetGuardiaoInstruction,
   parseAdminSetPausadoInstruction,
   parseAdminUpdateConfigInstruction,
+  parseGuardiaoPausarInstruction,
   parseIntermediadorRecordRepasseInstruction,
   parseOperadorCreateDistribuicaoInstruction,
   parseZupyRecordResgateInstruction,
   type AdminAcceptAdminAsyncInput,
   type AdminInitConfigAsyncInput,
   type AdminProposeAdminAsyncInput,
+  type AdminSetGuardiaoAsyncInput,
   type AdminSetPausadoAsyncInput,
   type AdminUpdateConfigAsyncInput,
+  type GuardiaoPausarAsyncInput,
   type IntermediadorRecordRepasseAsyncInput,
   type OperadorCreateDistribuicaoAsyncInput,
   type ParsedAdminAcceptAdminInstruction,
   type ParsedAdminInitConfigInstruction,
   type ParsedAdminProposeAdminInstruction,
+  type ParsedAdminSetGuardiaoInstruction,
   type ParsedAdminSetPausadoInstruction,
   type ParsedAdminUpdateConfigInstruction,
+  type ParsedGuardiaoPausarInstruction,
   type ParsedIntermediadorRecordRepasseInstruction,
   type ParsedOperadorCreateDistribuicaoInstruction,
   type ParsedZupyRecordResgateInstruction,
@@ -182,8 +190,10 @@ export enum EcolReparticaoInstruction {
   AdminAcceptAdmin,
   AdminInitConfig,
   AdminProposeAdmin,
+  AdminSetGuardiao,
   AdminSetPausado,
   AdminUpdateConfig,
+  GuardiaoPausar,
   IntermediadorRecordRepasse,
   OperadorCreateDistribuicao,
   ZupyRecordResgate,
@@ -230,6 +240,17 @@ export function identifyEcolReparticaoInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([66, 138, 61, 62, 33, 141, 21, 20]),
+      ),
+      0,
+    )
+  ) {
+    return EcolReparticaoInstruction.AdminSetGuardiao;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([186, 142, 185, 22, 218, 57, 69, 112]),
       ),
       0,
@@ -247,6 +268,17 @@ export function identifyEcolReparticaoInstruction(
     )
   ) {
     return EcolReparticaoInstruction.AdminUpdateConfig;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([25, 19, 24, 39, 94, 155, 59, 92]),
+      ),
+      0,
+    )
+  ) {
+    return EcolReparticaoInstruction.GuardiaoPausar;
   }
   if (
     containsBytes(
@@ -300,11 +332,17 @@ export type ParsedEcolReparticaoInstruction<
       instructionType: EcolReparticaoInstruction.AdminProposeAdmin;
     } & ParsedAdminProposeAdminInstruction<TProgram>)
   | ({
+      instructionType: EcolReparticaoInstruction.AdminSetGuardiao;
+    } & ParsedAdminSetGuardiaoInstruction<TProgram>)
+  | ({
       instructionType: EcolReparticaoInstruction.AdminSetPausado;
     } & ParsedAdminSetPausadoInstruction<TProgram>)
   | ({
       instructionType: EcolReparticaoInstruction.AdminUpdateConfig;
     } & ParsedAdminUpdateConfigInstruction<TProgram>)
+  | ({
+      instructionType: EcolReparticaoInstruction.GuardiaoPausar;
+    } & ParsedGuardiaoPausarInstruction<TProgram>)
   | ({
       instructionType: EcolReparticaoInstruction.IntermediadorRecordRepasse;
     } & ParsedIntermediadorRecordRepasseInstruction<TProgram>)
@@ -341,6 +379,13 @@ export function parseEcolReparticaoInstruction<TProgram extends string>(
         ...parseAdminProposeAdminInstruction(instruction),
       };
     }
+    case EcolReparticaoInstruction.AdminSetGuardiao: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolReparticaoInstruction.AdminSetGuardiao,
+        ...parseAdminSetGuardiaoInstruction(instruction),
+      };
+    }
     case EcolReparticaoInstruction.AdminSetPausado: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -353,6 +398,13 @@ export function parseEcolReparticaoInstruction<TProgram extends string>(
       return {
         instructionType: EcolReparticaoInstruction.AdminUpdateConfig,
         ...parseAdminUpdateConfigInstruction(instruction),
+      };
+    }
+    case EcolReparticaoInstruction.GuardiaoPausar: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolReparticaoInstruction.GuardiaoPausar,
+        ...parseGuardiaoPausarInstruction(instruction),
       };
     }
     case EcolReparticaoInstruction.IntermediadorRecordRepasse: {
@@ -416,6 +468,10 @@ export type EcolReparticaoPluginInstructions = {
     input: AdminProposeAdminAsyncInput,
   ) => ReturnType<typeof getAdminProposeAdminInstructionAsync> &
     SelfPlanAndSendFunctions;
+  adminSetGuardiao: (
+    input: AdminSetGuardiaoAsyncInput,
+  ) => ReturnType<typeof getAdminSetGuardiaoInstructionAsync> &
+    SelfPlanAndSendFunctions;
   adminSetPausado: (
     input: AdminSetPausadoAsyncInput,
   ) => ReturnType<typeof getAdminSetPausadoInstructionAsync> &
@@ -423,6 +479,10 @@ export type EcolReparticaoPluginInstructions = {
   adminUpdateConfig: (
     input: AdminUpdateConfigAsyncInput,
   ) => ReturnType<typeof getAdminUpdateConfigInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  guardiaoPausar: (
+    input: GuardiaoPausarAsyncInput,
+  ) => ReturnType<typeof getGuardiaoPausarInstructionAsync> &
     SelfPlanAndSendFunctions;
   intermediadorRecordRepasse: (
     input: IntermediadorRecordRepasseAsyncInput,
@@ -482,6 +542,11 @@ export function ecolReparticaoProgram() {
               client,
               getAdminProposeAdminInstructionAsync(input),
             ),
+          adminSetGuardiao: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getAdminSetGuardiaoInstructionAsync(input),
+            ),
           adminSetPausado: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -491,6 +556,11 @@ export function ecolReparticaoProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getAdminUpdateConfigInstructionAsync(input),
+            ),
+          guardiaoPausar: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getGuardiaoPausarInstructionAsync(input),
             ),
           intermediadorRecordRepasse: (input) =>
             addSelfPlanAndSendFunctions(

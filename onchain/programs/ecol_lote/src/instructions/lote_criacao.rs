@@ -3,8 +3,8 @@ use anchor_lang::prelude::*;
 use crate::{
     ativo::{self, ContasAsset},
     constants::{
-        SEED_ASSET, SEED_AUTORIDADE_ASSET, SEED_BALANCA, SEED_GLOBAL, SEED_LOTE, SEED_PARTICIPANTE,
-        URI_MAX_LEN,
+        SEED_ASSET, SEED_AUTORIDADE_ASSET, SEED_BALANCA, SEED_GLOBAL, SEED_LOTE, SEED_MATERIAL,
+        SEED_PARTICIPANTE, URI_MAX_LEN,
     },
     error::EcolLoteError,
     events::{LoteCriado, PesagemAtestada},
@@ -15,18 +15,19 @@ use crate::{
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DadosLote {
     pub lote_id: u64,
-    pub material: Material,
+    /// Código do material cadastrado; a conta `material` correspondente deve estar ativa.
+    pub material: u16,
     /// Peso em gramas, exatamente como assinado pela balança.
     pub peso_g: u64,
     /// Timestamp assinado pela balança.
     pub ts_pesagem: i64,
-    pub coletor_ref: [u8; 32],
     pub evidencias_hash: [u8; 32],
     /// Metadados off-chain do Core asset (JSON em Arweave/IPFS).
     pub uri: String,
 }
 
-/// Cria o lote a partir de uma pesagem assinada pela balança da cooperativa.
+/// Cria o lote a partir da pesagem do lote montado, assinada pela balança da cooperativa.
+/// As entregas dos coletores são vinculadas depois, com `cooperativa_add_entregas`.
 /// A transação deve ter, imediatamente antes, a instrução Ed25519 com a assinatura da balança.
 #[event_cpi]
 #[derive(Accounts)]
@@ -44,6 +45,8 @@ pub struct CooperativaCreateLote<'info> {
         bump = balanca.bump
     )]
     pub balanca: Box<Account<'info, Balanca>>,
+    #[account(seeds = [SEED_MATERIAL, &dados.material.to_le_bytes()], bump = material_cadastro.bump)]
+    pub material_cadastro: Box<Account<'info, Material>>,
     #[account(
         init,
         payer = payer,
@@ -75,8 +78,8 @@ pub fn handle_cooperativa_create_lote(
     ctx.accounts.cooperativa_part.exigir(Papel::Cooperativa)?;
     let cooperativa = ctx.accounts.cooperativa.key();
     ctx.accounts.balanca.exigir_ativa_de(&cooperativa)?;
+    ctx.accounts.material_cadastro.exigir_ativo()?;
     require!(dados.peso_g > 0, EcolLoteError::PesoInvalido);
-    require!(dados.coletor_ref != [0; 32], EcolLoteError::ReferenciaVazia);
     require!(
         dados.evidencias_hash != [0; 32],
         EcolLoteError::ReferenciaVazia
@@ -123,7 +126,6 @@ pub fn handle_cooperativa_create_lote(
     lote.lote_id = dados.lote_id;
     lote.material = dados.material;
     lote.peso_g = dados.peso_g;
-    lote.coletor_ref = dados.coletor_ref;
     lote.evidencias_hash = dados.evidencias_hash;
     lote.balanca_origem = balanca_key;
     lote.ts_pesagem = dados.ts_pesagem;
@@ -142,7 +144,6 @@ pub fn handle_cooperativa_create_lote(
         lote_id: dados.lote_id,
         material: dados.material,
         peso_g: dados.peso_g,
-        coletor_ref: dados.coletor_ref,
         evidencias_hash: dados.evidencias_hash,
         ts: agora,
     });

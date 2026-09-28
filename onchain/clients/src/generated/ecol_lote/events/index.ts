@@ -8,10 +8,13 @@
 
 export * from "./balancaAtualizada";
 export * from "./configAtualizada";
+export * from "./entregaNoLote";
+export * from "./entregaRegistrada";
 export * from "./escrowMovimentado";
 export * from "./loteCriado";
 export * from "./lotePesoAlterado";
 export * from "./loteTransicionado";
 export * from "./loteVendido";
+export * from "./materialAtualizado";
 export * from "./participanteAtualizado";
 export * from "./pesagemAtestada";

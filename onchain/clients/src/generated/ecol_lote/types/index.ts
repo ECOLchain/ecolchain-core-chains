@@ -10,7 +10,6 @@ export * from "./configParams";
 export * from "./decisaoDisputa";
 export * from "./estadoLote";
 export * from "./etapaDisputavel";
-export * from "./material";
 export * from "./modoOperacao";
 export * from "./motivoDisputa";
 export * from "./movimentoEscrow";

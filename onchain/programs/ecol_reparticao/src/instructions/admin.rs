@@ -35,6 +35,7 @@ impl ReparticaoConfig {
             intermediador: self.intermediador,
             bps: self.bps,
             pausado: self.pausado,
+            guardiao: self.guardiao,
         }
     }
 }
@@ -133,6 +134,42 @@ pub fn handle_admin_accept_admin(ctx: Context<AdminAcceptAdmin>) -> Result<()> {
     let config = &mut ctx.accounts.config;
     config.admin = ctx.accounts.novo_admin.key();
     config.admin_pendente = Pubkey::default();
+    let evento = config.evento();
+    emit_cpi!(evento);
+    Ok(())
+}
+
+/// Define (ou remove, com `Pubkey::default()`) o guardião, que só pode pausar.
+pub fn handle_admin_set_guardiao(ctx: Context<AdminUpdateConfig>, guardiao: Pubkey) -> Result<()> {
+    let config = &mut ctx.accounts.config;
+    require!(
+        guardiao != config.admin,
+        EcolReparticaoError::ChavesDeConfigInvalidas
+    );
+    config.guardiao = guardiao;
+    let evento = config.evento();
+    emit_cpi!(evento);
+    Ok(())
+}
+
+/// O guardião pausa sem timelock (ex.: incidente). Despausar só pelo admin.
+#[event_cpi]
+#[derive(Accounts)]
+pub struct GuardiaoPausar<'info> {
+    pub guardiao: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [SEED_CONFIG],
+        bump = config.bump,
+        constraint = config.guardiao != Pubkey::default()
+            && config.guardiao == guardiao.key() @ EcolReparticaoError::NaoEhGuardiao
+    )]
+    pub config: Account<'info, ReparticaoConfig>,
+}
+
+pub fn handle_guardiao_pausar(ctx: Context<GuardiaoPausar>) -> Result<()> {
+    let config = &mut ctx.accounts.config;
+    config.pausado = true;
     let evento = config.evento();
     emit_cpi!(evento);
     Ok(())

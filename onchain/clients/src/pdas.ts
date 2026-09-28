@@ -3,6 +3,7 @@ import {
     type Address,
     getAddressEncoder,
     getProgramDerivedAddress,
+    getU16Encoder,
     getU64Encoder,
     type ReadonlyUint8Array,
 } from '@solana/kit';
@@ -26,6 +27,9 @@ export const lote = {
     config: () => pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('global')]),
     participante: (carteira: Address) => pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('part'), addr(carteira)]),
     balanca: (dispositivo: Address) => pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('balanca'), addr(dispositivo)]),
+    entrega: (cooperativa: Address, entregaId: bigint) =>
+        pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('entrega'), addr(cooperativa), u64(entregaId)]),
+    material: (codigo: number) => pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('material'), getU16Encoder().encode(codigo)]),
     lote: (cooperativa: Address, loteId: bigint) =>
         pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('lote'), addr(cooperativa), u64(loteId)]),
     asset: (lotePda: Address) => pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('asset'), addr(lotePda)]),

@@ -18,10 +18,12 @@ fn ciclo_completo_ate_agregado() {
     amb.criar_lote(1).unwrap();
     let l = amb.lote(lote);
     assert_eq!(l.estado, EstadoLote::Criado);
+    // seq: criação + pesagem + entrega vinculada na montagem.
     assert_eq!(
         (l.peso_g, l.seq, l.criado_em, l.ts_pesagem),
-        (PESO_G, 2, T0, T0)
+        (PESO_G, 3, T0, T0)
     );
+    assert_eq!((l.qtd_entregas, l.peso_entregas_g), (1, PESO_G));
     assert_eq!(l.balanca_origem, balanca_pda(&amb.balanca_coop.pubkey()));
     let asset = asset_pda(&lote);
     assert_eq!(l.asset, asset);
@@ -61,8 +63,8 @@ fn ciclo_completo_ate_agregado() {
     let l = amb.lote(lote);
     assert_eq!(l.estado, EstadoLote::Agregado);
     assert_eq!(l.credito, credito);
-    // criação(1,2) anúncio(3) venda(4,5) retirada(6) recebimento(7) liberação(8,9) agregação(10)
-    assert_eq!(l.seq, 10);
+    // criação(1,2) entrega(3) anúncio(4) venda(5,6) retirada(7) recebimento(8) liberação(9,10) agregação(11)
+    assert_eq!(l.seq, 11);
 
     // Estado terminal: nada mais anda.
     assert_erro(

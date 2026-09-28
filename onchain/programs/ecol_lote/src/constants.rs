@@ -9,6 +9,20 @@ pub const SEED_PARTICIPANTE: &[u8] = b"part";
 #[constant]
 pub const SEED_LOTE: &[u8] = b"lote";
 
+/// Entrega de um coletor na cooperativa: PDA `["entrega", cooperativa, entrega_id (u64 LE)]`.
+#[constant]
+pub const SEED_ENTREGA: &[u8] = b"entrega";
+
+/// Entregas vinculadas a um lote por transação (cada uma é uma conta gravável).
+pub const MAX_ENTREGAS_POR_TX: usize = 10;
+
+/// Material cadastrado: PDA `["material", codigo (u16 LE)]`.
+#[constant]
+pub const SEED_MATERIAL: &[u8] = b"material";
+
+/// Tamanho máximo do nome de um material, em bytes UTF-8.
+pub const MATERIAL_NOME_MAX: usize = 32;
+
 /// Base dos percentuais (basis points): 10_000 = 100%.
 pub const BPS_BASE: u64 = 10_000;
 

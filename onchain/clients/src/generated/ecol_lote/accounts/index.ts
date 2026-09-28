@@ -7,6 +7,8 @@
  */
 
 export * from "./balanca";
+export * from "./entrega";
 export * from "./globalConfig";
 export * from "./lote";
+export * from "./material";
 export * from "./participante";

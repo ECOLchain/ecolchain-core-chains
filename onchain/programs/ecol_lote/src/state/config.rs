@@ -16,6 +16,17 @@ pub enum ModoOperacao {
     Pausado,
 }
 
+impl ModoOperacao {
+    /// Grau de restrição: Normal < SomenteDisputas < Pausado.
+    pub fn restricao(self) -> u8 {
+        match self {
+            ModoOperacao::Normal => 0,
+            ModoOperacao::SomenteDisputas => 1,
+            ModoOperacao::Pausado => 2,
+        }
+    }
+}
+
 /// Configuração global, única por deploy (PDA `["global"]`).
 #[account]
 #[derive(InitSpace)]
@@ -40,7 +51,10 @@ pub struct GlobalConfig {
     /// Último retorno ao modo Normal (início da carência do crank).
     pub retomado_em: i64,
     pub bump: u8,
-    pub _reserved: [u8; 64],
+    /// Guardião: só pode restringir o modo (pausar), nunca liberar nem mudar config.
+    /// `Pubkey::default()` = sem guardião. Ocupa parte do antigo espaço reservado (layout inalterado).
+    pub guardiao: Pubkey,
+    pub _reserved: [u8; 32],
 }
 
 impl GlobalConfig {
@@ -71,6 +85,7 @@ impl GlobalConfig {
             self.credito_autoridade,
         ]
         .contains(chave)
+            || (self.guardiao != Pubkey::default() && *chave == self.guardiao)
     }
 
     pub fn validar_parametros(prazo_entrega_s: i64, tolerancia_peso_bps: u16) -> Result<()> {

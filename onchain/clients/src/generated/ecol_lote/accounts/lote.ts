@@ -29,6 +29,8 @@ import {
   getStructEncoder,
   getU16Decoder,
   getU16Encoder,
+  getU32Decoder,
+  getU32Encoder,
   getU64Decoder,
   getU64Encoder,
   getU8Decoder,
@@ -53,14 +55,10 @@ import {
   getEstadoLoteEncoder,
   getEtapaDisputavelDecoder,
   getEtapaDisputavelEncoder,
-  getMaterialDecoder,
-  getMaterialEncoder,
   type EstadoLote,
   type EstadoLoteArgs,
   type EtapaDisputavel,
   type EtapaDisputavelArgs,
-  type Material,
-  type MaterialArgs,
 } from "../types";
 
 export const LOTE_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
@@ -75,13 +73,18 @@ export type Lote = {
   discriminator: ReadonlyUint8Array;
   cooperativa: Address;
   loteId: bigint;
-  material: Material;
+  /** Código do material cadastrado (conta `Material`), imutável depois da criação. */
+  material: number;
   /** Peso vigente em gramas (da balança da cooperativa, ou reclassificado pelo árbitro). */
   pesoG: bigint;
   /** Peso informado pela indústria no recebimento. */
   pesoRecebidoG: bigint;
-  /** Referência ao coletor como hash com salt (LGPD): identifica sem expor a carteira. */
-  coletorRef: ReadonlyUint8Array;
+  /** Entregas de coletores vinculadas ao lote (montagem). Os coletores estão nas entregas. */
+  qtdEntregas: number;
+  /** Soma dos pesos das entregas (o `peso_g` é a pesagem do lote montado). */
+  pesoEntregasG: bigint;
+  /** Hash encadeado das entregas: `h = sha256(h || entrega || peso_g)`, na ordem de vinculação. */
+  entregasHash: ReadonlyUint8Array;
   /** Hash das evidências off-chain (fotos, ticket da balança). */
   evidenciasHash: ReadonlyUint8Array;
   precoMinimoCentavos: bigint;
@@ -123,13 +126,18 @@ export type Lote = {
 export type LoteArgs = {
   cooperativa: Address;
   loteId: number | bigint;
-  material: MaterialArgs;
+  /** Código do material cadastrado (conta `Material`), imutável depois da criação. */
+  material: number;
   /** Peso vigente em gramas (da balança da cooperativa, ou reclassificado pelo árbitro). */
   pesoG: number | bigint;
   /** Peso informado pela indústria no recebimento. */
   pesoRecebidoG: number | bigint;
-  /** Referência ao coletor como hash com salt (LGPD): identifica sem expor a carteira. */
-  coletorRef: ReadonlyUint8Array;
+  /** Entregas de coletores vinculadas ao lote (montagem). Os coletores estão nas entregas. */
+  qtdEntregas: number;
+  /** Soma dos pesos das entregas (o `peso_g` é a pesagem do lote montado). */
+  pesoEntregasG: number | bigint;
+  /** Hash encadeado das entregas: `h = sha256(h || entrega || peso_g)`, na ordem de vinculação. */
+  entregasHash: ReadonlyUint8Array;
   /** Hash das evidências off-chain (fotos, ticket da balança). */
   evidenciasHash: ReadonlyUint8Array;
   precoMinimoCentavos: number | bigint;
@@ -175,10 +183,12 @@ export function getLoteEncoder(): Encoder<LoteArgs> {
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["cooperativa", getAddressEncoder()],
       ["loteId", getU64Encoder()],
-      ["material", getMaterialEncoder()],
+      ["material", getU16Encoder()],
       ["pesoG", getU64Encoder()],
       ["pesoRecebidoG", getU64Encoder()],
-      ["coletorRef", fixEncoderSize(getBytesEncoder(), 32)],
+      ["qtdEntregas", getU32Encoder()],
+      ["pesoEntregasG", getU64Encoder()],
+      ["entregasHash", fixEncoderSize(getBytesEncoder(), 32)],
       ["evidenciasHash", fixEncoderSize(getBytesEncoder(), 32)],
       ["precoMinimoCentavos", getU64Encoder()],
       ["industria", getAddressEncoder()],
@@ -212,10 +222,12 @@ export function getLoteDecoder(): Decoder<Lote> {
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["cooperativa", getAddressDecoder()],
     ["loteId", getU64Decoder()],
-    ["material", getMaterialDecoder()],
+    ["material", getU16Decoder()],
     ["pesoG", getU64Decoder()],
     ["pesoRecebidoG", getU64Decoder()],
-    ["coletorRef", fixDecoderSize(getBytesDecoder(), 32)],
+    ["qtdEntregas", getU32Decoder()],
+    ["pesoEntregasG", getU64Decoder()],
+    ["entregasHash", fixDecoderSize(getBytesDecoder(), 32)],
     ["evidenciasHash", fixDecoderSize(getBytesDecoder(), 32)],
     ["precoMinimoCentavos", getU64Decoder()],
     ["industria", getAddressDecoder()],

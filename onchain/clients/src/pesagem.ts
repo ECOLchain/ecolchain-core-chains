@@ -17,6 +17,8 @@ export const ED25519_PROGRAM_ADDRESS = address('Ed25519SigVerify1111111111111111
 export enum TipoPesagem {
     Origem = 0,
     Recebimento = 1,
+    /** Entrega de um coletor na cooperativa; a mensagem leva a conta `Entrega` no lugar do lote. */
+    Entrega = 2,
 }
 
 const DOMINIO = new TextEncoder().encode('ECOLCHAIN:PESO:v1');

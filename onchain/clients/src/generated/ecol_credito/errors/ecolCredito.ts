@@ -56,6 +56,8 @@ export const ECOL_CREDITO_ERROR__LIBERACAO_NAO_PERMITIDA = 0x1782; // 6018
 export const ECOL_CREDITO_ERROR__LOTE_DE_OUTRO_CREDITO = 0x1783; // 6019
 /** NaoEhIntermediador: Assinante não é o intermediador de pagamento */
 export const ECOL_CREDITO_ERROR__NAO_EH_INTERMEDIADOR = 0x1784; // 6020
+/** NaoEhGuardiao: Assinante não é o guardião */
+export const ECOL_CREDITO_ERROR__NAO_EH_GUARDIAO = 0x1785; // 6021
 
 export type EcolCreditoError =
   | typeof ECOL_CREDITO_ERROR__AGREGACAO_NAO_CONFIRMADA
@@ -66,6 +68,7 @@ export type EcolCreditoError =
   | typeof ECOL_CREDITO_ERROR__LOTE_DE_OUTRO_PROGRAMA
   | typeof ECOL_CREDITO_ERROR__MATERIAL_DIFERENTE
   | typeof ECOL_CREDITO_ERROR__NAO_EH_ADMIN
+  | typeof ECOL_CREDITO_ERROR__NAO_EH_GUARDIAO
   | typeof ECOL_CREDITO_ERROR__NAO_EH_INTERMEDIADOR
   | typeof ECOL_CREDITO_ERROR__NAO_EH_OPERADOR
   | typeof ECOL_CREDITO_ERROR__NAO_EH_REGISTRADOR
@@ -91,6 +94,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_CREDITO_ERROR__LOTE_DE_OUTRO_PROGRAMA]: `Conta de lote não pertence ao programa ecol_lote`,
     [ECOL_CREDITO_ERROR__MATERIAL_DIFERENTE]: `Material do lote difere do material do crédito`,
     [ECOL_CREDITO_ERROR__NAO_EH_ADMIN]: `Assinante não é o admin`,
+    [ECOL_CREDITO_ERROR__NAO_EH_GUARDIAO]: `Assinante não é o guardião`,
     [ECOL_CREDITO_ERROR__NAO_EH_INTERMEDIADOR]: `Assinante não é o intermediador de pagamento`,
     [ECOL_CREDITO_ERROR__NAO_EH_OPERADOR]: `Assinante não é o operador`,
     [ECOL_CREDITO_ERROR__NAO_EH_REGISTRADOR]: `Assinante não é o registrador`,

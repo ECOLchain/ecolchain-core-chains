@@ -76,4 +76,24 @@ pub enum EcolLoteError {
     ValorLiberadoInvalido,
     #[msg("Lote não está agregado a este crédito")]
     LoteDeOutroCredito,
+    #[msg("Nome inválido: vazio ou com mais de 32 bytes")]
+    NomeInvalido,
+    #[msg("Material inativo")]
+    MaterialInativo,
+    #[msg("Assinante não é o guardião")]
+    NaoEhGuardiao,
+    #[msg("O guardião só pode deixar o modo mais restritivo")]
+    GuardiaoSoRestringe,
+    #[msg("Entrega já vinculada a um lote")]
+    EntregaJaVinculada,
+    #[msg("Entrega de outra cooperativa")]
+    EntregaDeOutraCooperativa,
+    #[msg("Material da entrega difere do material do lote")]
+    MaterialDiferente,
+    #[msg("Lote sem entregas vinculadas")]
+    LoteSemEntregas,
+    #[msg("Quantidade de entregas inválida nesta transação")]
+    QuantidadeDeEntregasInvalida,
+    #[msg("Conta informada não é uma entrega válida")]
+    EntregaInvalida,
 }

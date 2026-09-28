@@ -159,7 +159,55 @@ before(async () => {
             }),
         );
     }
+    await enviar(
+        await lote.getOperadorCreateMaterialInstructionAsync({
+            payer: client.payer,
+            operador: k.operador,
+            material: await pdas.lote.material(PLASTICO),
+            eventAuthority: ev.lote,
+            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            codigo: PLASTICO,
+            nome: 'Plástico',
+        }),
+    );
 });
+
+/** Código do material cadastrado no início do teste. */
+const PLASTICO = 1;
+
+/** Registra a entrega `entregaId` do coletor (pesagem assinada pela balança) e a vincula ao lote. */
+async function registrarEVincular(lotePda: Address, entregaId: bigint, pesoG: bigint) {
+    const entregaPda = await pdas.lote.entrega(k.cooperativa.address, entregaId);
+    const ts = await agora();
+    await enviar(
+        await instrucaoPesagem(k.balancaCoop, TipoPesagem.Entrega, entregaPda, pesoG, ts),
+        await lote.getCooperativaRegisterEntregaInstructionAsync({
+            payer: client.payer,
+            cooperativa: k.cooperativa,
+            balanca: await pdas.lote.balanca(k.balancaCoop.address),
+            materialCadastro: await pdas.lote.material(PLASTICO),
+            entrega: entregaPda,
+            eventAuthority: ev.lote,
+            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            entregaId,
+            coletorRef: h(`coletor:${k.coletor.address}:salt`),
+            material: PLASTICO,
+            pesoG,
+            tsPesagem: ts,
+        }),
+    );
+    await enviar(
+        comContasGravaveis(
+            await lote.getCooperativaAddEntregasInstructionAsync({
+                cooperativa: k.cooperativa,
+                lote: lotePda,
+                eventAuthority: ev.lote,
+                program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            }),
+            [entregaPda],
+        ),
+    );
+}
 
 /** Leva o lote `loteId` de `Criado` até `Reciclado`, com pesagens atestadas na origem e no recebimento. */
 async function loteAteReciclado(loteId: bigint, pesoG: bigint): Promise<Address> {
@@ -172,18 +220,20 @@ async function loteAteReciclado(loteId: bigint, pesoG: bigint): Promise<Address>
             payer: client.payer,
             cooperativa: k.cooperativa,
             balanca: await pdas.lote.balanca(k.balancaCoop.address),
+            materialCadastro: await pdas.lote.material(PLASTICO),
             lote: lotePda,
             eventAuthority: ev.lote,
             program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
             loteId,
-            material: lote.Material.Plastico,
+            material: PLASTICO,
             pesoG,
             tsPesagem: ts,
-            coletorRef: h(`coletor:${k.coletor.address}:salt`),
             evidenciasHash: h(`fotos:${loteId}`),
             uri: `https://arweave.net/ecolchain/lote-${loteId}.json`,
         }),
     );
+    // Montagem: a entrega do coletor, pesada e assinada pela balança, vinculada ao lote.
+    await registrarEVincular(lotePda, loteId, pesoG);
     await enviar(
         await lote.getCooperativaListLoteInstructionAsync({
             cooperativa: k.cooperativa,
@@ -265,7 +315,7 @@ test('ciclo completo: lote → crédito vendido → direitos → resgates', asyn
             program: credito.ECOL_CREDITO_PROGRAM_ADDRESS,
             creditoId: 1n,
             padrao: credito.PadraoRegistro.Verra,
-            material: credito.Material.Plastico,
+            material: PLASTICO,
             vintage: 2026,
             metodologiaHash: h('metodologia-plastico-v1'),
         }),
@@ -328,8 +378,8 @@ test('ciclo completo: lote → crédito vendido → direitos → resgates', asyn
     const { totais, ecolchain } = calcularTotais(7_500n, { coletor: 500, cooperativa: 1_000, transportador: 500 }, bpsIndustria);
     const direitos = montarDireitos(
         [
-            { coletor: k.coletor.address, cooperativa: k.cooperativa.address, transportador: k.transportador.address, industria: k.industria.address, pesoG: 1_000_000n },
-            { coletor: k.coletor.address, cooperativa: k.cooperativa.address, transportador: k.transportador.address, industria: k.industria.address, pesoG: 500_000n },
+            { cooperativa: k.cooperativa.address, transportador: k.transportador.address, industria: k.industria.address, pesoG: 1_000_000n, entregas: [{ coletor: k.coletor.address, pesoG: 1_000_000n }] },
+            { cooperativa: k.cooperativa.address, transportador: k.transportador.address, industria: k.industria.address, pesoG: 500_000n, entregas: [{ coletor: k.coletor.address, pesoG: 500_000n }] },
         ],
         totais,
     );
@@ -398,18 +448,19 @@ test('prazo de entrega vencido: time travel no surfnet + crank público', async 
             payer: client.payer,
             cooperativa: k.cooperativa,
             balanca: await pdas.lote.balanca(k.balancaCoop.address),
+            materialCadastro: await pdas.lote.material(PLASTICO),
             lote: lotePda,
             eventAuthority: ev.lote,
             program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
             loteId: 99n,
-            material: lote.Material.Plastico,
+            material: PLASTICO,
             pesoG: 1_000n,
             tsPesagem: ts,
-            coletorRef: h('c'),
             evidenciasHash: h('e'),
             uri: 'https://arweave.net/x.json',
         }),
     );
+    await registrarEVincular(lotePda, 99n, 1_000n);
     await enviar(
         await lote.getCooperativaListLoteInstructionAsync({
             cooperativa: k.cooperativa,

@@ -44,6 +44,7 @@ export type CreditoConfigAtualizadaEvent = {
   registrador: Address;
   intermediador: Address;
   pausado: boolean;
+  guardiao: Address;
 };
 
 export type CreditoConfigAtualizadaEventArgs = CreditoConfigAtualizadaEvent;
@@ -58,6 +59,7 @@ export function getCreditoConfigAtualizadaEventEncoder(): FixedSizeEncoder<Credi
       ["registrador", getAddressEncoder()],
       ["intermediador", getAddressEncoder()],
       ["pausado", getBooleanEncoder()],
+      ["guardiao", getAddressEncoder()],
     ]),
     [getConstantEncoder(CREDITO_CONFIG_ATUALIZADA_EVENT_DISCRIMINATOR)],
   );
@@ -73,6 +75,7 @@ export function getCreditoConfigAtualizadaEventDecoder(): FixedSizeDecoder<Credi
       ["registrador", getAddressDecoder()],
       ["intermediador", getAddressDecoder()],
       ["pausado", getBooleanDecoder()],
+      ["guardiao", getAddressDecoder()],
     ]),
     [getConstantDecoder(CREDITO_CONFIG_ATUALIZADA_EVENT_DISCRIMINATOR)],
   );

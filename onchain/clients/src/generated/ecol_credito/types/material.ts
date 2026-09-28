@@ -7,33 +7,66 @@
  */
 
 import {
+  addDecoderSizePrefix,
+  addEncoderSizePrefix,
   combineCodec,
-  getEnumDecoder,
-  getEnumEncoder,
-  type FixedSizeCodec,
-  type FixedSizeDecoder,
-  type FixedSizeEncoder,
+  fixDecoderSize,
+  fixEncoderSize,
+  getBooleanDecoder,
+  getBooleanEncoder,
+  getBytesDecoder,
+  getBytesEncoder,
+  getStructDecoder,
+  getStructEncoder,
+  getU16Decoder,
+  getU16Encoder,
+  getU32Decoder,
+  getU32Encoder,
+  getU8Decoder,
+  getU8Encoder,
+  getUtf8Decoder,
+  getUtf8Encoder,
+  type Codec,
+  type Decoder,
+  type Encoder,
+  type ReadonlyUint8Array,
 } from "@solana/kit";
 
-export enum Material {
-  Plastico,
-  Papel,
-  Vidro,
-  Aluminio,
-  Metal,
-  Outros,
-}
+/**
+ * Tipo de material reciclável (PDA `["material", codigo]`), cadastrado pelo operador.
+ * Lotes e créditos guardam só o `codigo`; o nome serve para exibição.
+ */
+export type Material = {
+  codigo: number;
+  nome: string;
+  /** Material inativo não entra em lotes novos; lotes existentes não são afetados. */
+  ativo: boolean;
+  bump: number;
+  reserved: ReadonlyUint8Array;
+};
 
 export type MaterialArgs = Material;
 
-export function getMaterialEncoder(): FixedSizeEncoder<MaterialArgs> {
-  return getEnumEncoder(Material);
+export function getMaterialEncoder(): Encoder<MaterialArgs> {
+  return getStructEncoder([
+    ["codigo", getU16Encoder()],
+    ["nome", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
+    ["ativo", getBooleanEncoder()],
+    ["bump", getU8Encoder()],
+    ["reserved", fixEncoderSize(getBytesEncoder(), 32)],
+  ]);
 }
 
-export function getMaterialDecoder(): FixedSizeDecoder<Material> {
-  return getEnumDecoder(Material);
+export function getMaterialDecoder(): Decoder<Material> {
+  return getStructDecoder([
+    ["codigo", getU16Decoder()],
+    ["nome", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
+    ["ativo", getBooleanDecoder()],
+    ["bump", getU8Decoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 32)],
+  ]);
 }
 
-export function getMaterialCodec(): FixedSizeCodec<MaterialArgs, Material> {
+export function getMaterialCodec(): Codec<MaterialArgs, Material> {
   return combineCodec(getMaterialEncoder(), getMaterialDecoder());
 }

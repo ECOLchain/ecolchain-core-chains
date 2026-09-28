@@ -67,6 +67,11 @@ export type ReparticaoConfig = {
   bps: BpsReparticao;
   pausado: boolean;
   bump: number;
+  /**
+   * Guardião: só pode pausar, nunca despausar nem mudar config. `Pubkey::default()` = sem guardião.
+   * Ocupa parte do antigo espaço reservado (layout inalterado).
+   */
+  guardiao: Address;
   reserved: ReadonlyUint8Array;
 };
 
@@ -82,6 +87,11 @@ export type ReparticaoConfigArgs = {
   bps: BpsReparticaoArgs;
   pausado: boolean;
   bump: number;
+  /**
+   * Guardião: só pode pausar, nunca despausar nem mudar config. `Pubkey::default()` = sem guardião.
+   * Ocupa parte do antigo espaço reservado (layout inalterado).
+   */
+  guardiao: Address;
   reserved: ReadonlyUint8Array;
 };
 
@@ -98,7 +108,8 @@ export function getReparticaoConfigEncoder(): FixedSizeEncoder<ReparticaoConfigA
       ["bps", getBpsReparticaoEncoder()],
       ["pausado", getBooleanEncoder()],
       ["bump", getU8Encoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 64)],
+      ["guardiao", getAddressEncoder()],
+      ["reserved", fixEncoderSize(getBytesEncoder(), 32)],
     ]),
     (value) => ({ ...value, discriminator: REPARTICAO_CONFIG_DISCRIMINATOR }),
   );
@@ -116,7 +127,8 @@ export function getReparticaoConfigDecoder(): FixedSizeDecoder<ReparticaoConfig>
     ["bps", getBpsReparticaoDecoder()],
     ["pausado", getBooleanDecoder()],
     ["bump", getU8Decoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 64)],
+    ["guardiao", getAddressDecoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 32)],
   ]);
 }
 

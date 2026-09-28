@@ -1,4 +1,4 @@
-// Cria o Squads multisig v4 da devnet: 5 membros de teste, quórum 3.
+// Cria o Squads multisig v4 da devnet: 5 chaves de teste da EcolChain, quórum 3 (ADR 0009).
 // Vault 0 = upgrade authority dos três programas e `admin` das configs; vault 1 = árbitro de disputas.
 // Idempotente: se .devnet/squads.json existir, só mostra os endereços.
 // SDK legado (web3.js v1) isolado neste pacote de operação.
@@ -35,8 +35,8 @@ const assinatura = await multisig.rpc.multisigCreateV2({
     configAuthority: null,
     threshold: 3,
     members: membros.map((m) => ({ key: m.publicKey, permissions: multisig.types.Permissions.all() })),
-    // Timelock de 1 h na devnet (mainnet: definir, ex. 48 h).
-    timeLock: 3600,
+    // Timelock 0 na devnet; 24 h na mainnet (ADR 0009).
+    timeLock: 0,
     rentCollector: null,
     sendOptions: { skipPreflight: false },
 });

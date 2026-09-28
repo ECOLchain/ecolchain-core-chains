@@ -12,6 +12,7 @@ import {
   fixEncoderSize,
   getBytesDecoder,
   getBytesEncoder,
+  getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
   getU16Decoder,
@@ -48,12 +49,8 @@ import {
 import { findConfigPda, findCreditoPda } from "../pdas";
 import { ECOL_CREDITO_PROGRAM_ADDRESS } from "../programs";
 import {
-  getMaterialDecoder,
-  getMaterialEncoder,
   getPadraoRegistroDecoder,
   getPadraoRegistroEncoder,
-  type Material,
-  type MaterialArgs,
   type PadraoRegistro,
   type PadraoRegistroArgs,
 } from "../types";
@@ -72,6 +69,7 @@ export type OperadorCreateCreditoInstruction<
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountOperador extends string | AccountMeta<string> = string,
   TAccountConfig extends string | AccountMeta<string> = string,
+  TAccountMaterialCadastro extends string | AccountMeta<string> = string,
   TAccountCredito extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
@@ -93,6 +91,9 @@ export type OperadorCreateCreditoInstruction<
       TAccountConfig extends string
         ? ReadonlyAccount<TAccountConfig>
         : TAccountConfig,
+      TAccountMaterialCadastro extends string
+        ? ReadonlyAccount<TAccountMaterialCadastro>
+        : TAccountMaterialCadastro,
       TAccountCredito extends string
         ? WritableAccount<TAccountCredito>
         : TAccountCredito,
@@ -113,7 +114,7 @@ export type OperadorCreateCreditoInstructionData = {
   discriminator: ReadonlyUint8Array;
   creditoId: bigint;
   padrao: PadraoRegistro;
-  material: Material;
+  material: number;
   vintage: number;
   metodologiaHash: ReadonlyUint8Array;
 };
@@ -121,7 +122,7 @@ export type OperadorCreateCreditoInstructionData = {
 export type OperadorCreateCreditoInstructionDataArgs = {
   creditoId: number | bigint;
   padrao: PadraoRegistroArgs;
-  material: MaterialArgs;
+  material: number;
   vintage: number;
   metodologiaHash: ReadonlyUint8Array;
 };
@@ -132,7 +133,7 @@ export function getOperadorCreateCreditoInstructionDataEncoder(): FixedSizeEncod
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["creditoId", getU64Encoder()],
       ["padrao", getPadraoRegistroEncoder()],
-      ["material", getMaterialEncoder()],
+      ["material", getU16Encoder()],
       ["vintage", getU16Encoder()],
       ["metodologiaHash", fixEncoderSize(getBytesEncoder(), 32)],
     ]),
@@ -148,7 +149,7 @@ export function getOperadorCreateCreditoInstructionDataDecoder(): FixedSizeDecod
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["creditoId", getU64Decoder()],
     ["padrao", getPadraoRegistroDecoder()],
-    ["material", getMaterialDecoder()],
+    ["material", getU16Decoder()],
     ["vintage", getU16Decoder()],
     ["metodologiaHash", fixDecoderSize(getBytesDecoder(), 32)],
   ]);
@@ -168,6 +169,8 @@ export type OperadorCreateCreditoAsyncInput<
   TAccountPayer extends InstructionSignerInput = InstructionSignerInput,
   TAccountOperador extends InstructionSignerInput = InstructionSignerInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMaterialCadastro extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountCredito extends InstructionAccountInput = InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput =
     InstructionAccountInput,
@@ -178,6 +181,8 @@ export type OperadorCreateCreditoAsyncInput<
   payer: TAccountPayer;
   operador: TAccountOperador;
   config?: TAccountConfig;
+  /** Material cadastrado no `ecol_lote` (owner checado pelo `Account`); precisa estar ativo. */
+  materialCadastro?: TAccountMaterialCadastro;
   credito?: TAccountCredito;
   systemProgram?: TAccountSystemProgram;
   eventAuthority: TAccountEventAuthority;
@@ -193,6 +198,7 @@ export async function getOperadorCreateCreditoInstructionAsync<
   TAccountPayer extends InstructionSignerInput,
   TAccountOperador extends InstructionSignerInput,
   TAccountConfig extends InstructionAccountInput,
+  TAccountMaterialCadastro extends InstructionAccountInput,
   TAccountCredito extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput,
@@ -203,6 +209,7 @@ export async function getOperadorCreateCreditoInstructionAsync<
     TAccountPayer,
     TAccountOperador,
     TAccountConfig,
+    TAccountMaterialCadastro,
     TAccountCredito,
     TAccountSystemProgram,
     TAccountEventAuthority,
@@ -223,6 +230,10 @@ export async function getOperadorCreateCreditoInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountConfig,
       InstructionAccountInputAddress<TAccountConfig>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMaterialCadastro,
+      InstructionAccountInputAddress<TAccountMaterialCadastro>
     >,
     ResolvedInstructionAccountMeta<
       TAccountCredito,
@@ -257,6 +268,11 @@ export async function getOperadorCreateCreditoInstructionAsync<
       isWritable: false,
     },
     config: { value: input.config ?? null, isSigner: false, isWritable: false },
+    materialCadastro: {
+      value: input.materialCadastro ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
     credito: {
       value: input.credito ?? null,
       isSigner: false,
@@ -290,6 +306,20 @@ export async function getOperadorCreateCreditoInstructionAsync<
   if (!accounts.config.value) {
     accounts.config.value = await findConfigPda({ programAddress });
   }
+  if (!accounts.materialCadastro.value) {
+    accounts.materialCadastro.value = await getProgramDerivedAddress({
+      programAddress:
+        "AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD" as Address<"AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD">,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([109, 97, 116, 101, 114, 105, 97, 108]),
+        ),
+        getU16Encoder().encode(
+          getNonNullResolvedInstructionInput("material", args.material),
+        ),
+      ],
+    });
+  }
   if (!accounts.credito.value) {
     accounts.credito.value = await findCreditoPda(
       {
@@ -311,6 +341,7 @@ export async function getOperadorCreateCreditoInstructionAsync<
       getAccountMeta("payer", accounts.payer),
       getAccountMeta("operador", accounts.operador),
       getAccountMeta("config", accounts.config),
+      getAccountMeta("materialCadastro", accounts.materialCadastro),
       getAccountMeta("credito", accounts.credito),
       getAccountMeta("systemProgram", accounts.systemProgram),
       getAccountMeta("eventAuthority", accounts.eventAuthority),
@@ -335,6 +366,10 @@ export async function getOperadorCreateCreditoInstructionAsync<
       InstructionAccountInputAddress<TAccountConfig>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountMaterialCadastro,
+      InstructionAccountInputAddress<TAccountMaterialCadastro>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountCredito,
       InstructionAccountInputAddress<TAccountCredito>
     >,
@@ -357,6 +392,8 @@ export type OperadorCreateCreditoInput<
   TAccountPayer extends InstructionSignerInput = InstructionSignerInput,
   TAccountOperador extends InstructionSignerInput = InstructionSignerInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMaterialCadastro extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountCredito extends InstructionAccountInput = InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput =
     InstructionAccountInput,
@@ -367,6 +404,8 @@ export type OperadorCreateCreditoInput<
   payer: TAccountPayer;
   operador: TAccountOperador;
   config: TAccountConfig;
+  /** Material cadastrado no `ecol_lote` (owner checado pelo `Account`); precisa estar ativo. */
+  materialCadastro: TAccountMaterialCadastro;
   credito: TAccountCredito;
   systemProgram?: TAccountSystemProgram;
   eventAuthority: TAccountEventAuthority;
@@ -382,6 +421,7 @@ export function getOperadorCreateCreditoInstruction<
   TAccountPayer extends InstructionSignerInput,
   TAccountOperador extends InstructionSignerInput,
   TAccountConfig extends InstructionAccountInput,
+  TAccountMaterialCadastro extends InstructionAccountInput,
   TAccountCredito extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput,
@@ -392,6 +432,7 @@ export function getOperadorCreateCreditoInstruction<
     TAccountPayer,
     TAccountOperador,
     TAccountConfig,
+    TAccountMaterialCadastro,
     TAccountCredito,
     TAccountSystemProgram,
     TAccountEventAuthority,
@@ -411,6 +452,10 @@ export function getOperadorCreateCreditoInstruction<
   ResolvedInstructionAccountMeta<
     TAccountConfig,
     InstructionAccountInputAddress<TAccountConfig>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountMaterialCadastro,
+    InstructionAccountInputAddress<TAccountMaterialCadastro>
   >,
   ResolvedInstructionAccountMeta<
     TAccountCredito,
@@ -444,6 +489,11 @@ export function getOperadorCreateCreditoInstruction<
       isWritable: false,
     },
     config: { value: input.config ?? null, isSigner: false, isWritable: false },
+    materialCadastro: {
+      value: input.materialCadastro ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
     credito: {
       value: input.credito ?? null,
       isSigner: false,
@@ -484,6 +534,7 @@ export function getOperadorCreateCreditoInstruction<
       getAccountMeta("payer", accounts.payer),
       getAccountMeta("operador", accounts.operador),
       getAccountMeta("config", accounts.config),
+      getAccountMeta("materialCadastro", accounts.materialCadastro),
       getAccountMeta("credito", accounts.credito),
       getAccountMeta("systemProgram", accounts.systemProgram),
       getAccountMeta("eventAuthority", accounts.eventAuthority),
@@ -506,6 +557,10 @@ export function getOperadorCreateCreditoInstruction<
     ResolvedInstructionAccountMeta<
       TAccountConfig,
       InstructionAccountInputAddress<TAccountConfig>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMaterialCadastro,
+      InstructionAccountInputAddress<TAccountMaterialCadastro>
     >,
     ResolvedInstructionAccountMeta<
       TAccountCredito,
@@ -535,10 +590,12 @@ export type ParsedOperadorCreateCreditoInstruction<
     payer: TAccountMetas[0];
     operador: TAccountMetas[1];
     config: TAccountMetas[2];
-    credito: TAccountMetas[3];
-    systemProgram: TAccountMetas[4];
-    eventAuthority: TAccountMetas[5];
-    program: TAccountMetas[6];
+    /** Material cadastrado no `ecol_lote` (owner checado pelo `Account`); precisa estar ativo. */
+    materialCadastro: TAccountMetas[3];
+    credito: TAccountMetas[4];
+    systemProgram: TAccountMetas[5];
+    eventAuthority: TAccountMetas[6];
+    program: TAccountMetas[7];
   };
   data: OperadorCreateCreditoInstructionData;
 };
@@ -551,12 +608,12 @@ export function parseOperadorCreateCreditoInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedOperadorCreateCreditoInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 7) {
+  if (instruction.accounts.length < 8) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 7,
+        expectedAccountMetas: 8,
       },
     );
   }
@@ -572,6 +629,7 @@ export function parseOperadorCreateCreditoInstruction<
       payer: getNextAccount(),
       operador: getNextAccount(),
       config: getNextAccount(),
+      materialCadastro: getNextAccount(),
       credito: getNextAccount(),
       systemProgram: getNextAccount(),
       eventAuthority: getNextAccount(),

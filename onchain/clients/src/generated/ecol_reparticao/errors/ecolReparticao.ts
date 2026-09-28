@@ -54,6 +54,8 @@ export const ECOL_REPARTICAO_ERROR__PAPEL_INCORRETO = 0x1781; // 6017
 export const ECOL_REPARTICAO_ERROR__REFERENCIA_VAZIA = 0x1782; // 6018
 /** Overflow: Estouro aritmético */
 export const ECOL_REPARTICAO_ERROR__OVERFLOW = 0x1783; // 6019
+/** NaoEhGuardiao: Assinante não é o guardião */
+export const ECOL_REPARTICAO_ERROR__NAO_EH_GUARDIAO = 0x1784; // 6020
 
 export type EcolReparticaoError =
   | typeof ECOL_REPARTICAO_ERROR__CHAVES_DE_CONFIG_INVALIDAS
@@ -63,6 +65,7 @@ export type EcolReparticaoError =
   | typeof ECOL_REPARTICAO_ERROR__INDUSTRIA_FORA_DA_FAIXA
   | typeof ECOL_REPARTICAO_ERROR__JA_RESGATADO
   | typeof ECOL_REPARTICAO_ERROR__NAO_EH_ADMIN
+  | typeof ECOL_REPARTICAO_ERROR__NAO_EH_GUARDIAO
   | typeof ECOL_REPARTICAO_ERROR__NAO_EH_INTERMEDIADOR
   | typeof ECOL_REPARTICAO_ERROR__NAO_EH_OPERADOR
   | typeof ECOL_REPARTICAO_ERROR__NAO_EH_UPGRADE_AUTHORITY
@@ -88,6 +91,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_REPARTICAO_ERROR__INDUSTRIA_FORA_DA_FAIXA]: `Percentual da indústria fora da faixa negociável`,
     [ECOL_REPARTICAO_ERROR__JA_RESGATADO]: `Direito já resgatado`,
     [ECOL_REPARTICAO_ERROR__NAO_EH_ADMIN]: `Assinante não é o admin`,
+    [ECOL_REPARTICAO_ERROR__NAO_EH_GUARDIAO]: `Assinante não é o guardião`,
     [ECOL_REPARTICAO_ERROR__NAO_EH_INTERMEDIADOR]: `Assinante não é o intermediador de pagamento`,
     [ECOL_REPARTICAO_ERROR__NAO_EH_OPERADOR]: `Assinante não é o operador`,
     [ECOL_REPARTICAO_ERROR__NAO_EH_UPGRADE_AUTHORITY]: `Somente a upgrade authority do programa pode inicializar a configuração`,

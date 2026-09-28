@@ -42,6 +42,14 @@ pub mod ecol_lote {
         instructions::admin::handle_admin_set_modo(ctx, modo)
     }
 
+    pub fn admin_set_guardiao(ctx: Context<AdminUpdateGlobal>, guardiao: Pubkey) -> Result<()> {
+        instructions::admin::handle_admin_set_guardiao(ctx, guardiao)
+    }
+
+    pub fn guardiao_pausar(ctx: Context<GuardiaoPausar>, modo: ModoOperacao) -> Result<()> {
+        instructions::admin::handle_guardiao_pausar(ctx, modo)
+    }
+
     pub fn admin_propose_admin(ctx: Context<AdminUpdateGlobal>, novo_admin: Pubkey) -> Result<()> {
         instructions::admin::handle_admin_propose_admin(ctx, novo_admin)
     }
@@ -80,6 +88,35 @@ pub mod ecol_lote {
         ativa: bool,
     ) -> Result<()> {
         instructions::balancas::handle_operador_set_balanca_ativa(ctx, ativa)
+    }
+
+    pub fn operador_create_material(
+        ctx: Context<OperadorCreateMaterial>,
+        codigo: u16,
+        nome: String,
+    ) -> Result<()> {
+        instructions::materiais::handle_operador_create_material(ctx, codigo, nome)
+    }
+
+    pub fn operador_update_material(
+        ctx: Context<OperadorUpdateMaterial>,
+        nome: String,
+        ativo: bool,
+    ) -> Result<()> {
+        instructions::materiais::handle_operador_update_material(ctx, nome, ativo)
+    }
+
+    pub fn cooperativa_register_entrega(
+        ctx: Context<CooperativaRegisterEntrega>,
+        dados: DadosEntrega,
+    ) -> Result<()> {
+        instructions::entregas::handle_cooperativa_register_entrega(ctx, dados)
+    }
+
+    pub fn cooperativa_add_entregas<'info>(
+        ctx: Context<'info, CooperativaAddEntregas<'info>>,
+    ) -> Result<()> {
+        instructions::entregas::handle_cooperativa_add_entregas(ctx)
     }
 
     pub fn cooperativa_create_lote(
