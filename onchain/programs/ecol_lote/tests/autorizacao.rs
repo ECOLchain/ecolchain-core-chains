@@ -77,10 +77,11 @@ fn cadastro_so_pelo_operador_e_papeis_conferidos() {
 fn validacoes_de_entrada_na_criacao() {
     let mut amb = Ambiente::novo();
     let coop = amb.cooperativa.insecure_clone();
+    // Peso zero é recusado já no lote de origem.
     assert_erro(amb.criar_lote_por(&coop, 1, 0), E::PesoInvalido);
-    amb.criar_lote(1).unwrap();
+    amb.criar_lote(2).unwrap();
     // Mesmo lote_id da mesma cooperativa: a PDA já existe.
-    assert!(amb.criar_lote(1).is_err());
+    assert!(amb.criar_lote(2).is_err());
 }
 
 #[test]

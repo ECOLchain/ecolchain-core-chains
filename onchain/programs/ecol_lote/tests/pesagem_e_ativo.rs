@@ -43,12 +43,26 @@ fn tentar(
     amb.enviar_varias(&ixs, &[&coop])
 }
 
+/// Lote 1 em montagem com um lote de origem de `PESO_G`: pronto para o fechamento com pesagem.
+fn preparar(amb: &mut Ambiente) {
+    let coop = amb.cooperativa.insecure_clone();
+    let balanca = amb.balanca_coop.insecure_clone();
+    let dados = amb.dados(1);
+    amb.abrir_lote(&coop, dados).unwrap();
+    amb.registrar_entrega(&coop, &balanca, 1, PESO_G, PLASTICO)
+        .unwrap();
+    let lote = lote1(amb);
+    amb.add_entregas(&coop, lote, &[entrega_pda(&coop.pubkey(), 1)])
+        .unwrap();
+}
+
 fn ix_criar(amb: &Ambiente, peso_g: u64, ts: i64) -> Instruction {
-    let mut dados = amb.dados(1, peso_g);
+    let mut dados = amb.dados_fechamento(peso_g);
     dados.ts_pesagem = ts;
-    amb.ix_criar_lote(
+    amb.ix_fechar_lote(
         &amb.cooperativa.pubkey(),
         balanca_pda(&amb.balanca_coop.pubkey()),
+        lote1(amb),
         dados,
     )
 }
@@ -56,6 +70,7 @@ fn ix_criar(amb: &Ambiente, peso_g: u64, ts: i64) -> Instruction {
 #[test]
 fn pesagem_valida_cria_lote_e_asset_congelado() {
     let mut amb = Ambiente::novo();
+    preparar(&mut amb);
     let lote = lote1(&amb);
     let pesagem = ix_pesagem(&amb.balanca_coop, TipoPesagem::Origem, &lote, PESO_G, T0);
     let criar = ix_criar(&amb, PESO_G, T0);
@@ -70,6 +85,7 @@ fn pesagem_valida_cria_lote_e_asset_congelado() {
 #[test]
 fn sem_instrucao_ed25519() {
     let mut amb = Ambiente::novo();
+    preparar(&mut amb);
     let criar = ix_criar(&amb, PESO_G, T0);
     assert_erro(tentar(&mut amb, vec![criar]), E::AtestacaoAusente);
 }
@@ -77,6 +93,7 @@ fn sem_instrucao_ed25519() {
 #[test]
 fn ed25519_precisa_ser_a_instrucao_imediatamente_anterior() {
     let mut amb = Ambiente::novo();
+    preparar(&mut amb);
     let lote = lote1(&amb);
     let pesagem = ix_pesagem(&amb.balanca_coop, TipoPesagem::Origem, &lote, PESO_G, T0);
     // Uma instrução qualquer do próprio programa entre a assinatura e a criação.
@@ -104,6 +121,7 @@ fn ed25519_precisa_ser_a_instrucao_imediatamente_anterior() {
 #[test]
 fn assinatura_de_outra_chave() {
     let mut amb = Ambiente::novo();
+    preparar(&mut amb);
     let lote = lote1(&amb);
     let falsa = Keypair::new();
     let pesagem = ix_pesagem(&falsa, TipoPesagem::Origem, &lote, PESO_G, T0);
@@ -114,6 +132,7 @@ fn assinatura_de_outra_chave() {
 #[test]
 fn peso_declarado_diferente_do_assinado() {
     let mut amb = Ambiente::novo();
+    preparar(&mut amb);
     let lote = lote1(&amb);
     let pesagem = ix_pesagem(&amb.balanca_coop, TipoPesagem::Origem, &lote, PESO_G, T0);
     let criar = ix_criar(&amb, PESO_G * 2, T0);
@@ -123,6 +142,7 @@ fn peso_declarado_diferente_do_assinado() {
 #[test]
 fn assinatura_de_outro_lote_nao_serve() {
     let mut amb = Ambiente::novo();
+    preparar(&mut amb);
     let outro_lote = lote_pda(&amb.cooperativa.pubkey(), 2);
     let pesagem = ix_pesagem(
         &amb.balanca_coop,
@@ -138,6 +158,7 @@ fn assinatura_de_outro_lote_nao_serve() {
 #[test]
 fn assinatura_de_recebimento_nao_cria_lote() {
     let mut amb = Ambiente::novo();
+    preparar(&mut amb);
     let lote = lote1(&amb);
     let pesagem = ix_pesagem(
         &amb.balanca_coop,
@@ -153,6 +174,7 @@ fn assinatura_de_recebimento_nao_cria_lote() {
 #[test]
 fn pesagem_antiga_ou_futura() {
     let mut amb = Ambiente::novo();
+    preparar(&mut amb);
     let lote = lote1(&amb);
     for ts in [T0 - 15 * 60 - 1, T0 + 15 * 60 + 1] {
         let pesagem = ix_pesagem(&amb.balanca_coop, TipoPesagem::Origem, &lote, PESO_G, ts);
@@ -171,6 +193,7 @@ fn pesagem_antiga_ou_futura() {
 #[test]
 fn ed25519_com_indice_explicito_e_rejeitada() {
     let mut amb = Ambiente::novo();
+    preparar(&mut amb);
     let lote = lote1(&amb);
     let msg = mensagem(TipoPesagem::Origem, &lote, PESO_G, T0);
     let sig = amb.balanca_coop.sign_message(&msg);
@@ -194,6 +217,7 @@ fn ed25519_com_indice_explicito_e_rejeitada() {
 #[test]
 fn balanca_inativa_ou_de_outro_dono() {
     let mut amb = Ambiente::novo();
+    preparar(&mut amb);
     let lote = lote1(&amb);
     let bal = balanca_pda(&amb.balanca_coop.pubkey());
 
@@ -208,10 +232,11 @@ fn balanca_inativa_ou_de_outro_dono() {
 
     // Cooperativa usando a balança da indústria.
     let pesagem = ix_pesagem(&amb.balanca_ind, TipoPesagem::Origem, &lote, PESO_G, T0);
-    let dados = amb.dados(1, PESO_G);
-    let criar = amb.ix_criar_lote(
+    let dados = amb.dados_fechamento(PESO_G);
+    let criar = amb.ix_fechar_lote(
         &amb.cooperativa.pubkey(),
         balanca_pda(&amb.balanca_ind.pubkey()),
+        lote,
         dados,
     );
     assert_erro(
@@ -238,14 +263,16 @@ fn equipamento_nao_pode_ter_dois_donos() {
 #[test]
 fn uri_invalida() {
     let mut amb = Ambiente::novo();
+    preparar(&mut amb);
     let lote = lote1(&amb);
     for uri in [String::new(), "x".repeat(201)] {
-        let mut dados = amb.dados(1, PESO_G);
+        let mut dados = amb.dados_fechamento(PESO_G);
         dados.uri = uri;
         let pesagem = ix_pesagem(&amb.balanca_coop, TipoPesagem::Origem, &lote, PESO_G, T0);
-        let criar = amb.ix_criar_lote(
+        let criar = amb.ix_fechar_lote(
             &amb.cooperativa.pubkey(),
             balanca_pda(&amb.balanca_coop.pubkey()),
+            lote,
             dados,
         );
         assert_erro(tentar(&mut amb, vec![pesagem, criar]), E::UriInvalida);

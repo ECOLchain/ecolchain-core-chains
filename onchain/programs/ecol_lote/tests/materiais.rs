@@ -3,7 +3,7 @@ mod common;
 
 use {
     common::*,
-    ecol_lote::{error::EcolLoteError as E, pesagem::TipoPesagem, ModoOperacao},
+    ecol_lote::{error::EcolLoteError as E, ModoOperacao},
     litesvm::types::TransactionMetadata,
     solana_keypair::Keypair,
     solana_signer::Signer,
@@ -17,19 +17,9 @@ fn criar_lote_de(
     material: u16,
 ) -> Result<TransactionMetadata, TransactionError> {
     let coop = amb.cooperativa.insecure_clone();
-    let balanca = amb.balanca_coop.insecure_clone();
-    let mut dados = amb.dados(lote_id, PESO_G);
+    let mut dados = amb.dados(lote_id);
     dados.material = material;
-    let lote = lote_pda(&coop.pubkey(), lote_id);
-    let pesagem = ix_pesagem(
-        &balanca,
-        TipoPesagem::Origem,
-        &lote,
-        PESO_G,
-        dados.ts_pesagem,
-    );
-    let criar = amb.ix_criar_lote(&coop.pubkey(), balanca_pda(&balanca.pubkey()), dados);
-    amb.enviar_varias(&[pesagem, criar], &[&coop])
+    amb.abrir_lote(&coop, dados)
 }
 
 #[test]

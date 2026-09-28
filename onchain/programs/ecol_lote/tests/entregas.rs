@@ -33,22 +33,22 @@ fn registrar(
     amb.registrar_entrega(&coop, &balanca, id, peso_g, material)
 }
 
-/// Lote criado com a pesagem do fardo, sem nenhuma entrega vinculada ainda.
-fn lote_vazio(amb: &mut Ambiente, lote_id: u64, peso_g: u64) -> Pubkey {
+/// Lote de venda aberto para montagem, sem nenhum lote de origem vinculado ainda.
+fn lote_vazio(amb: &mut Ambiente, lote_id: u64) -> Pubkey {
+    let coop = amb.cooperativa.insecure_clone();
+    let dados = amb.dados(lote_id);
+    amb.abrir_lote(&coop, dados).unwrap();
+    lote_pda(&coop.pubkey(), lote_id)
+}
+
+fn fechar(
+    amb: &mut Ambiente,
+    lote: Pubkey,
+    peso_g: u64,
+) -> Result<TransactionMetadata, TransactionError> {
     let coop = amb.cooperativa.insecure_clone();
     let balanca = amb.balanca_coop.insecure_clone();
-    let dados = amb.dados(lote_id, peso_g);
-    let lote = lote_pda(&coop.pubkey(), lote_id);
-    let pesagem = ix_pesagem(
-        &balanca,
-        TipoPesagem::Origem,
-        &lote,
-        peso_g,
-        dados.ts_pesagem,
-    );
-    let criar = amb.ix_criar_lote(&coop.pubkey(), balanca_pda(&balanca.pubkey()), dados);
-    amb.enviar_varias(&[pesagem, criar], &[&coop]).unwrap();
-    lote
+    amb.fechar_lote(&coop, &balanca, lote, peso_g)
 }
 
 fn vincular(
@@ -141,7 +141,7 @@ fn entrega_exige_cooperativa_material_ativo_e_coletor() {
     let coop = amb.cooperativa.insecure_clone();
     let balanca = amb.balanca_coop.insecure_clone();
     let mut dados = amb.dados_entrega(3, 100_000, PLASTICO);
-    dados.coletor_ref = [0; 32];
+    dados.origem_ref = [0; 32];
     let alvo = entrega_pda(&coop.pubkey(), 3);
     let pesagem = ix_pesagem(
         &balanca,
@@ -163,9 +163,11 @@ fn montagem_soma_as_entregas_e_encadeia_o_hash() {
     for (id, peso) in [(1, 300_000), (2, 450_000), (3, 250_000)] {
         registrar(&mut amb, id, peso, PLASTICO).unwrap();
     }
-    let lote = lote_vazio(&mut amb, 10, 990_000);
+    let lote = lote_vazio(&mut amb, 10);
     vincular(&mut amb, lote, &[1, 2]).unwrap();
     vincular(&mut amb, lote, &[3]).unwrap();
+    // Consolidado pesado de novo: 1% abaixo da soma (umidade), dentro da faixa.
+    fechar(&mut amb, lote, 990_000).unwrap();
 
     let l = amb.lote(lote);
     assert_eq!(
@@ -189,8 +191,8 @@ fn entrega_entra_em_um_lote_so_e_do_mesmo_material() {
     amb.criar_material(PAPEL_MATERIAL, "Papel").unwrap();
     registrar(&mut amb, 1, 100_000, PLASTICO).unwrap();
     registrar(&mut amb, 2, 100_000, PAPEL_MATERIAL).unwrap();
-    let a = lote_vazio(&mut amb, 10, 100_000);
-    let b = lote_vazio(&mut amb, 11, 100_000);
+    let a = lote_vazio(&mut amb, 10);
+    let b = lote_vazio(&mut amb, 11);
     vincular(&mut amb, a, &[1]).unwrap();
     assert_erro(vincular(&mut amb, b, &[1]), E::EntregaJaVinculada);
     assert_erro(vincular(&mut amb, b, &[2]), E::MaterialDiferente);
@@ -208,7 +210,7 @@ fn entrega_de_outra_cooperativa_e_lote_de_outra_cooperativa() {
     amb.registrar_entrega(&outra, &outra_balanca, 1, 100_000, PLASTICO)
         .unwrap();
 
-    let lote = lote_vazio(&mut amb, 10, 100_000);
+    let lote = lote_vazio(&mut amb, 10);
     let coop = amb.cooperativa.insecure_clone();
     let alheia = entrega_pda(&outra.pubkey(), 1);
     assert_erro(
@@ -223,14 +225,20 @@ fn entrega_de_outra_cooperativa_e_lote_de_outra_cooperativa() {
 }
 
 #[test]
-fn lote_sem_entregas_nao_vai_a_leilao_e_montagem_so_antes_do_anuncio() {
+fn lote_sem_entregas_nao_fecha_e_montagem_so_antes_do_fechamento() {
     let mut amb = Ambiente::novo();
-    let lote = lote_vazio(&mut amb, 10, 100_000);
+    let lote = lote_vazio(&mut amb, 10);
+    // Vazio não vai a leilão nem fecha.
     assert_erro(amb.anunciar(lote), E::LoteSemEntregas);
+    assert_erro(fechar(&mut amb, lote, 100_000), E::LoteSemEntregas);
 
     registrar(&mut amb, 1, 100_000, PLASTICO).unwrap();
     registrar(&mut amb, 2, 100_000, PLASTICO).unwrap();
     vincular(&mut amb, lote, &[1]).unwrap();
+    // Com origem, mas ainda em montagem: só depois de fechado.
+    assert_erro(amb.anunciar(lote), E::TransicaoInvalida);
+    fechar(&mut amb, lote, 100_000).unwrap();
+    assert_erro(vincular(&mut amb, lote, &[2]), E::TransicaoInvalida);
     amb.anunciar(lote).unwrap();
     assert_erro(vincular(&mut amb, lote, &[2]), E::TransicaoInvalida);
 }
@@ -238,7 +246,7 @@ fn lote_sem_entregas_nao_vai_a_leilao_e_montagem_so_antes_do_anuncio() {
 #[test]
 fn quantidade_de_entregas_por_transacao() {
     let mut amb = Ambiente::novo();
-    let lote = lote_vazio(&mut amb, 10, 1_100_000);
+    let lote = lote_vazio(&mut amb, 10);
     assert_erro(
         vincular(&mut amb, lote, &[]),
         E::QuantidadeDeEntregasInvalida,

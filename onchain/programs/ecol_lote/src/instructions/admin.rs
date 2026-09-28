@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    constants::SEED_GLOBAL,
+    constants::{SEED_GLOBAL, TOLERANCIA_MONTAGEM_MAX_BPS},
     error::EcolLoteError,
     events::ConfigAtualizada,
     program::EcolLote,
@@ -62,6 +62,8 @@ impl GlobalConfig {
             tolerancia_peso_bps: self.tolerancia_peso_bps,
             modo: self.modo,
             guardiao: self.guardiao,
+            perda_montagem_bps: self.tolerancia_montagem().0,
+            excesso_montagem_bps: self.tolerancia_montagem().1,
         }
     }
 }
@@ -188,6 +190,27 @@ pub fn handle_admin_set_guardiao(ctx: Context<AdminUpdateGlobal>, guardiao: Pubk
         EcolLoteError::ChavesDeConfigInvalidas
     );
     config.guardiao = guardiao;
+    let evento = config.evento();
+    emit_cpi!(evento);
+    Ok(())
+}
+
+/// Faixa aceita na pesagem do lote de venda consolidado sobre a soma dos lotes de origem.
+pub fn handle_admin_set_tolerancia_montagem(
+    ctx: Context<AdminUpdateGlobal>,
+    perda_bps: u16,
+    excesso_bps: u16,
+) -> Result<()> {
+    require!(
+        perda_bps > 0
+            && excesso_bps > 0
+            && perda_bps <= TOLERANCIA_MONTAGEM_MAX_BPS
+            && excesso_bps <= TOLERANCIA_MONTAGEM_MAX_BPS,
+        EcolLoteError::ParametroInvalido
+    );
+    let config = &mut ctx.accounts.config;
+    config.perda_montagem_bps = perda_bps;
+    config.excesso_montagem_bps = excesso_bps;
     let evento = config.evento();
     emit_cpi!(evento);
     Ok(())

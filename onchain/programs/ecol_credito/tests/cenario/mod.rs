@@ -356,6 +356,13 @@ impl Cenario {
         Credito::try_deserialize(&mut conta.data.as_slice()).unwrap()
     }
 
+    /// Lote misto (`sem_coletor_g` de doação) até `Reciclado`.
+    pub fn lote_misto_reciclado(&mut self, lote_id: u64, sem_coletor_g: u64) -> Pubkey {
+        let lote = self.amb.lote_misto_ate_recebido(lote_id, sem_coletor_g);
+        self.amb.liberar(lote).unwrap();
+        lote
+    }
+
     /// Lote `lote_id` da cooperativa principal até `Reciclado`.
     pub fn lote_reciclado(&mut self, lote_id: u64) -> Pubkey {
         let lote = self.amb.lote_ate_recebido(lote_id);

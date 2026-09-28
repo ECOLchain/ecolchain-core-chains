@@ -29,13 +29,16 @@ impl EtapaDisputavel {
     }
 }
 
-/// Máquina de estados do lote.
+/// Máquina de estados do lote de venda.
 ///
 /// ```text
-/// Criado → Anunciado → Vendido → EmTransporte → Recebido → Reciclado → Agregado
-///          Anunciado ⇄ SemLance
-///          Vendido | EmTransporte | Recebido → EmDisputa → (etapa de origem | Reembolsado)
+/// EmMontagem → Criado → Anunciado → Vendido → EmTransporte → Recebido → Reciclado → Agregado
+///                       Anunciado ⇄ SemLance
+///                       Vendido | EmTransporte | Recebido → EmDisputa → (etapa de origem | Reembolsado)
+/// EmMontagem | Criado | SemLance → EmDesmontagem → Desfeito
 /// ```
+///
+/// Variantes novas só no fim: o índice Borsh das existentes não pode mudar (contas já gravadas).
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
 pub enum EstadoLote {
     /// Pesado e registrado pela cooperativa.
@@ -60,6 +63,12 @@ pub enum EstadoLote {
     },
     /// Escrow devolvido à indústria (terminal).
     Reembolsado,
+    /// Lote de venda recebendo lotes de origem; ainda sem pesagem própria nem Core asset.
+    EmMontagem,
+    /// Devolvendo os lotes de origem (até 10 por transação); não pode ser anunciado.
+    EmDesmontagem,
+    /// União desfeita: todos os lotes de origem voltaram a ficar disponíveis (terminal).
+    Desfeito,
 }
 
 impl EstadoLote {
@@ -181,6 +190,31 @@ impl EstadoLote {
         }
     }
 
+    /// Pesagem do consolidado registrada: o lote de venda fica pronto para anunciar.
+    pub fn fechar(self) -> Result<Self> {
+        match self {
+            EstadoLote::EmMontagem => Ok(EstadoLote::Criado),
+            _ => err!(EcolLoteError::TransicaoInvalida),
+        }
+    }
+
+    /// Desfazer a união só antes da venda (e fora de anúncio: cancelar o anúncio antes).
+    pub fn iniciar_desmontagem(self) -> Result<Self> {
+        match self {
+            EstadoLote::EmMontagem | EstadoLote::Criado | EstadoLote::SemLance => {
+                Ok(EstadoLote::EmDesmontagem)
+            }
+            _ => err!(EcolLoteError::TransicaoInvalida),
+        }
+    }
+
+    pub fn concluir_desmontagem(self) -> Result<Self> {
+        match self {
+            EstadoLote::EmDesmontagem => Ok(EstadoLote::Desfeito),
+            _ => err!(EcolLoteError::TransicaoInvalida),
+        }
+    }
+
     pub fn agregar(self) -> Result<Self> {
         match self {
             EstadoLote::Reciclado => Ok(EstadoLote::Agregado),
@@ -242,7 +276,13 @@ pub struct Lote {
     pub criado_em: i64,
     pub atualizado_em: i64,
     pub bump: u8,
-    pub _reserved: [u8; 64],
+    /// Soma do peso dos lotes de origem sem coletor (o restante de `peso_entregas_g` é de coletores).
+    /// Zero nas contas antigas: todo o peso era de coletores.
+    pub peso_sem_coletor_g: u64,
+    /// O Core asset tem `PermanentBurnDelegate` do programa (lotes fechados desde a ADR 0010) e pode
+    /// ser queimado ao desfazer a união.
+    pub asset_queimavel: bool,
+    pub _reserved: [u8; 55],
 }
 
 impl Lote {
@@ -306,6 +346,9 @@ mod testes {
                 origem: EtapaDisputavel::Recebido,
             },
             EstadoLote::Reembolsado,
+            EstadoLote::EmMontagem,
+            EstadoLote::EmDesmontagem,
+            EstadoLote::Desfeito,
         ]
     }
 
@@ -328,6 +371,9 @@ mod testes {
             ("cancelar_anuncio", |e| e.cancelar_anuncio()),
             ("agregar", |e| e.agregar()),
             ("desagregar", |e| e.desagregar()),
+            ("fechar", |e| e.fechar()),
+            ("iniciar_desmontagem", |e| e.iniciar_desmontagem()),
+            ("concluir_desmontagem", |e| e.concluir_desmontagem()),
         ]
     }
 
@@ -349,6 +395,9 @@ mod testes {
                 | (Recebido, "liberar_escrow" | "abrir_disputa")
                 | (Reciclado, "agregar")
                 | (Agregado, "desagregar")
+                | (EmMontagem, "fechar")
+                | (EmMontagem | Criado | SemLance, "iniciar_desmontagem")
+                | (EmDesmontagem, "concluir_desmontagem")
                 | (
                     EmDisputa { .. },
                     "resolver_prosseguir" | "resolver_reembolso"
@@ -379,9 +428,9 @@ mod testes {
 
     #[test]
     fn terminais_nao_saem() {
-        assert!(transicoes()
-            .iter()
-            .all(|(_, f)| f(EstadoLote::Reembolsado).is_err()));
+        for terminal in [EstadoLote::Reembolsado, EstadoLote::Desfeito] {
+            assert!(transicoes().iter().all(|(_, f)| f(terminal).is_err()));
+        }
         // Agregado só sai por desagregação (crédito rejeitado/abandonado).
         let saidas: Vec<_> = transicoes()
             .iter()
@@ -438,7 +487,9 @@ mod testes {
             criado_em: 0,
             atualizado_em: 0,
             bump: 0,
-            _reserved: [0; 64],
+            peso_sem_coletor_g: 0,
+            asset_queimavel: false,
+            _reserved: [0; 55],
         };
         // Tolerância de 2% = 20 kg: exatamente no limite não diverge; 1 g além diverge (para mais ou para menos).
         assert!(!lote.peso_diverge(980_000, 200).unwrap());
@@ -456,7 +507,7 @@ mod propriedades {
     use proptest::prelude::*;
 
     fn aplicar(e: EstadoLote, op: u8, agora: i64) -> Result<EstadoLote> {
-        match op % 13 {
+        match op % 16 {
             0 => e.anunciar(agora, agora + 10),
             1 => e.encerrar_sem_lance(agora),
             2 => e.vender(),
@@ -469,7 +520,10 @@ mod propriedades {
             9 => e.resolver_reembolso(),
             10 => e.resolver_liberacao(),
             11 => e.agregar(),
-            _ => e.cancelar_anuncio(),
+            12 => e.cancelar_anuncio(),
+            13 => e.fechar(),
+            14 => e.iniciar_desmontagem(),
+            _ => e.concluir_desmontagem(),
         }
     }
 
@@ -504,7 +558,9 @@ mod propriedades {
             criado_em: 0,
             atualizado_em: 0,
             bump: 0,
-            _reserved: [0; 64],
+            peso_sem_coletor_g: 0,
+            asset_queimavel: false,
+            _reserved: [0; 55],
         }
     }
 
@@ -522,6 +578,11 @@ mod propriedades {
                 match aplicar(e, op, agora) {
                     Ok(novo) => {
                         prop_assert_ne!(antes, EstadoLote::Reembolsado);
+                        prop_assert_ne!(antes, EstadoLote::Desfeito);
+                        // Depois de vendido, a união não se desfaz.
+                        if novo == EstadoLote::EmDesmontagem {
+                            prop_assert!(matches!(antes, EstadoLote::Criado | EstadoLote::SemLance | EstadoLote::EmMontagem));
+                        }
                         prop_assert_ne!(novo, EstadoLote::Criado);
                         if novo == EstadoLote::Agregado {
                             prop_assert_eq!(antes, EstadoLote::Reciclado);

@@ -1,8 +1,22 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{EstadoLote, ModoOperacao, Papel};
+use crate::state::{EstadoLote, ModoOperacao, OrigemEntrega, Papel};
 
 /// Todo evento de lote carrega `seq`, sequencial por lote, para o indexador detectar lacunas ou reordenação.
+///
+/// Lote de venda aberto para montagem (ainda sem pesagem nem Core asset).
+#[event]
+pub struct LoteMontagemIniciada {
+    pub lote: Pubkey,
+    pub seq: u64,
+    pub cooperativa: Pubkey,
+    pub lote_id: u64,
+    pub material: u16,
+    pub evidencias_hash: [u8; 32],
+    pub ts: i64,
+}
+
+/// Lote de venda fechado: pesagem do consolidado registrada e Core asset criado.
 #[event]
 pub struct LoteCriado {
     pub lote: Pubkey,
@@ -81,6 +95,9 @@ pub struct ConfigAtualizada {
     pub tolerancia_peso_bps: u16,
     pub modo: ModoOperacao,
     pub guardiao: Pubkey,
+    /// Faixa vigente da pesagem do lote consolidado (já com os padrões aplicados).
+    pub perda_montagem_bps: u16,
+    pub excesso_montagem_bps: u16,
 }
 
 #[event]
@@ -116,7 +133,8 @@ pub struct EntregaRegistrada {
     pub entrega: Pubkey,
     pub cooperativa: Pubkey,
     pub entrega_id: u64,
-    pub coletor_ref: [u8; 32],
+    pub origem: OrigemEntrega,
+    pub origem_ref: [u8; 32],
     pub material: u16,
     pub peso_g: u64,
     pub balanca: Pubkey,
@@ -129,6 +147,16 @@ pub struct EntregaNoLote {
     pub lote: Pubkey,
     pub seq: u64,
     pub entrega: Pubkey,
-    pub coletor_ref: [u8; 32],
+    pub origem: OrigemEntrega,
+    pub origem_ref: [u8; 32],
+    pub peso_g: u64,
+}
+
+/// Lote de origem devolvido ao desfazer a união; volta a ficar disponível.
+#[event]
+pub struct EntregaDevolvida {
+    pub lote: Pubkey,
+    pub seq: u64,
+    pub entrega: Pubkey,
     pub peso_g: u64,
 }

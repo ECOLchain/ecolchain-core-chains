@@ -96,4 +96,8 @@ pub enum EcolLoteError {
     QuantidadeDeEntregasInvalida,
     #[msg("Conta informada não é uma entrega válida")]
     EntregaInvalida,
+    #[msg("Peso do lote consolidado fora da faixa aceita sobre a soma dos lotes de origem")]
+    PesoConsolidadoForaDaFaixa,
+    #[msg("O lote de origem não pertence a este lote de venda")]
+    EntregaDeOutroLote,
 }

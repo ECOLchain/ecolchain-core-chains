@@ -46,6 +46,14 @@ pub mod ecol_lote {
         instructions::admin::handle_admin_set_guardiao(ctx, guardiao)
     }
 
+    pub fn admin_set_tolerancia_montagem(
+        ctx: Context<AdminUpdateGlobal>,
+        perda_bps: u16,
+        excesso_bps: u16,
+    ) -> Result<()> {
+        instructions::admin::handle_admin_set_tolerancia_montagem(ctx, perda_bps, excesso_bps)
+    }
+
     pub fn guardiao_pausar(ctx: Context<GuardiaoPausar>, modo: ModoOperacao) -> Result<()> {
         instructions::admin::handle_guardiao_pausar(ctx, modo)
     }
@@ -140,6 +148,19 @@ pub mod ecol_lote {
         dados: DadosLote,
     ) -> Result<()> {
         instructions::lote_criacao::handle_cooperativa_create_lote(ctx, dados)
+    }
+
+    pub fn cooperativa_fechar_lote(
+        ctx: Context<CooperativaFecharLote>,
+        dados: DadosFechamento,
+    ) -> Result<()> {
+        instructions::lote_criacao::handle_cooperativa_fechar_lote(ctx, dados)
+    }
+
+    pub fn cooperativa_desmontar_lote<'info>(
+        ctx: Context<'info, CooperativaDesmontarLote<'info>>,
+    ) -> Result<()> {
+        instructions::lote_criacao::handle_cooperativa_desmontar_lote(ctx)
     }
 
     pub fn cooperativa_list_lote(

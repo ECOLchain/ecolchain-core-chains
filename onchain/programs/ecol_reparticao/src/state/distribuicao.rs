@@ -52,6 +52,25 @@ pub fn parcela(receita_centavos: u64, bps: u16) -> Result<u64> {
     u64::try_from(v).map_err(|_| error!(EcolReparticaoError::Overflow))
 }
 
+/// Parcela dos coletores proporcional ao peso com coletor.
+pub fn parcela_coletores(
+    receita_centavos: u64,
+    bps: u16,
+    peso_total_g: u64,
+    peso_sem_coletor_g: u64,
+) -> Result<u64> {
+    if peso_total_g == 0 {
+        return parcela(receita_centavos, bps);
+    }
+    let com_coletor = peso_total_g.saturating_sub(peso_sem_coletor_g);
+    let v = u128::from(receita_centavos)
+        .checked_mul(u128::from(bps))
+        .and_then(|v| v.checked_mul(u128::from(com_coletor)))
+        .and_then(|v| v.checked_div(u128::from(BPS_BASE) * u128::from(peso_total_g)))
+        .ok_or(EcolReparticaoError::Overflow)?;
+    u64::try_from(v).map_err(|_| error!(EcolReparticaoError::Overflow))
+}
+
 impl Distribuicao {
     pub fn bytes_bitmap(num_folhas: u32) -> usize {
         (num_folhas as usize).div_ceil(8)
@@ -65,15 +84,26 @@ impl Distribuicao {
     }
 
     /// Calcula os tetos por papel; a EcolChain fica com o restante.
+    ///
+    /// Os coletores recebem o seu percentual só sobre o peso com coletor (ADR 0010):
+    /// `floor(receita × bps × (peso_total − peso_sem_coletor) / (10.000 × peso_total))`.
+    /// A fatia do peso sem coletor fica com a EcolChain. `peso_total_g = 0` = tudo de coletores.
     pub fn calcular(
         &mut self,
         receita_centavos: u64,
         bps: BpsReparticao,
         bps_industria: u16,
+        peso_total_g: u64,
+        peso_sem_coletor_g: u64,
     ) -> Result<()> {
         bps.exigir_faixa_industria(bps_industria)?;
         let totais = [
-            parcela(receita_centavos, bps.coletor)?,
+            parcela_coletores(
+                receita_centavos,
+                bps.coletor,
+                peso_total_g,
+                peso_sem_coletor_g,
+            )?,
             parcela(receita_centavos, bps.cooperativa)?,
             parcela(receita_centavos, bps.transportador)?,
             parcela(receita_centavos, bps_industria)?,
@@ -190,19 +220,36 @@ mod testes {
     fn exemplo_do_diagrama_us_50() {
         // US$ 50,00 = 5.000 centavos: 250 / 500 / 250 / 3.250 e EcolChain 750 (15%).
         let mut d = vazia();
-        d.calcular(5_000, padrao(), 6_500).unwrap();
+        d.calcular(5_000, padrao(), 6_500, 0, 0).unwrap();
         assert_eq!(d.total_por_papel, [250, 500, 250, 3_250]);
         assert_eq!(d.ecolchain_centavos, 750);
         // Indústria no máximo (79%): EcolChain 1%.
-        d.calcular(5_000, padrao(), 7_900).unwrap();
+        d.calcular(5_000, padrao(), 7_900, 0, 0).unwrap();
         assert_eq!((d.total_por_papel[3], d.ecolchain_centavos), (3_950, 50));
+    }
+
+    #[test]
+    fn coletores_so_sobre_o_peso_com_coletor() {
+        let mut d = vazia();
+        // Metade do peso sem coletor: coletores 125 (2,5%), EcolChain fica com os outros 125.
+        d.calcular(5_000, padrao(), 6_500, 1_000_000, 500_000)
+            .unwrap();
+        assert_eq!(d.total_por_papel, [125, 500, 250, 3_250]);
+        assert_eq!(d.ecolchain_centavos, 875);
+        // Tudo sem coletor: nada para coletores.
+        d.calcular(5_000, padrao(), 6_500, 1_000_000, 1_000_000)
+            .unwrap();
+        assert_eq!((d.total_por_papel[0], d.ecolchain_centavos), (0, 1_000));
+        // Crédito antigo (sem registro de peso sem coletor): igual a antes.
+        d.calcular(5_000, padrao(), 6_500, 1_000_000, 0).unwrap();
+        assert_eq!(d.total_por_papel[0], 250);
     }
 
     #[test]
     fn residuo_vai_para_a_ecolchain_e_soma_fecha() {
         let mut d = vazia();
         for receita in [1u64, 7, 99, 12_345, 1_000_003, u64::MAX / 10_000] {
-            d.calcular(receita, padrao(), 7_000).unwrap();
+            d.calcular(receita, padrao(), 7_000, 0, 0).unwrap();
             assert_eq!(d.total_cupons().unwrap() + d.ecolchain_centavos, receita);
         }
     }
@@ -210,8 +257,8 @@ mod testes {
     #[test]
     fn faixas() {
         let mut d = vazia();
-        assert!(d.calcular(5_000, padrao(), 6_499).is_err());
-        assert!(d.calcular(5_000, padrao(), 7_901).is_err());
+        assert!(d.calcular(5_000, padrao(), 6_499, 0, 0).is_err());
+        assert!(d.calcular(5_000, padrao(), 7_901, 0, 0).is_err());
         assert!(padrao().validar().is_ok());
         let mut b = padrao();
         b.industria_max = 8_000; // EcolChain ficaria com 0%
@@ -224,7 +271,7 @@ mod testes {
     #[test]
     fn resgate_respeita_bitmap_e_teto() {
         let mut d = vazia();
-        d.calcular(5_000, padrao(), 6_500).unwrap();
+        d.calcular(5_000, padrao(), 6_500, 0, 0).unwrap();
         d.registrar_resgate(0, Papel::Coletor, 200).unwrap();
         assert!(
             d.registrar_resgate(0, Papel::Coletor, 1).is_err(),
@@ -265,7 +312,13 @@ mod propriedades {
         /// Para qualquer receita e percentual negociado válido: a soma fecha exatamente, cada papel
         /// recebe no máximo o seu percentual e a EcolChain nunca fica abaixo de 1% (arredondado para baixo).
         #[test]
-        fn reparticao_fecha_e_respeita_percentuais(receita in 0u64..=u64::MAX / 10_000, ind in 6_500u16..=7_900) {
+        fn reparticao_fecha_e_respeita_percentuais(
+            receita in 0u64..=u64::MAX / 10_000,
+            ind in 6_500u16..=7_900,
+            peso in 1u64..=1_000_000_000_000,
+            sem_pct in 0u64..=100,
+        ) {
+            let sem = peso / 100 * sem_pct;
             let mut d = Distribuicao {
                 credito: Pubkey::default(), receita_centavos: 0, bps: bps(), bps_industria: 0,
                 total_por_papel: [0; 4], resgatado_por_papel: [0; 4], ecolchain_centavos: 0,
@@ -273,13 +326,18 @@ mod propriedades {
                 repasse_zupy_ref_hash: [0; 32], repasse_ecolchain_ref_hash: [0; 32], seq: 0, criado_em: 0,
                 bump: 0, _reserved: [0; 32], resgatados: vec![],
             };
-            d.calcular(receita, bps(), ind).unwrap();
+            d.calcular(receita, bps(), ind, peso, sem).unwrap();
             let soma: u128 = d.total_por_papel.iter().map(|v| u128::from(*v)).sum::<u128>() + u128::from(d.ecolchain_centavos);
             prop_assert_eq!(soma, u128::from(receita));
             for (total, b) in d.total_por_papel.iter().zip([500u16, 1_000, 500, ind]) {
                 prop_assert!(u128::from(*total) * 10_000 <= u128::from(receita) * u128::from(b));
             }
             prop_assert!(u128::from(d.ecolchain_centavos) * 10_000 >= u128::from(receita) * u128::from(ECOLCHAIN_MIN_BPS) - 10_000);
+            // Coletores só sobre o peso com coletor.
+            prop_assert!(
+                u128::from(d.total_por_papel[0]) * 10_000 * u128::from(peso)
+                    <= u128::from(receita) * 500 * u128::from(peso - sem)
+            );
         }
 
         /// Percentual fora da faixa nunca é aceito.
@@ -292,7 +350,7 @@ mod propriedades {
                 repasse_zupy_ref_hash: [0; 32], repasse_ecolchain_ref_hash: [0; 32], seq: 0, criado_em: 0,
                 bump: 0, _reserved: [0; 32], resgatados: vec![],
             };
-            prop_assert!(d.calcular(receita, bps(), ind).is_err());
+            prop_assert!(d.calcular(receita, bps(), ind, 0, 0).is_err());
         }
     }
 }

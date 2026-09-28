@@ -361,6 +361,25 @@ fn reparticao_completa_do_exemplo_do_diagrama() {
 }
 
 #[test]
+fn coletores_so_sobre_o_peso_com_coletor() {
+    let mut r = Rep::novo();
+    // Metade do peso de doação: coletores 2,5%; a outra metade dos 5% fica com a EcolChain.
+    let lote = r.c.lote_misto_reciclado(1, PESO_G / 2);
+    r.c.criar_credito(1);
+    r.c.add_lotes(1, &[lote]).unwrap();
+    r.c.submeter(1).unwrap();
+    r.c.emitir(1, "VCS-1").unwrap();
+    r.c.vender(1).unwrap();
+    let credito = credito_pda(1);
+    let direitos = r.direitos_padrao();
+    let raiz = merkle::raiz(&Rep::folhas(&direitos));
+    r.criar_dist(credito, 6_500, raiz, 4).unwrap();
+    let d = r.dist(credito);
+    assert_eq!(d.total_por_papel, [125, 500, 250, 3_250]);
+    assert_eq!(d.ecolchain_centavos, 875);
+}
+
+#[test]
 fn cada_direito_resgata_uma_vez() {
     let mut r = Rep::novo();
     let (credito, direitos) = r.financiada(1);

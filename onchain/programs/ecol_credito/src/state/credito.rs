@@ -128,7 +128,11 @@ pub struct Credito {
     pub criado_em: i64,
     pub atualizado_em: i64,
     pub bump: u8,
-    pub _reserved: [u8; 64],
+    /// Parte de `peso_total_g` vinda de lotes de origem sem coletor (ADR 0010), proporcional ao
+    /// peso consolidado de cada lote. Os 5% dos coletores só incidem sobre o restante.
+    /// Zero nos créditos antigos: todo o peso era de coletores.
+    pub peso_sem_coletor_g: u64,
+    pub _reserved: [u8; 56],
     /// Número de série no registro oficial (campo variável por último).
     #[max_len(SERIAL_MAX_LEN)]
     pub serial: String,

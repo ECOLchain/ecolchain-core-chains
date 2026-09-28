@@ -62,6 +62,21 @@ fn ciclo_completo_do_credito() {
 }
 
 #[test]
+fn credito_soma_o_peso_sem_coletor_dos_lotes() {
+    let mut c = Cenario::novo();
+    // 40% do lote 1 veio de doação; o lote 2 é todo de coletores.
+    let misto = c.lote_misto_reciclado(1, PESO_G / 10 * 4);
+    let normal = c.lote_reciclado(2);
+    c.criar_credito(7);
+    c.add_lotes(7, &[misto, normal]).unwrap();
+    let cr = c.credito(7);
+    assert_eq!(
+        (cr.peso_total_g, cr.peso_sem_coletor_g),
+        (2 * PESO_G, PESO_G / 10 * 4)
+    );
+}
+
+#[test]
 fn lote_nao_entra_em_dois_creditos() {
     let mut c = Cenario::novo();
     let lote = c.lote_reciclado(1);

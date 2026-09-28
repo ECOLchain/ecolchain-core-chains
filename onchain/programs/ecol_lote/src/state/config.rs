@@ -1,7 +1,10 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    constants::{PRAZO_ENTREGA_MAX_S, TOLERANCIA_PESO_MAX_BPS},
+    constants::{
+        EXCESSO_MONTAGEM_PADRAO_BPS, PERDA_MONTAGEM_PADRAO_BPS, PRAZO_ENTREGA_MAX_S,
+        TOLERANCIA_PESO_MAX_BPS,
+    },
     error::EcolLoteError,
 };
 
@@ -54,7 +57,11 @@ pub struct GlobalConfig {
     /// Guardião: só pode restringir o modo (pausar), nunca liberar nem mudar config.
     /// `Pubkey::default()` = sem guardião. Ocupa parte do antigo espaço reservado (layout inalterado).
     pub guardiao: Pubkey,
-    pub _reserved: [u8; 32],
+    /// Perda máxima do lote de venda consolidado sobre a soma dos lotes de origem (0 = padrão).
+    pub perda_montagem_bps: u16,
+    /// Excesso máximo do lote de venda consolidado sobre a soma dos lotes de origem (0 = padrão).
+    pub excesso_montagem_bps: u16,
+    pub _reserved: [u8; 28],
 }
 
 impl GlobalConfig {
@@ -86,6 +93,16 @@ impl GlobalConfig {
         ]
         .contains(chave)
             || (self.guardiao != Pubkey::default() && *chave == self.guardiao)
+    }
+
+    /// Limites vigentes da pesagem do lote consolidado: `(perda, excesso)` em bps.
+    /// Configs antigos (campos zerados) usam os padrões.
+    pub fn tolerancia_montagem(&self) -> (u16, u16) {
+        let ou_padrao = |v: u16, padrao: u16| if v == 0 { padrao } else { v };
+        (
+            ou_padrao(self.perda_montagem_bps, PERDA_MONTAGEM_PADRAO_BPS),
+            ou_padrao(self.excesso_montagem_bps, EXCESSO_MONTAGEM_PADRAO_BPS),
+        )
     }
 
     pub fn validar_parametros(prazo_entrega_s: i64, tolerancia_peso_bps: u16) -> Result<()> {

@@ -61,7 +61,14 @@ pub fn handle_operador_create_distribuicao(
     let credito_key = credito.key();
     let dist_key = ctx.accounts.distribuicao.key();
     let d = &mut ctx.accounts.distribuicao;
-    d.calcular(receita, bps, bps_industria)?;
+    let (peso_total_g, peso_sem_coletor_g) = (credito.peso_total_g, credito.peso_sem_coletor_g);
+    d.calcular(
+        receita,
+        bps,
+        bps_industria,
+        peso_total_g,
+        peso_sem_coletor_g,
+    )?;
     d.credito = credito_key;
     d.merkle_root = merkle_root;
     d.num_folhas = num_folhas;

@@ -27,6 +27,12 @@ pub const NOME_FIXO_MAX: usize = 32;
 
 /// Base dos percentuais (basis points): 10_000 = 100%.
 pub const BPS_BASE: u64 = 10_000;
+/// Pesagem do lote de venda consolidado: perda máxima aceita sobre a soma dos lotes de origem
+/// (umidade, rejeito) e excesso máximo (erro de balança). Valem enquanto o config estiver zerado.
+pub const PERDA_MONTAGEM_PADRAO_BPS: u16 = 1_000;
+pub const EXCESSO_MONTAGEM_PADRAO_BPS: u16 = 200;
+/// Teto para os dois limites acima (acima disso não é mais o mesmo material).
+pub const TOLERANCIA_MONTAGEM_MAX_BPS: u16 = 3_000;
 
 /// Limite superior de `tolerancia_peso_bps` (20%), para impedir que a verificação de peso seja desligada.
 pub const TOLERANCIA_PESO_MAX_BPS: u16 = 2_000;

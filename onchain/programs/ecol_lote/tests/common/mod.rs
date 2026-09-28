@@ -13,10 +13,10 @@ use {
     ecol_lote::{
         accounts as ctas, instruction as ixs,
         pesagem::{mensagem, TipoPesagem},
-        ConfigParams, DadosEntrega, DadosLote, DecisaoDisputa, EstadoLote, GlobalConfig, Lote,
-        Material, ModoOperacao, MotivoDisputa, Papel, Participante, SEED_ASSET,
-        SEED_AUTORIDADE_ASSET, SEED_BALANCA, SEED_ENTREGA, SEED_GLOBAL, SEED_LOTE, SEED_MATERIAL,
-        SEED_PARTICIPANTE,
+        ConfigParams, DadosEntrega, DadosFechamento, DadosLote, DecisaoDisputa, EstadoLote,
+        GlobalConfig, Lote, Material, ModoOperacao, MotivoDisputa, OrigemEntrega, Papel,
+        Participante, SEED_ASSET, SEED_AUTORIDADE_ASSET, SEED_BALANCA, SEED_ENTREGA, SEED_GLOBAL,
+        SEED_LOTE, SEED_MATERIAL, SEED_PARTICIPANTE,
     },
     litesvm::{types::TransactionMetadata, LiteSVM},
     solana_keypair::Keypair,
@@ -325,24 +325,24 @@ impl Ambiente {
         self.svm.get_sysvar::<Clock>().unix_timestamp
     }
 
-    pub fn dados(&self, lote_id: u64, peso_g: u64) -> DadosLote {
+    pub fn dados(&self, lote_id: u64) -> DadosLote {
         DadosLote {
             lote_id,
             material: PLASTICO,
+            evidencias_hash: h("fotos+ticket"),
+        }
+    }
+
+    pub fn dados_fechamento(&self, peso_g: u64) -> DadosFechamento {
+        DadosFechamento {
             peso_g,
             ts_pesagem: self.agora(),
-            evidencias_hash: h("fotos+ticket"),
             uri: "https://arweave.net/lote-metadata.json".to_string(),
         }
     }
 
-    /// Instrução de criação crua, sem a pesagem; os testes de ataque montam a transação à mão.
-    pub fn ix_criar_lote(
-        &self,
-        cooperativa: &Pubkey,
-        balanca: Pubkey,
-        dados: DadosLote,
-    ) -> Instruction {
+    /// Abre o lote de venda para montagem (sem pesagem).
+    pub fn ix_criar_lote(&self, cooperativa: &Pubkey, dados: DadosLote) -> Instruction {
         let lote = lote_pda(cooperativa, dados.lote_id);
         let material_cadastro = material_pda(dados.material);
         self.ix(
@@ -352,8 +352,31 @@ impl Ambiente {
                 cooperativa: *cooperativa,
                 cooperativa_part: participante_pda(cooperativa),
                 config: config_pda(),
-                balanca,
                 material_cadastro,
+                lote,
+                system_program: system_program::ID,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        )
+    }
+
+    /// Instrução de fechamento crua, sem a pesagem; os testes de ataque montam a transação à mão.
+    pub fn ix_fechar_lote(
+        &self,
+        cooperativa: &Pubkey,
+        balanca: Pubkey,
+        lote: Pubkey,
+        dados: DadosFechamento,
+    ) -> Instruction {
+        self.ix(
+            ixs::CooperativaFecharLote { dados },
+            ctas::CooperativaFecharLote {
+                payer: self.patrocinador.pubkey(),
+                cooperativa: *cooperativa,
+                cooperativa_part: participante_pda(cooperativa),
+                config: config_pda(),
+                balanca,
                 lote,
                 asset: asset_pda(&lote),
                 autoridade_asset: autoridade_asset(),
@@ -364,6 +387,66 @@ impl Ambiente {
                 program: ecol_lote::id(),
             },
         )
+    }
+
+    pub fn abrir_lote(
+        &mut self,
+        cooperativa: &Keypair,
+        dados: DadosLote,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix_criar_lote(&cooperativa.pubkey(), dados);
+        self.enviar(ix, &[cooperativa])
+    }
+
+    /// Pesagem do consolidado (assinada pela `balanca`) + fechamento.
+    pub fn fechar_lote(
+        &mut self,
+        cooperativa: &Keypair,
+        balanca: &Keypair,
+        lote: Pubkey,
+        peso_g: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let dados = self.dados_fechamento(peso_g);
+        let pesagem = ix_pesagem(
+            balanca,
+            TipoPesagem::Origem,
+            &lote,
+            peso_g,
+            dados.ts_pesagem,
+        );
+        let fechar = self.ix_fechar_lote(
+            &cooperativa.pubkey(),
+            balanca_pda(&balanca.pubkey()),
+            lote,
+            dados,
+        );
+        self.enviar_varias(&[pesagem, fechar], &[cooperativa])
+    }
+
+    pub fn desmontar(
+        &mut self,
+        cooperativa: &Keypair,
+        lote: Pubkey,
+        entregas: &[Pubkey],
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let mut ix = self.ix(
+            ixs::CooperativaDesmontarLote {},
+            ctas::CooperativaDesmontarLote {
+                payer: self.patrocinador.pubkey(),
+                cooperativa: cooperativa.pubkey(),
+                config: config_pda(),
+                lote,
+                asset: asset_pda(&lote),
+                autoridade_asset: autoridade_asset(),
+                mpl_core_program: mpl_core::ID,
+                system_program: system_program::ID,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        ix.accounts
+            .extend(entregas.iter().map(|e| AccountMeta::new(*e, false)));
+        self.enviar(ix, &[cooperativa])
     }
 
     pub fn custodia(&self, lote: &Pubkey) -> ctas::ContasCustodia {
@@ -586,32 +669,22 @@ impl Ambiente {
         lote_id: u64,
         peso_g: u64,
     ) -> Result<TransactionMetadata, TransactionError> {
-        let dados = self.dados(lote_id, peso_g);
+        // Lote de venda com um lote de origem de coletor do mesmo peso (id da entrega = id do lote);
+        // o primeiro passo que falhar devolve o erro.
+        let dados = self.dados(lote_id);
         let lote = lote_pda(&cooperativa.pubkey(), lote_id);
-        let pesagem = ix_pesagem(
-            balanca,
-            TipoPesagem::Origem,
-            &lote,
-            peso_g,
-            dados.ts_pesagem,
-        );
-        let criar =
-            self.ix_criar_lote(&cooperativa.pubkey(), balanca_pda(&balanca.pubkey()), dados);
-        let res = self.enviar_varias(&[pesagem, criar], &[cooperativa]);
-        if res.is_ok() {
-            // Lote montado: uma entrega de coletor com o mesmo peso (id da entrega = id do lote).
-            self.registrar_entrega(cooperativa, balanca, lote_id, peso_g, PLASTICO)
-                .unwrap();
-            let entrega = entrega_pda(&cooperativa.pubkey(), lote_id);
-            self.add_entregas(cooperativa, lote, &[entrega]).unwrap();
-        }
-        res
+        self.abrir_lote(cooperativa, dados)?;
+        self.registrar_entrega(cooperativa, balanca, lote_id, peso_g, PLASTICO)?;
+        let entrega = entrega_pda(&cooperativa.pubkey(), lote_id);
+        self.add_entregas(cooperativa, lote, &[entrega])?;
+        self.fechar_lote(cooperativa, balanca, lote, peso_g)
     }
 
     pub fn dados_entrega(&self, entrega_id: u64, peso_g: u64, material: u16) -> DadosEntrega {
         DadosEntrega {
             entrega_id,
-            coletor_ref: h(&format!("coletor-{entrega_id}+salt")),
+            origem: OrigemEntrega::Coletor,
+            origem_ref: h(&format!("coletor-{entrega_id}+salt")),
             material,
             peso_g,
             ts_pesagem: self.agora(),
@@ -996,6 +1069,44 @@ impl Ambiente {
     }
 
     /// Cria o lote `lote_id` e o leva até `Recebido`.
+    /// Lote de venda com duas origens que somam `PESO_G`: `sem_coletor_g` de doação e o resto de
+    /// coletor (ids das entregas: `lote_id * 100 + 1` e `+ 2`), fechado com `PESO_G`.
+    pub fn criar_lote_misto(&mut self, lote_id: u64, sem_coletor_g: u64) -> Pubkey {
+        let coop = self.cooperativa.insecure_clone();
+        let balanca = self.balanca_coop.insecure_clone();
+        let lote = lote_pda(&coop.pubkey(), lote_id);
+        let dados = self.dados(lote_id);
+        self.abrir_lote(&coop, dados).unwrap();
+        let (id_col, id_doa) = (lote_id * 100 + 1, lote_id * 100 + 2);
+        self.registrar_entrega(&coop, &balanca, id_col, PESO_G - sem_coletor_g, PLASTICO)
+            .unwrap();
+        let mut dados = self.dados_entrega(id_doa, sem_coletor_g, PLASTICO);
+        dados.origem = OrigemEntrega::Doacao;
+        let alvo = entrega_pda(&coop.pubkey(), id_doa);
+        let pesagem = ix_pesagem(
+            &balanca,
+            TipoPesagem::Entrega,
+            &alvo,
+            sem_coletor_g,
+            dados.ts_pesagem,
+        );
+        let ix = self.ix_registrar_entrega(&coop.pubkey(), balanca_pda(&balanca.pubkey()), dados);
+        self.enviar_varias(&[pesagem, ix], &[&coop]).unwrap();
+        let entregas = [entrega_pda(&coop.pubkey(), id_col), alvo];
+        self.add_entregas(&coop, lote, &entregas).unwrap();
+        self.fechar_lote(&coop, &balanca, lote, PESO_G).unwrap();
+        lote
+    }
+
+    pub fn lote_misto_ate_recebido(&mut self, lote_id: u64, sem_coletor_g: u64) -> Pubkey {
+        let lote = self.criar_lote_misto(lote_id, sem_coletor_g);
+        self.anunciar(lote).unwrap();
+        self.vender(lote).unwrap();
+        self.retirar(lote).unwrap();
+        self.receber(lote, PESO_G).unwrap();
+        lote
+    }
+
     pub fn lote_ate_recebido(&mut self, lote_id: u64) -> Pubkey {
         let lote = lote_pda(&self.cooperativa.pubkey(), lote_id);
         self.criar_lote(lote_id).unwrap();

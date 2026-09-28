@@ -3,13 +3,14 @@
 //!
 //! O asset nasce congelado (`PermanentFreezeDelegate`) e só a PDA `autoridade_asset` do programa
 //! o transfere (`PermanentTransferDelegate`), acompanhando a custódia: cooperativa → transportador → indústria.
+//! Desde a ADR 0010 também o queima (`PermanentBurnDelegate`) quando a união do lote de venda é desfeita.
 
 use anchor_lang::prelude::*;
 use mpl_core::{
-    instructions::{CreateV2CpiBuilder, TransferV1CpiBuilder},
+    instructions::{BurnV1CpiBuilder, CreateV2CpiBuilder, TransferV1CpiBuilder},
     types::{
-        DataState, PermanentFreezeDelegate, PermanentTransferDelegate, Plugin, PluginAuthority,
-        PluginAuthorityPair,
+        DataState, PermanentBurnDelegate, PermanentFreezeDelegate, PermanentTransferDelegate,
+        Plugin, PluginAuthority, PluginAuthorityPair,
     },
 };
 
@@ -51,6 +52,10 @@ pub fn criar<'info>(
             },
             PluginAuthorityPair {
                 plugin: Plugin::PermanentTransferDelegate(PermanentTransferDelegate {}),
+                authority: Some(autoridade.clone()),
+            },
+            PluginAuthorityPair {
+                plugin: Plugin::PermanentBurnDelegate(PermanentBurnDelegate {}),
                 authority: Some(autoridade),
             },
         ])
@@ -69,6 +74,18 @@ pub fn transferir<'info>(
         .payer(contas.payer)
         .authority(Some(contas.autoridade_asset))
         .new_owner(novo_dono)
+        .system_program(Some(contas.system_program))
+        .invoke_signed(&[seeds_autoridade])?;
+    Ok(())
+}
+
+/// Queima o recibo de um lote de venda desfeito; o rent volta para quem paga a transação.
+pub fn queimar<'info>(contas: &ContasAsset<'_, 'info>, autoridade_bump: u8) -> Result<()> {
+    let seeds_autoridade: &[&[u8]] = &[SEED_AUTORIDADE_ASSET, &[autoridade_bump]];
+    BurnV1CpiBuilder::new(contas.mpl_core_program)
+        .asset(contas.asset)
+        .payer(contas.payer)
+        .authority(Some(contas.autoridade_asset))
         .system_program(Some(contas.system_program))
         .invoke_signed(&[seeds_autoridade])?;
     Ok(())

@@ -100,6 +100,20 @@ pub struct OperadorAddLotes<'info> {
     pub ecol_lote_program: Program<'info, EcolLote>,
 }
 
+/// Peso consolidado do lote atribuído a origens sem coletor:
+/// `floor(peso_g × peso_sem_coletor_g / peso_entregas_g)`. Lotes sem entregas (anteriores às
+/// entregas on-chain) contam como de coletores, como antes.
+pub fn peso_sem_coletor(lote: &Lote) -> Result<u64> {
+    if lote.peso_entregas_g == 0 {
+        return Ok(0);
+    }
+    let v = u128::from(lote.peso_g)
+        .checked_mul(u128::from(lote.peso_sem_coletor_g))
+        .and_then(|v| v.checked_div(u128::from(lote.peso_entregas_g)))
+        .ok_or(EcolCreditoError::Overflow)?;
+    u64::try_from(v).map_err(|_| error!(EcolCreditoError::Overflow))
+}
+
 fn ler_lote(conta: &AccountInfo) -> Result<Lote> {
     require_keys_eq!(
         *conta.owner,
@@ -169,6 +183,10 @@ pub fn handle_operador_add_lotes<'info>(
         credito.peso_total_g = credito
             .peso_total_g
             .checked_add(depois.peso_g)
+            .ok_or(EcolCreditoError::Overflow)?;
+        credito.peso_sem_coletor_g = credito
+            .peso_sem_coletor_g
+            .checked_add(peso_sem_coletor(&depois)?)
             .ok_or(EcolCreditoError::Overflow)?;
         let seq = credito.proximo_seq()?;
         let lotes_hash = credito.lotes_hash;
