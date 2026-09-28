@@ -1,8 +1,9 @@
 // Cadastra uma carteira como participante do `ecol_lote` na devnet (instrução `operador_register_participante`).
 // Assina como operador (chave de teste em ../.devnet/operador.json); a carteira local paga taxa e rent.
 //
-// Uso: npx tsx scripts/cadastrar-participante.ts <carteira> <coletor|cooperativa|transportador|industria> [referencia-kyc]
+// Uso: npx tsx scripts/cadastrar-participante.ts <carteira> <coletor|cooperativa|transportador|industria> <nome> [referencia-kyc]
 //
+// `nome` é o nome de exibição (até 32 bytes, público on-chain).
 // `referencia-kyc` identifica o cadastro off-chain; on-chain vai só o sha256 dela (LGPD). Sem ela,
 // usa uma referência de teste derivada da carteira.
 import { createHash } from 'node:crypto';
@@ -14,6 +15,7 @@ import { type Address, createClient, createKeyPairSignerFromBytes, isAddress } f
 import { solanaRpc } from '@solana/kit-plugin-rpc';
 import { signerFromFile } from '@solana/kit-plugin-signer';
 import * as lote from '../src/generated/ecol_lote';
+import { bytesDoNome, PARTICIPANTE_NOME_MAX } from '../src/participante';
 import { eventAuthority, lote as pLote } from '../src/pdas';
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.devnet');
@@ -33,10 +35,11 @@ function falha(msg: string): never {
     process.exit(1);
 }
 
-const [carteiraArg, papelArg, kycArg] = process.argv.slice(2);
-if (!carteiraArg || !papelArg) {
-    falha('uso: npx tsx scripts/cadastrar-participante.ts <carteira> <coletor|cooperativa|transportador|industria> [referencia-kyc]');
+const [carteiraArg, papelArg, nome, kycArg] = process.argv.slice(2);
+if (!carteiraArg || !papelArg || !nome?.trim()) {
+    falha('uso: npx tsx scripts/cadastrar-participante.ts <carteira> <coletor|cooperativa|transportador|industria> <nome> [referencia-kyc]');
 }
+if (bytesDoNome(nome) > PARTICIPANTE_NOME_MAX) falha(`nome com mais de ${PARTICIPANTE_NOME_MAX} bytes: ${nome}`);
 if (RPC.includes('mainnet')) falha(`este script é só para devnet/localnet (RPC=${RPC})`);
 if (!isAddress(carteiraArg)) falha(`endereço inválido: ${carteiraArg}`);
 const papel = PAPEIS[papelArg.toLowerCase()];
@@ -77,6 +80,7 @@ const kycHash = createHash('sha256').update(referencia).digest();
 
 console.log(`Cadastrando ${carteira} como ${lote.Papel[papel]}`);
 console.log(`  rede:      ${RPC}`);
+console.log(`  nome:      ${nome}`);
 console.log(`  operador:  ${operador.address}`);
 console.log(`  pagador:   ${client.payer.address}`);
 console.log(`  kyc_hash:  sha256("${referencia}")`);
@@ -89,6 +93,7 @@ const ix = await lote.getOperadorRegisterParticipanteInstructionAsync({
     carteira,
     papel,
     kycHash,
+    nome,
 });
 const resultado = await client.sendTransaction([ix]);
 

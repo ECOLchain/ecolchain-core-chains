@@ -479,12 +479,22 @@ impl Ambiente {
         carteira: Pubkey,
         papel: Papel,
     ) -> Result<TransactionMetadata, TransactionError> {
+        self.registrar_com_nome(carteira, papel, "Participante")
+    }
+
+    pub fn registrar_com_nome(
+        &mut self,
+        carteira: Pubkey,
+        papel: Papel,
+        nome: &str,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let operador = self.operador.insecure_clone();
         let ix = self.ix(
             ixs::OperadorRegisterParticipante {
                 carteira,
                 papel,
                 kyc_hash: h("kyc"),
+                nome: nome.into(),
             },
             ctas::OperadorRegisterParticipante {
                 payer: self.patrocinador.pubkey(),
@@ -516,6 +526,25 @@ impl Ambiente {
             },
         );
         self.enviar(ix, &[&operador])
+    }
+
+    pub fn set_nome_por(
+        &mut self,
+        operador: &Keypair,
+        carteira: Pubkey,
+        nome: &str,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix(
+            ixs::OperadorSetParticipanteNome { nome: nome.into() },
+            ctas::OperadorSetParticipanteNome {
+                operador: operador.pubkey(),
+                config: config_pda(),
+                participante: participante_pda(&carteira),
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[operador])
     }
 
     /// Criação normal: pesagem assinada pela `balanca` + instrução do programa.

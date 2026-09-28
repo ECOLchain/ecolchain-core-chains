@@ -60,20 +60,22 @@ export type Participante = {
   carteira: Address;
   papel: Papel;
   ativo: boolean;
-  /** Hash do cadastro/KYC mantido off-chain. Nenhum dado pessoal vai on-chain (LGPD). */
+  /** Hash do cadastro/KYC mantido off-chain. Nenhum documento vai on-chain (LGPD). */
   kycHash: ReadonlyUint8Array;
   bump: number;
-  reserved: ReadonlyUint8Array;
+  /** Nome de exibição em UTF-8, completado com zeros (público). Contas antigas: todo zero = sem nome. */
+  nome: ReadonlyUint8Array;
 };
 
 export type ParticipanteArgs = {
   carteira: Address;
   papel: PapelArgs;
   ativo: boolean;
-  /** Hash do cadastro/KYC mantido off-chain. Nenhum dado pessoal vai on-chain (LGPD). */
+  /** Hash do cadastro/KYC mantido off-chain. Nenhum documento vai on-chain (LGPD). */
   kycHash: ReadonlyUint8Array;
   bump: number;
-  reserved: ReadonlyUint8Array;
+  /** Nome de exibição em UTF-8, completado com zeros (público). Contas antigas: todo zero = sem nome. */
+  nome: ReadonlyUint8Array;
 };
 
 /** Gets the encoder for {@link ParticipanteArgs} account data. */
@@ -86,7 +88,7 @@ export function getParticipanteEncoder(): FixedSizeEncoder<ParticipanteArgs> {
       ["ativo", getBooleanEncoder()],
       ["kycHash", fixEncoderSize(getBytesEncoder(), 32)],
       ["bump", getU8Encoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 32)],
+      ["nome", fixEncoderSize(getBytesEncoder(), 32)],
     ]),
     (value) => ({ ...value, discriminator: PARTICIPANTE_DISCRIMINATOR }),
   );
@@ -101,7 +103,7 @@ export function getParticipanteDecoder(): FixedSizeDecoder<Participante> {
     ["ativo", getBooleanDecoder()],
     ["kycHash", fixDecoderSize(getBytesDecoder(), 32)],
     ["bump", getU8Decoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 32)],
+    ["nome", fixDecoderSize(getBytesDecoder(), 32)],
   ]);
 }
 

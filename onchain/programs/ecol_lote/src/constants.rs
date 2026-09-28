@@ -22,6 +22,8 @@ pub const SEED_MATERIAL: &[u8] = b"material";
 
 /// Tamanho máximo do nome de um material, em bytes UTF-8.
 pub const MATERIAL_NOME_MAX: usize = 32;
+/// Nome de exibição do participante, em bytes UTF-8 (ocupa o antigo espaço reservado da conta).
+pub const PARTICIPANTE_NOME_MAX: usize = 32;
 
 /// Base dos percentuais (basis points): 10_000 = 100%.
 pub const BPS_BASE: u64 = 10_000;

@@ -66,6 +66,7 @@ pub struct ParticipanteAtualizado {
     pub papel: Papel,
     pub ativo: bool,
     pub kyc_hash: [u8; 32],
+    pub nome: [u8; 32],
 }
 
 #[event]

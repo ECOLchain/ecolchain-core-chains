@@ -5,3 +5,4 @@ export * as pdas from './pdas';
 export * from './pesagem';
 export * from './arvore';
 export * from './coletor';
+export * from './participante';

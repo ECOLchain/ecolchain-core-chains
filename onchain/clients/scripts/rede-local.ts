@@ -101,9 +101,9 @@ await enviar(
     }),
 );
 
-for (const [carteira, papel] of [
-    [cooperativa.address, lote.Papel.Cooperativa],
-    ...coletores.map((c) => [c.address, lote.Papel.Coletor] as const),
+for (const [carteira, papel, nome] of [
+    [cooperativa.address, lote.Papel.Cooperativa, 'Cooperativa Demo'],
+    ...coletores.map((c, i) => [c.address, lote.Papel.Coletor, `Coletor ${i + 1}`] as const),
 ] as const) {
     await enviar(
         await lote.getOperadorRegisterParticipanteInstructionAsync({
@@ -115,6 +115,7 @@ for (const [carteira, papel] of [
             carteira,
             papel,
             kycHash: h(`kyc:${carteira}`),
+            nome,
         }),
     );
 }

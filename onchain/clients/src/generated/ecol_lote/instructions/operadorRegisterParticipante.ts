@@ -7,6 +7,8 @@
  */
 
 import {
+  addDecoderSizePrefix,
+  addEncoderSizePrefix,
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
@@ -16,15 +18,19 @@ import {
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU32Decoder,
+  getU32Encoder,
+  getUtf8Decoder,
+  getUtf8Encoder,
   SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
   SolanaError,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
   type Address,
-  type FixedSizeCodec,
-  type FixedSizeDecoder,
-  type FixedSizeEncoder,
+  type Codec,
+  type Decoder,
+  type Encoder,
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
@@ -108,21 +114,24 @@ export type OperadorRegisterParticipanteInstructionData = {
   carteira: Address;
   papel: Papel;
   kycHash: ReadonlyUint8Array;
+  nome: string;
 };
 
 export type OperadorRegisterParticipanteInstructionDataArgs = {
   carteira: Address;
   papel: PapelArgs;
   kycHash: ReadonlyUint8Array;
+  nome: string;
 };
 
-export function getOperadorRegisterParticipanteInstructionDataEncoder(): FixedSizeEncoder<OperadorRegisterParticipanteInstructionDataArgs> {
+export function getOperadorRegisterParticipanteInstructionDataEncoder(): Encoder<OperadorRegisterParticipanteInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["carteira", getAddressEncoder()],
       ["papel", getPapelEncoder()],
       ["kycHash", fixEncoderSize(getBytesEncoder(), 32)],
+      ["nome", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
     ]),
     (value) => ({
       ...value,
@@ -131,16 +140,17 @@ export function getOperadorRegisterParticipanteInstructionDataEncoder(): FixedSi
   );
 }
 
-export function getOperadorRegisterParticipanteInstructionDataDecoder(): FixedSizeDecoder<OperadorRegisterParticipanteInstructionData> {
+export function getOperadorRegisterParticipanteInstructionDataDecoder(): Decoder<OperadorRegisterParticipanteInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["carteira", getAddressDecoder()],
     ["papel", getPapelDecoder()],
     ["kycHash", fixDecoderSize(getBytesDecoder(), 32)],
+    ["nome", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
   ]);
 }
 
-export function getOperadorRegisterParticipanteInstructionDataCodec(): FixedSizeCodec<
+export function getOperadorRegisterParticipanteInstructionDataCodec(): Codec<
   OperadorRegisterParticipanteInstructionDataArgs,
   OperadorRegisterParticipanteInstructionData
 > {
@@ -172,6 +182,7 @@ export type OperadorRegisterParticipanteAsyncInput<
   carteira: OperadorRegisterParticipanteInstructionDataArgs["carteira"];
   papel: OperadorRegisterParticipanteInstructionDataArgs["papel"];
   kycHash: OperadorRegisterParticipanteInstructionDataArgs["kycHash"];
+  nome: OperadorRegisterParticipanteInstructionDataArgs["nome"];
 };
 
 export async function getOperadorRegisterParticipanteInstructionAsync<
@@ -357,6 +368,7 @@ export type OperadorRegisterParticipanteInput<
   carteira: OperadorRegisterParticipanteInstructionDataArgs["carteira"];
   papel: OperadorRegisterParticipanteInstructionDataArgs["papel"];
   kycHash: OperadorRegisterParticipanteInstructionDataArgs["kycHash"];
+  nome: OperadorRegisterParticipanteInstructionDataArgs["nome"];
 };
 
 export function getOperadorRegisterParticipanteInstruction<

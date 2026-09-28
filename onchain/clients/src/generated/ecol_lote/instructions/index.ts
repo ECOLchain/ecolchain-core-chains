@@ -30,6 +30,7 @@ export * from "./operadorRegisterBalanca";
 export * from "./operadorRegisterParticipante";
 export * from "./operadorSetBalancaAtiva";
 export * from "./operadorSetParticipanteAtivo";
+export * from "./operadorSetParticipanteNome";
 export * from "./operadorUpdateMaterial";
 export * from "./parteOpenDisputa";
 export * from "./publicCrankPrazoExpirado";

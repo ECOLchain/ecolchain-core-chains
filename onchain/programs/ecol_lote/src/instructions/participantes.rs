@@ -32,6 +32,7 @@ pub fn handle_operador_register_participante(
     carteira: Pubkey,
     papel: Papel,
     kyc_hash: [u8; 32],
+    nome: String,
 ) -> Result<()> {
     let config = &ctx.accounts.config;
     config.exigir_modo_normal()?;
@@ -44,17 +45,20 @@ pub fn handle_operador_register_participante(
         !config.eh_chave_de_papel(&carteira),
         EcolLoteError::CarteiraReservada
     );
+    let nome = Participante::codificar_nome(&nome)?;
     let participante = &mut ctx.accounts.participante;
     participante.carteira = carteira;
     participante.papel = papel;
     participante.ativo = true;
     participante.kyc_hash = kyc_hash;
     participante.bump = ctx.bumps.participante;
+    participante.nome = nome;
     emit_cpi!(ParticipanteAtualizado {
         carteira,
         papel,
         ativo: true,
-        kyc_hash
+        kyc_hash,
+        nome,
     });
     Ok(())
 }
@@ -85,6 +89,38 @@ pub fn handle_operador_set_participante_ativo(
         papel: participante.papel,
         ativo,
         kyc_hash: participante.kyc_hash,
+        nome: participante.nome,
+    });
+    Ok(())
+}
+
+/// Define ou corrige o nome de exibição de um participante (também preenche cadastros antigos, sem nome).
+#[event_cpi]
+#[derive(Accounts)]
+pub struct OperadorSetParticipanteNome<'info> {
+    pub operador: Signer<'info>,
+    #[account(seeds = [SEED_GLOBAL], bump = config.bump, has_one = operador @ EcolLoteError::NaoEhOperador)]
+    pub config: Account<'info, GlobalConfig>,
+    #[account(
+        mut,
+        seeds = [SEED_PARTICIPANTE, participante.carteira.as_ref()],
+        bump = participante.bump
+    )]
+    pub participante: Account<'info, Participante>,
+}
+
+pub fn handle_operador_set_participante_nome(
+    ctx: Context<OperadorSetParticipanteNome>,
+    nome: String,
+) -> Result<()> {
+    let participante = &mut ctx.accounts.participante;
+    participante.nome = Participante::codificar_nome(&nome)?;
+    emit_cpi!(ParticipanteAtualizado {
+        carteira: participante.carteira,
+        papel: participante.papel,
+        ativo: participante.ativo,
+        kyc_hash: participante.kyc_hash,
+        nome: participante.nome,
     });
     Ok(())
 }

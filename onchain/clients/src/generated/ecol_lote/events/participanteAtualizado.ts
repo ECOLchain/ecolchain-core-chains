@@ -50,6 +50,7 @@ export type ParticipanteAtualizadoEvent = {
   papel: Papel;
   ativo: boolean;
   kycHash: ReadonlyUint8Array;
+  nome: ReadonlyUint8Array;
 };
 
 export type ParticipanteAtualizadoEventArgs = {
@@ -57,6 +58,7 @@ export type ParticipanteAtualizadoEventArgs = {
   papel: PapelArgs;
   ativo: boolean;
   kycHash: ReadonlyUint8Array;
+  nome: ReadonlyUint8Array;
 };
 
 /** Gets the encoder for {@link ParticipanteAtualizadoEventArgs} event data. */
@@ -67,6 +69,7 @@ export function getParticipanteAtualizadoEventEncoder(): FixedSizeEncoder<Partic
       ["papel", getPapelEncoder()],
       ["ativo", getBooleanEncoder()],
       ["kycHash", fixEncoderSize(getBytesEncoder(), 32)],
+      ["nome", fixEncoderSize(getBytesEncoder(), 32)],
     ]),
     [getConstantEncoder(PARTICIPANTE_ATUALIZADO_EVENT_DISCRIMINATOR)],
   );
@@ -80,6 +83,7 @@ export function getParticipanteAtualizadoEventDecoder(): FixedSizeDecoder<Partic
       ["papel", getPapelDecoder()],
       ["ativo", getBooleanDecoder()],
       ["kycHash", fixDecoderSize(getBytesDecoder(), 32)],
+      ["nome", fixDecoderSize(getBytesDecoder(), 32)],
     ]),
     [getConstantDecoder(PARTICIPANTE_ATUALIZADO_EVENT_DISCRIMINATOR)],
   );

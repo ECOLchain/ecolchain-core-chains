@@ -63,9 +63,10 @@ pub mod ecol_lote {
         carteira: Pubkey,
         papel: Papel,
         kyc_hash: [u8; 32],
+        nome: String,
     ) -> Result<()> {
         instructions::participantes::handle_operador_register_participante(
-            ctx, carteira, papel, kyc_hash,
+            ctx, carteira, papel, kyc_hash, nome,
         )
     }
 
@@ -74,6 +75,13 @@ pub mod ecol_lote {
         ativo: bool,
     ) -> Result<()> {
         instructions::participantes::handle_operador_set_participante_ativo(ctx, ativo)
+    }
+
+    pub fn operador_set_participante_nome(
+        ctx: Context<OperadorSetParticipanteNome>,
+        nome: String,
+    ) -> Result<()> {
+        instructions::participantes::handle_operador_set_participante_nome(ctx, nome)
     }
 
     pub fn operador_register_balanca(

@@ -145,6 +145,7 @@ fn fee_payer_nao_age_como_operador() {
             carteira: sybil,
             papel: Papel::Industria,
             kyc_hash: h("k"),
+            nome: "Sybil".into(),
         },
         ecol_lote::accounts::OperadorRegisterParticipante {
             payer: patrocinador.pubkey(),

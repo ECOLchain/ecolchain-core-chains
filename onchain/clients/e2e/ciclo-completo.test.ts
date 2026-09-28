@@ -143,6 +143,7 @@ before(async () => {
                 carteira: carteira.address,
                 papel,
                 kycHash: h(`kyc:${carteira.address}`),
+                nome: lote.Papel[papel],
             }),
         );
     }

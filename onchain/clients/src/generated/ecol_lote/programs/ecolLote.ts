@@ -79,6 +79,7 @@ import {
   getOperadorRegisterParticipanteInstructionAsync,
   getOperadorSetBalancaAtivaInstructionAsync,
   getOperadorSetParticipanteAtivoInstructionAsync,
+  getOperadorSetParticipanteNomeInstructionAsync,
   getOperadorUpdateMaterialInstructionAsync,
   getParteOpenDisputaInstructionAsync,
   getPublicCrankPrazoExpiradoInstructionAsync,
@@ -107,6 +108,7 @@ import {
   parseOperadorRegisterParticipanteInstruction,
   parseOperadorSetBalancaAtivaInstruction,
   parseOperadorSetParticipanteAtivoInstruction,
+  parseOperadorSetParticipanteNomeInstruction,
   parseOperadorUpdateMaterialInstruction,
   parseParteOpenDisputaInstruction,
   parsePublicCrankPrazoExpiradoInstruction,
@@ -135,6 +137,7 @@ import {
   type OperadorRegisterParticipanteAsyncInput,
   type OperadorSetBalancaAtivaAsyncInput,
   type OperadorSetParticipanteAtivoAsyncInput,
+  type OperadorSetParticipanteNomeAsyncInput,
   type OperadorUpdateMaterialAsyncInput,
   type ParsedAdminAcceptAdminInstruction,
   type ParsedAdminInitGlobalInstruction,
@@ -160,6 +163,7 @@ import {
   type ParsedOperadorRegisterParticipanteInstruction,
   type ParsedOperadorSetBalancaAtivaInstruction,
   type ParsedOperadorSetParticipanteAtivoInstruction,
+  type ParsedOperadorSetParticipanteNomeInstruction,
   type ParsedOperadorUpdateMaterialInstruction,
   type ParsedParteOpenDisputaInstruction,
   type ParsedPublicCrankPrazoExpiradoInstruction,
@@ -449,6 +453,7 @@ export enum EcolLoteInstruction {
   OperadorRegisterParticipante,
   OperadorSetBalancaAtiva,
   OperadorSetParticipanteAtivo,
+  OperadorSetParticipanteNome,
   OperadorUpdateMaterial,
   ParteOpenDisputa,
   PublicCrankPrazoExpirado,
@@ -727,6 +732,17 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([238, 149, 251, 251, 60, 197, 75, 218]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.OperadorSetParticipanteNome;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([212, 15, 185, 226, 254, 3, 188, 204]),
       ),
       0,
@@ -848,6 +864,9 @@ export type ParsedEcolLoteInstruction<
   | ({
       instructionType: EcolLoteInstruction.OperadorSetParticipanteAtivo;
     } & ParsedOperadorSetParticipanteAtivoInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.OperadorSetParticipanteNome;
+    } & ParsedOperadorSetParticipanteNomeInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.OperadorUpdateMaterial;
     } & ParsedOperadorUpdateMaterialInstruction<TProgram>)
@@ -1034,6 +1053,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseOperadorSetParticipanteAtivoInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.OperadorSetParticipanteNome: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.OperadorSetParticipanteNome,
+        ...parseOperadorSetParticipanteNomeInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.OperadorUpdateMaterial: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -1189,6 +1215,10 @@ export type EcolLotePluginInstructions = {
   operadorSetParticipanteAtivo: (
     input: OperadorSetParticipanteAtivoAsyncInput,
   ) => ReturnType<typeof getOperadorSetParticipanteAtivoInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  operadorSetParticipanteNome: (
+    input: OperadorSetParticipanteNomeAsyncInput,
+  ) => ReturnType<typeof getOperadorSetParticipanteNomeInstructionAsync> &
     SelfPlanAndSendFunctions;
   operadorUpdateMaterial: (
     input: OperadorUpdateMaterialAsyncInput,
@@ -1382,6 +1412,11 @@ export function ecolLoteProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getOperadorSetParticipanteAtivoInstructionAsync(input),
+            ),
+          operadorSetParticipanteNome: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getOperadorSetParticipanteNomeInstructionAsync(input),
             ),
           operadorUpdateMaterial: (input) =>
             addSelfPlanAndSendFunctions(
