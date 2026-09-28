@@ -1,0 +1,18 @@
+{
+  "name": "@ecolchain/ops",
+  "private": true,
+  "type": "module",
+  "description": "Operação em devnet: Squads multisig (SDK legado web3.js v1, isolado aqui) e inicialização das configs",
+  "engines": {
+    "node": ">=20.18"
+  },
+  "dependencies": {
+    "@solana/web3.js": "1.99.0",
+    "@sqds/multisig": "2.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.3",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}

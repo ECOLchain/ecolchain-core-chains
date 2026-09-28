@@ -63,10 +63,17 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 
 **F5 (clientes e testes):** `onchain/clients` — clientes `@solana/kit` 8 gerados pelo Codama (`npm run gerar`), `src/pdas.ts`, `src/pesagem.ts` (Ed25519 da balança), `src/arvore.ts` (divisão por peso com maior resto, mesmo hash do Rust; vetor compartilhado). E2E no Surfpool embarcado (`npm run e2e`). Transações v0 porque o plugin-rpc 0.18 exigido pelo Surfpool 1.6 não monta v1. Testes: 90 Rust + 4 TS + 2 E2E.
 
-**Pendências da F5 (dependem do usuário):**
-- Docker: ativar a integração WSL no Docker Desktop → `anchor build --verifiable` e `solana-verify`.
-- Devnet: carteira `55VZeJExV1eDXTDJRLcCRmWyBsqT5VjEJcP9K9aeQSj8` tem ~4,05 SOL; deploy exige ~7,5 SOL de rent (+ buffer temporário do maior programa, ~3,4 SOL).
-- Squads (devnet): definir membros e quórum (ex.: 3 de 5) para upgrade authority, `admin` e `arbitro`.
+**Deploy devnet — decidido (2026-09-28):** esperar o build verificável; Squads com 5 chaves de teste, quórum 3 (vault 0 = upgrade authority + `admin`; vault 1 = `arbitro`; timelock 1 h na devnet).
+
+**Pronto para rodar** (`onchain/scripts/deploy-devnet.sh`): checagens (sem mainnet, Docker, `solana-verify`, saldo ≥ 11 SOL) → confirmação → `anchor build --verifiable` → `ops/chaves-devnet.ts` + `ops/squads-devnet.ts` → `solana program deploy` dos 3 → `clients/scripts/init-devnet.ts` → hash on-chain × build → upgrade authority para o vault 0. Chaves de teste em `onchain/.devnet/` (fora do git). SDK do Squads (web3.js v1, 4 vulnerabilidades altas transitivas no `npm audit`) isolado em `onchain/ops/`, só para operação.
+
+**O que falta do usuário:**
+1. Ativar Docker Desktop → Settings → Resources → WSL integration para esta distro.
+2. `cargo install solana-verify`.
+3. Completar SOL de devnet na carteira `55VZeJExV1eDXTDJRLcCRmWyBsqT5VjEJcP9K9aeQSj8` (tem ~4,05; precisa ≥ 11) em https://faucet.solana.com.
+4. Rodar `onchain/scripts/deploy-devnet.sh`.
+
+**Atenção:** as keypairs dos programas (`onchain/target/deploy/*-keypair.json`) definem os endereços e ficam fora do git — fazer backup seguro antes do deploy.
 
 **Decisões C1 e C2 (usuário, 2026-09-28):**
 - C1: desagregar com prazo — crédito em formação por mais de 180 dias vira `Abandonado`; em `Rejeitado`/`Abandonado`, o crank público `public_release_lotes` devolve os lotes a `Reciclado` (`ecol_lote::credito_mark_desagregado`).
@@ -207,7 +214,7 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 - Explicado o conceito de escrow e as opções A/B.
 - Diagrama alterado: nova linha em "❓ PREMISSAS EM ABERTO" (`t_1014`), retângulo `r_1013` +16 px de altura.
 - Criado este `CONTINUATION.md`.
-- Sessão 7: F5 parcial — clientes Codama, gerador TS da árvore, E2E Surfpool, testes de propriedade; deploy/verificável/Squads aguardando o usuário.
+- Sessão 7: F5 parcial — clientes Codama, gerador TS da árvore, E2E Surfpool, testes de propriedade; scripts de deploy devnet (verificável + Squads 3 de 5) prontos, aguardando Docker e SOL do usuário.
 - Sessão 6: F4 concluída (`ecol_reparticao`); `Cenario` do `ecol_credito` extraído para `tests/cenario/mod.rs` e reutilizado; workspace com 84 testes.
 - Sessão 5: F3 concluída (`ecol_credito`); decisões C1 (desagregar com prazo) e C2 (intermediador atesta venda) implementadas; workspace com 67 testes.
 - Sessão 4: F2 concluída (balança Ed25519, Core asset); auditoria com checklists do solana-ai-kit, 10 achados corrigidos com testes de regressão; custo real medido.

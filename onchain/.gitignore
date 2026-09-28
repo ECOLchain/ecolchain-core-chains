@@ -6,3 +6,6 @@ node_modules
 test-ledger
 .yarn
 .surfpool
+
+# chaves de teste da devnet (privadas, nunca versionar)
+.devnet
