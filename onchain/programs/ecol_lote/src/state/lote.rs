@@ -452,3 +452,103 @@ mod testes {
         assert!(lote.peso_diverge(999_999, 0).unwrap());
     }
 }
+
+#[cfg(test)]
+mod propriedades {
+    use super::*;
+    use proptest::prelude::*;
+
+    fn aplicar(e: EstadoLote, op: u8, agora: i64) -> Result<EstadoLote> {
+        match op % 13 {
+            0 => e.anunciar(agora, agora + 10),
+            1 => e.encerrar_sem_lance(agora),
+            2 => e.vender(),
+            3 => e.iniciar_transporte(),
+            4 => e.receber(agora % 2 == 0),
+            5 => e.liberar_escrow(),
+            6 => e.abrir_disputa(MotivoDisputa::Outro),
+            7 => e.expirar_prazo(agora, 0),
+            8 => e.resolver_prosseguir(),
+            9 => e.resolver_reembolso(),
+            10 => e.resolver_liberacao(),
+            11 => e.agregar(),
+            _ => e.cancelar_anuncio(),
+        }
+    }
+
+    fn lote_com_peso(peso_g: u64) -> Lote {
+        Lote {
+            cooperativa: Pubkey::default(),
+            lote_id: 0,
+            material: Material::Plastico,
+            peso_g,
+            peso_recebido_g: 0,
+            coletor_ref: [0; 32],
+            evidencias_hash: [0; 32],
+            preco_minimo_centavos: 0,
+            industria: Pubkey::default(),
+            transportador: Pubkey::default(),
+            valor_centavos: 0,
+            escrow_ref_hash: [0; 32],
+            lances_root: [0; 32],
+            prazo_entrega: 0,
+            tolerancia_peso_bps: 0,
+            valor_liberado_centavos: 0,
+            etapa_julgada: None,
+            credito: Pubkey::default(),
+            balanca_origem: Pubkey::default(),
+            ts_pesagem: 0,
+            asset: Pubkey::default(),
+            recebimento_atestado: false,
+            estado: EstadoLote::Criado,
+            seq: 0,
+            criado_em: 0,
+            atualizado_em: 0,
+            bump: 0,
+            _reserved: [0; 64],
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(5_000))]
+
+        /// Sequências aleatórias de operações: Reembolsado é absorvente; nenhum caminho volta a Criado;
+        /// só se chega a Agregado passando por Reciclado; transições rejeitadas não mudam o estado.
+        #[test]
+        fn sequencias_aleatorias_respeitam_o_grafo(ops in prop::collection::vec((any::<u8>(), 0i64..100), 1..60)) {
+            let mut e = EstadoLote::Criado;
+            let mut passou_por_reciclado = false;
+            for (op, agora) in ops {
+                let antes = e;
+                match aplicar(e, op, agora) {
+                    Ok(novo) => {
+                        prop_assert_ne!(antes, EstadoLote::Reembolsado);
+                        prop_assert_ne!(novo, EstadoLote::Criado);
+                        if novo == EstadoLote::Agregado {
+                            prop_assert_eq!(antes, EstadoLote::Reciclado);
+                        }
+                        e = novo;
+                    }
+                    Err(_) => prop_assert_eq!(e, antes),
+                }
+                passou_por_reciclado |= e == EstadoLote::Reciclado;
+                if e == EstadoLote::Agregado {
+                    prop_assert!(passou_por_reciclado);
+                }
+            }
+        }
+
+        /// Tolerância: simétrica (para mais ou para menos) e monotônica no desvio.
+        #[test]
+        fn tolerancia_simetrica_e_monotonica(peso in 1u64..u64::MAX / 2, desvio in 0u64..1_000_000, tol in 0u16..=2_000) {
+            let l = lote_com_peso(peso);
+            let desvio = desvio.min(peso);
+            let a = l.peso_diverge(peso + desvio, tol).unwrap();
+            let b = l.peso_diverge(peso - desvio, tol).unwrap();
+            prop_assert_eq!(a, b);
+            if a {
+                prop_assert!(l.peso_diverge(peso + desvio + 1, tol).unwrap());
+            }
+        }
+    }
+}

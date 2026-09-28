@@ -27,6 +27,7 @@ solana-instructions-sysvar = "3"
 solana-sdk-ids = "3"
 
 [dev-dependencies]
+proptest = "1"
 litesvm = { version = "0.10.0", features = ["precompiles"] }
 solana-message = "3.0.1"
 solana-transaction = "3.0.2"

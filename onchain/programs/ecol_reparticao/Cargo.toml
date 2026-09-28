@@ -27,6 +27,7 @@ ecol_credito = { path = "../ecol_credito", features = ["cpi"] }
 solana-sha256-hasher = "3"
 
 [dev-dependencies]
+proptest = "1"
 litesvm = { version = "0.10.0", features = ["precompiles"] }
 solana-message = "3.0.1"
 solana-transaction = "3.0.2"

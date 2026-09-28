@@ -59,7 +59,8 @@ Caminhos relativos a `onchain/programs/ecol_lote/src/`. Cada correção tem test
 - `cargo clippy --lib -- -W clippy::arithmetic_side_effects -W clippy::unwrap_used -W clippy::expect_used -W clippy::panic -D warnings`: limpo.
 - Compute units (`tests/compute_units.rs`): criação 61,8k CU (Ed25519 + Core create); demais < 33k CU.
 - `cargo audit` (v0.22.2): 2 vulnerabilidades — RUSTSEC-2022-0093 (`ed25519-dalek` 1.0.1) e RUSTSEC-2024-0344 (`curve25519-dalek` 3.2.0) — **ambas só em dev-dependency** (`litesvm` → `agave-precompiles`, usado nos testes); o programa on-chain usa `curve25519-dalek` 4.1.3. 6 avisos de crates sem manutenção (`bincode`, `paste`, `derivative`, `ansi_term`, `libsecp256k1`, `rand` 0.7), todos transitivos do ecossistema Solana/Anchor. Nenhuma ação no programa.
-- Fuzz (Trident): não executado; previsto na F5.
+- Fuzz: em vez de Trident (os programas não guardam fundos; o dinheiro é off-chain), testes de propriedade com `proptest` (F5): repartição fecha a receita e respeita percentuais (5.000 casos), percentual fora da faixa rejeitado, provas Merkle válidas/adulteradas (500 árvores aleatórias), sequências aleatórias de transições do lote respeitam o grafo (5.000 casos), tolerância de peso simétrica e monotônica. Trident fica recomendado antes de mainnet.
+- E2E no Surfpool (F5): ciclo completo com os três programas + Metaplex Core via clientes Codama; time travel + crank de prazo.
 
 ## Adendo F3 — `ecol_credito`
 

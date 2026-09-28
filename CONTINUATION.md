@@ -49,7 +49,7 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 | F2 Balança Ed25519, Core asset, atestações | ✅ + auditoria (solana-ai-kit) com 10 achados corrigidos — `docs/security-audit-2026-09-28.md` |
 | F3 `ecol_credito` | ✅ 13 instruções, 19 testes (CPI real com o `ecol_lote`); achado 14, C1 e C2 resolvidos |
 | F4 `ecol_reparticao` | ✅ 8 instruções, 17 testes (3 programas encadeados); riscos R1–R3 registrados |
-| F5 Codama, devnet, Squads, segurança | ⏳ próximo (inclui script TS gerador da árvore e E2E em Surfpool) |
+| F5 Codama, devnet, Squads, segurança | 🟡 clientes Codama, gerador TS da árvore, E2E Surfpool e testes de propriedade ✅ — **bloqueado**: build verificável (Docker no WSL), deploy devnet (SOL), Squads (membros) |
 
 **Estado atual do `ecol_lote`:** 21 instruções; 46 testes (5 unitários + 41 LiteSVM: fluxo, autorização, pesagem/asset, regressões da auditoria, compute units); clippy estrito limpo. Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
 
@@ -60,6 +60,13 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 **`ecol_reparticao` (F4):** `Distribuicao` = PDA `["dist", credito]` (uma por crédito vendido). Tetos por papel calculados on-chain: `floor(receita × bps / 10.000)` para coletor (5%), cooperativa (10%), transportador (5%) e indústria (65–79%, negociado); EcolChain = restante (1–15% + resíduo). Árvore Merkle (folha `0x00`, nó `0x01`, pares ordenados) distribui dentro de cada papel; resgate por Zupy + beneficiário (cadastrado no `ecol_lote` com o papel da folha), bitmap contra resgate duplo, teto por papel. Estados `Pendente → Financiada` (intermediador atesta repasse à Zupy e à EcolChain). Exemplo do diagrama (US$ 50): 250 / 500 / 250 / 3.250 e EcolChain 750. Gerador da árvore em Rust (`ecol_reparticao::merkle`); script TS fica para a F5.
 
 **Riscos residuais da F4 (decidir antes de mainnet):** R1 divisão dentro do papel depende do operador; R2 percentual da indústria informado só pelo operador; R3 direitos não resgatados não expiram.
+
+**F5 (clientes e testes):** `onchain/clients` — clientes `@solana/kit` 8 gerados pelo Codama (`npm run gerar`), `src/pdas.ts`, `src/pesagem.ts` (Ed25519 da balança), `src/arvore.ts` (divisão por peso com maior resto, mesmo hash do Rust; vetor compartilhado). E2E no Surfpool embarcado (`npm run e2e`). Transações v0 porque o plugin-rpc 0.18 exigido pelo Surfpool 1.6 não monta v1. Testes: 90 Rust + 4 TS + 2 E2E.
+
+**Pendências da F5 (dependem do usuário):**
+- Docker: ativar a integração WSL no Docker Desktop → `anchor build --verifiable` e `solana-verify`.
+- Devnet: carteira `55VZeJExV1eDXTDJRLcCRmWyBsqT5VjEJcP9K9aeQSj8` tem ~4,05 SOL; deploy exige ~7,5 SOL de rent (+ buffer temporário do maior programa, ~3,4 SOL).
+- Squads (devnet): definir membros e quórum (ex.: 3 de 5) para upgrade authority, `admin` e `arbitro`.
 
 **Decisões C1 e C2 (usuário, 2026-09-28):**
 - C1: desagregar com prazo — crédito em formação por mais de 180 dias vira `Abandonado`; em `Rejeitado`/`Abandonado`, o crank público `public_release_lotes` devolve os lotes a `Reciclado` (`ecol_lote::credito_mark_desagregado`).
@@ -200,6 +207,7 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 - Explicado o conceito de escrow e as opções A/B.
 - Diagrama alterado: nova linha em "❓ PREMISSAS EM ABERTO" (`t_1014`), retângulo `r_1013` +16 px de altura.
 - Criado este `CONTINUATION.md`.
+- Sessão 7: F5 parcial — clientes Codama, gerador TS da árvore, E2E Surfpool, testes de propriedade; deploy/verificável/Squads aguardando o usuário.
 - Sessão 6: F4 concluída (`ecol_reparticao`); `Cenario` do `ecol_credito` extraído para `tests/cenario/mod.rs` e reutilizado; workspace com 84 testes.
 - Sessão 5: F3 concluída (`ecol_credito`); decisões C1 (desagregar com prazo) e C2 (intermediador atesta venda) implementadas; workspace com 67 testes.
 - Sessão 4: F2 concluída (balança Ed25519, Core asset); auditoria com checklists do solana-ai-kit, 10 achados corrigidos com testes de regressão; custo real medido.

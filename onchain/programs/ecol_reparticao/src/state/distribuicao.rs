@@ -242,3 +242,57 @@ mod testes {
         assert!(d.ja_resgatado(0) && d.ja_resgatado(1) && !d.ja_resgatado(2));
     }
 }
+
+#[cfg(test)]
+mod propriedades {
+    use super::*;
+    use crate::constants::ECOLCHAIN_MIN_BPS;
+    use proptest::prelude::*;
+
+    fn bps() -> BpsReparticao {
+        BpsReparticao {
+            coletor: 500,
+            cooperativa: 1_000,
+            transportador: 500,
+            industria_min: 6_500,
+            industria_max: 7_900,
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(5_000))]
+
+        /// Para qualquer receita e percentual negociado válido: a soma fecha exatamente, cada papel
+        /// recebe no máximo o seu percentual e a EcolChain nunca fica abaixo de 1% (arredondado para baixo).
+        #[test]
+        fn reparticao_fecha_e_respeita_percentuais(receita in 0u64..=u64::MAX / 10_000, ind in 6_500u16..=7_900) {
+            let mut d = Distribuicao {
+                credito: Pubkey::default(), receita_centavos: 0, bps: bps(), bps_industria: 0,
+                total_por_papel: [0; 4], resgatado_por_papel: [0; 4], ecolchain_centavos: 0,
+                merkle_root: [0; 32], num_folhas: 0, qtd_resgates: 0, estado: EstadoDistribuicao::Pendente,
+                repasse_zupy_ref_hash: [0; 32], repasse_ecolchain_ref_hash: [0; 32], seq: 0, criado_em: 0,
+                bump: 0, _reserved: [0; 32], resgatados: vec![],
+            };
+            d.calcular(receita, bps(), ind).unwrap();
+            let soma: u128 = d.total_por_papel.iter().map(|v| u128::from(*v)).sum::<u128>() + u128::from(d.ecolchain_centavos);
+            prop_assert_eq!(soma, u128::from(receita));
+            for (total, b) in d.total_por_papel.iter().zip([500u16, 1_000, 500, ind]) {
+                prop_assert!(u128::from(*total) * 10_000 <= u128::from(receita) * u128::from(b));
+            }
+            prop_assert!(u128::from(d.ecolchain_centavos) * 10_000 >= u128::from(receita) * u128::from(ECOLCHAIN_MIN_BPS) - 10_000);
+        }
+
+        /// Percentual fora da faixa nunca é aceito.
+        #[test]
+        fn industria_fora_da_faixa_rejeitada(receita in 0u64..1_000_000_000, ind in prop_oneof![0u16..6_500, 7_901u16..=u16::MAX]) {
+            let mut d = Distribuicao {
+                credito: Pubkey::default(), receita_centavos: 0, bps: bps(), bps_industria: 0,
+                total_por_papel: [0; 4], resgatado_por_papel: [0; 4], ecolchain_centavos: 0,
+                merkle_root: [0; 32], num_folhas: 0, qtd_resgates: 0, estado: EstadoDistribuicao::Pendente,
+                repasse_zupy_ref_hash: [0; 32], repasse_ecolchain_ref_hash: [0; 32], seq: 0, criado_em: 0,
+                bump: 0, _reserved: [0; 32], resgatados: vec![],
+            };
+            prop_assert!(d.calcular(receita, bps(), ind).is_err());
+        }
+    }
+}

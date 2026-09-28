@@ -123,3 +123,47 @@ mod vetor_compartilhado {
 
     const VETOR: &str = "0bc16b3d8ce1484b7b16cabbad84e58357203e433e806442ad12b59549280d3c";
 }
+
+#[cfg(test)]
+mod propriedades {
+    use super::*;
+    use proptest::prelude::*;
+
+    fn papel(i: u8) -> Papel {
+        [
+            Papel::Coletor,
+            Papel::Cooperativa,
+            Papel::Transportador,
+            Papel::Industria,
+        ][usize::from(i % 4)]
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(500))]
+
+        /// Toda folha prova contra a raiz; alterar valor, papel, índice ou beneficiário quebra a prova.
+        #[test]
+        fn provas_validas_e_adulteracoes(
+            dados in prop::collection::vec((any::<[u8; 32]>(), any::<u8>(), any::<u64>()), 1..64),
+            alvo in any::<prop::sample::Index>(),
+            delta in 1u64..u64::MAX,
+        ) {
+            let folhas: Vec<[u8; 32]> = dados.iter().enumerate()
+                .map(|(i, (b, p, v))| folha(i as u32, &Pubkey::new_from_array(*b), papel(*p), *v))
+                .collect();
+            let r = raiz(&folhas);
+            let i = alvo.index(folhas.len());
+            let p = prova(&folhas, i);
+            prop_assert!(verificar(&p, folhas[i], &r));
+
+            let (b, pa, v) = dados[i];
+            let beneficiario = Pubkey::new_from_array(b);
+            prop_assert!(!verificar(&p, folha(i as u32, &beneficiario, papel(pa), v.wrapping_add(delta)), &r));
+            prop_assert!(!verificar(&p, folha(i as u32, &beneficiario, papel(pa.wrapping_add(1)), v), &r));
+            prop_assert!(!verificar(&p, folha((i as u32).wrapping_add(1), &beneficiario, papel(pa), v), &r));
+            let mut outro = b;
+            outro[0] ^= 1;
+            prop_assert!(!verificar(&p, folha(i as u32, &Pubkey::new_from_array(outro), papel(pa), v), &r));
+        }
+    }
+}
