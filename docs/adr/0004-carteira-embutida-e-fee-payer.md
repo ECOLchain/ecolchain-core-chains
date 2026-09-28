@@ -11,3 +11,5 @@ Cada participante tem carteira própria embutida no app (MPC). Cada instrução 
 
 ## Consequências
 Participantes não precisam de SOL. O provedor de carteira embutida entra como dependência.
+
+**Adendo (auditoria 2026-09-28, achado 2):** o fee payer (patrocinador/Kora) é uma chave **separada** do `operador` e não tem nenhum papel on-chain. Se a mesma chave pagasse taxas e fosse autoridade, co-assinar como pagador uma transação montada pelo cliente autorizaria instruções de operador embutidas nela. O `operador` nunca co-assina transações de terceiros; o relayer só aceita transações com instruções e contas em whitelist.

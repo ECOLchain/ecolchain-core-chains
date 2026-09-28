@@ -4,7 +4,9 @@ mod common;
 use {
     anchor_lang::prelude::Pubkey,
     common::*,
-    ecol_lote::{error::EcolLoteError as E, DecisaoDisputa, EstadoLote, EtapaDisputavel, MotivoDisputa},
+    ecol_lote::{
+        error::EcolLoteError as E, DecisaoDisputa, EstadoLote, EtapaDisputavel, MotivoDisputa,
+    },
     solana_signer::Signer,
 };
 
@@ -16,10 +18,22 @@ fn ciclo_completo_ate_agregado() {
     amb.criar_lote(1).unwrap();
     let l = amb.lote(lote);
     assert_eq!(l.estado, EstadoLote::Criado);
-    assert_eq!((l.peso_g, l.seq, l.criado_em), (PESO_G, 1, T0));
+    assert_eq!(
+        (l.peso_g, l.seq, l.criado_em, l.ts_pesagem),
+        (PESO_G, 2, T0, T0)
+    );
+    assert_eq!(l.balanca_origem, balanca_pda(&amb.balanca_coop.pubkey()));
+    let asset = asset_pda(&lote);
+    assert_eq!(l.asset, asset);
+    assert_eq!(dono_do_asset(&amb.svm, &asset), amb.cooperativa.pubkey());
 
     amb.anunciar(lote).unwrap();
-    assert_eq!(amb.lote(lote).estado, EstadoLote::Anunciado { prazo_leilao: T0 + 3600 });
+    assert_eq!(
+        amb.lote(lote).estado,
+        EstadoLote::Anunciado {
+            prazo_leilao: T0 + 3600
+        }
+    );
 
     amb.vender(lote).unwrap();
     let l = amb.lote(lote);
@@ -30,10 +44,13 @@ fn ciclo_completo_ate_agregado() {
 
     amb.retirar(lote).unwrap();
     assert_eq!(amb.lote(lote).transportador, amb.transportador.pubkey());
+    assert_eq!(dono_do_asset(&amb.svm, &asset), amb.transportador.pubkey());
 
     // 1% de diferença: dentro da tolerância de 2%.
     amb.receber(lote, PESO_G - PESO_G / 100).unwrap();
     assert_eq!(amb.lote(lote).estado, EstadoLote::Recebido);
+    assert!(!amb.lote(lote).recebimento_atestado);
+    assert_eq!(dono_do_asset(&amb.svm, &asset), amb.industria.pubkey());
 
     amb.liberar(lote).unwrap();
     assert_eq!(amb.lote(lote).estado, EstadoLote::Reciclado);
@@ -44,11 +61,14 @@ fn ciclo_completo_ate_agregado() {
     let l = amb.lote(lote);
     assert_eq!(l.estado, EstadoLote::Agregado);
     assert_eq!(l.credito, credito);
-    // criação(1) anúncio(2) venda(3,4) retirada(5) recebimento(6) liberação(7,8) agregação(9)
-    assert_eq!(l.seq, 9);
+    // criação(1,2) anúncio(3) venda(4,5) retirada(6) recebimento(7) liberação(8,9) agregação(10)
+    assert_eq!(l.seq, 10);
 
     // Estado terminal: nada mais anda.
-    assert_erro(amb.agregar_por(&autoridade, lote, credito), E::TransicaoInvalida);
+    assert_erro(
+        amb.agregar_por(&autoridade, lote, credito),
+        E::TransicaoInvalida,
+    );
 }
 
 #[test]
@@ -67,12 +87,21 @@ fn sem_lance_e_reanuncio() {
     assert_erro(amb.vender(lote), E::TransicaoInvalida);
 
     let coop = amb.cooperativa.insecure_clone();
-    assert_erro(amb.anunciar_por(&coop, lote, T0 + 3600, 20_000), E::PrazoInvalido);
+    assert_erro(
+        amb.anunciar_por(&coop, lote, T0 + 3600, 20_000),
+        E::PrazoInvalido,
+    );
     amb.anunciar_por(&coop, lote, T0 + 7200, 20_000).unwrap();
     assert_eq!(amb.lote(lote).preco_minimo_centavos, 20_000);
 
-    let (ind, inter) = (amb.industria.insecure_clone(), amb.intermediador.insecure_clone());
-    assert_erro(amb.vender_com(&ind, &inter, lote, 19_999), E::ValorAbaixoDoMinimo);
+    let (ind, inter) = (
+        amb.industria.insecure_clone(),
+        amb.intermediador.insecure_clone(),
+    );
+    assert_erro(
+        amb.vender_com(&ind, &inter, lote, 19_999),
+        E::ValorAbaixoDoMinimo,
+    );
     amb.vender_com(&ind, &inter, lote, 20_000).unwrap();
     assert_eq!(amb.lote(lote).estado, EstadoLote::Vendido);
 }
@@ -91,13 +120,24 @@ fn divergencia_de_peso_abre_disputa_e_arbitro_reclassifica() {
     let l = amb.lote(lote);
     assert_eq!(
         l.estado,
-        EstadoLote::EmDisputa { motivo: MotivoDisputa::DivergenciaPeso, origem: EtapaDisputavel::Recebido }
+        EstadoLote::EmDisputa {
+            motivo: MotivoDisputa::DivergenciaPeso,
+            origem: EtapaDisputavel::Recebido
+        }
     );
     assert_eq!(l.peso_recebido_g, 900_000);
     assert_erro(amb.liberar(lote), E::TransicaoInvalida);
 
     let arbitro = amb.arbitro.insecure_clone();
-    amb.resolver(&arbitro, None, lote, DecisaoDisputa::Prosseguir { novo_peso_g: Some(900_000) }).unwrap();
+    amb.resolver(
+        &arbitro,
+        None,
+        lote,
+        DecisaoDisputa::Prosseguir {
+            novo_peso_g: Some(900_000),
+        },
+    )
+    .unwrap();
     let l = amb.lote(lote);
     assert_eq!(l.estado, EstadoLote::Recebido);
     assert_eq!(l.peso_g, 900_000);
@@ -119,18 +159,30 @@ fn prazo_expirado_crank_e_reembolso() {
     amb.crank_prazo(lote).unwrap();
     assert_eq!(
         amb.lote(lote).estado,
-        EstadoLote::EmDisputa { motivo: MotivoDisputa::PrazoExpirado, origem: EtapaDisputavel::Vendido }
+        EstadoLote::EmDisputa {
+            motivo: MotivoDisputa::PrazoExpirado,
+            origem: EtapaDisputavel::Vendido
+        }
     );
 
     let arbitro = amb.arbitro.insecure_clone();
-    let reembolso = DecisaoDisputa::Reembolsar { ref_hash: h("pix-estorno") };
+    let reembolso = DecisaoDisputa::Reembolsar {
+        ref_hash: h("pix-estorno"),
+    };
     // Reembolso exige o intermediador atestando a devolução.
-    assert_erro(amb.resolver(&arbitro, None, lote, reembolso), E::NaoEhIntermediador);
+    assert_erro(
+        amb.resolver(&arbitro, None, lote, reembolso),
+        E::NaoEhIntermediador,
+    );
     let impostor = solana_keypair::Keypair::new();
-    assert_erro(amb.resolver(&arbitro, Some(&impostor), lote, reembolso), E::NaoEhIntermediador);
+    assert_erro(
+        amb.resolver(&arbitro, Some(&impostor), lote, reembolso),
+        E::NaoEhIntermediador,
+    );
 
     let inter = amb.intermediador.insecure_clone();
-    amb.resolver(&arbitro, Some(&inter), lote, reembolso).unwrap();
+    amb.resolver(&arbitro, Some(&inter), lote, reembolso)
+        .unwrap();
     assert_eq!(amb.lote(lote).estado, EstadoLote::Reembolsado);
     assert_erro(amb.retirar(lote), E::TransicaoInvalida);
 }
@@ -149,7 +201,13 @@ fn prosseguir_depois_do_prazo_renova_o_prazo_de_entrega() {
     amb.crank_prazo(lote).unwrap();
 
     let arbitro = amb.arbitro.insecure_clone();
-    amb.resolver(&arbitro, None, lote, DecisaoDisputa::Prosseguir { novo_peso_g: None }).unwrap();
+    amb.resolver(
+        &arbitro,
+        None,
+        lote,
+        DecisaoDisputa::Prosseguir { novo_peso_g: None },
+    )
+    .unwrap();
     let l = amb.lote(lote);
     assert_eq!(l.estado, EstadoLote::EmTransporte);
     assert_eq!(l.prazo_entrega, t1 + PRAZO_ENTREGA_S);
@@ -164,13 +222,23 @@ fn partes_abrem_disputa_manualmente() {
     let lote = amb.lote_ate_recebido(6);
 
     let ind = amb.industria.insecure_clone();
-    assert_erro(amb.abrir_disputa(&ind, lote, MotivoDisputa::PrazoExpirado), E::ParametroInvalido);
-    amb.abrir_disputa(&ind, lote, MotivoDisputa::ClassificacaoContestada).unwrap();
+    assert_erro(
+        amb.abrir_disputa(&ind, lote, MotivoDisputa::PrazoExpirado),
+        E::ParametroInvalido,
+    );
+    amb.abrir_disputa(&ind, lote, MotivoDisputa::ClassificacaoContestada)
+        .unwrap();
     assert_eq!(
         amb.lote(lote).estado,
-        EstadoLote::EmDisputa { motivo: MotivoDisputa::ClassificacaoContestada, origem: EtapaDisputavel::Recebido }
+        EstadoLote::EmDisputa {
+            motivo: MotivoDisputa::ClassificacaoContestada,
+            origem: EtapaDisputavel::Recebido
+        }
     );
     // Já em disputa: não abre outra.
     let coop = amb.cooperativa.insecure_clone();
-    assert_erro(amb.abrir_disputa(&coop, lote, MotivoDisputa::Outro), E::TransicaoInvalida);
+    assert_erro(
+        amb.abrir_disputa(&coop, lote, MotivoDisputa::Outro),
+        E::TransicaoInvalida,
+    );
 }

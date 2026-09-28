@@ -14,3 +14,31 @@ pub const BPS_BASE: u64 = 10_000;
 
 /// Limite superior de `tolerancia_peso_bps` (20%), para impedir que a verificação de peso seja desligada.
 pub const TOLERANCIA_PESO_MAX_BPS: u16 = 2_000;
+
+#[constant]
+pub const SEED_BALANCA: &[u8] = b"balanca";
+
+/// PDA que é update authority e autoridade dos plugins permanentes dos Core assets.
+#[constant]
+pub const SEED_AUTORIDADE_ASSET: &[u8] = b"autoridade_asset";
+
+/// Core asset do lote: PDA `["asset", lote]`, então cada lote tem no máximo um asset.
+#[constant]
+pub const SEED_ASSET: &[u8] = b"asset";
+
+/// Prefixo de domínio da mensagem assinada pela balança (evita reaproveitar assinaturas de outro contexto).
+pub const DOMINIO_PESAGEM: &[u8; 17] = b"ECOLCHAIN:PESO:v1";
+
+/// Idade máxima (e adiantamento máximo) aceita para o timestamp assinado pela balança.
+pub const JANELA_PESAGEM_S: i64 = 15 * 60;
+
+pub const URI_MAX_LEN: usize = 200;
+
+/// Limite do prazo de entrega configurável (180 dias).
+pub const PRAZO_ENTREGA_MAX_S: i64 = 180 * 24 * 3600;
+
+/// Duração máxima de um anúncio (90 dias).
+pub const DURACAO_LEILAO_MAX_S: i64 = 90 * 24 * 3600;
+
+/// Depois de voltar ao modo Normal, o crank de prazo espera esta carência para as partes retomarem.
+pub const CARENCIA_RETOMADA_S: i64 = 48 * 3600;

@@ -8,9 +8,10 @@ use crate::{
     state::{GlobalConfig, ModoOperacao},
 };
 
+/// Parâmetros alteráveis pelo admin. O próprio admin muda só em dois passos
+/// (`admin_propose_admin` + `admin_accept_admin`), para um erro de digitação não travar o config.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ConfigParams {
-    pub admin: Pubkey,
     pub arbitro: Pubkey,
     pub operador: Pubkey,
     pub intermediador: Pubkey,
@@ -22,7 +23,24 @@ pub struct ConfigParams {
 impl GlobalConfig {
     fn aplicar(&mut self, p: &ConfigParams) -> Result<()> {
         GlobalConfig::validar_parametros(p.prazo_entrega_s, p.tolerancia_peso_bps)?;
-        self.admin = p.admin;
+        // Um papel por chave: por exemplo, árbitro == intermediador reembolsaria sozinho.
+        let chaves = [
+            self.admin,
+            p.arbitro,
+            p.operador,
+            p.intermediador,
+            p.credito_autoridade,
+        ];
+        for (i, a) in chaves.iter().enumerate() {
+            require!(
+                *a != Pubkey::default(),
+                EcolLoteError::ChavesDeConfigInvalidas
+            );
+            require!(
+                !chaves[..i].contains(a),
+                EcolLoteError::ChavesDeConfigInvalidas
+            );
+        }
         self.arbitro = p.arbitro;
         self.operador = p.operador;
         self.intermediador = p.intermediador;
@@ -35,6 +53,7 @@ impl GlobalConfig {
     fn evento(&self) -> ConfigAtualizada {
         ConfigAtualizada {
             admin: self.admin,
+            admin_pendente: self.admin_pendente,
             arbitro: self.arbitro,
             operador: self.operador,
             intermediador: self.intermediador,
@@ -71,8 +90,13 @@ pub struct AdminInitGlobal<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handle_admin_init_global(ctx: Context<AdminInitGlobal>, params: ConfigParams) -> Result<()> {
+pub fn handle_admin_init_global(
+    ctx: Context<AdminInitGlobal>,
+    admin: Pubkey,
+    params: ConfigParams,
+) -> Result<()> {
     let config = &mut ctx.accounts.config;
+    config.admin = admin;
     config.aplicar(&params)?;
     config.modo = ModoOperacao::Normal;
     config.bump = ctx.bumps.config;
@@ -94,7 +118,10 @@ pub struct AdminUpdateGlobal<'info> {
     pub config: Account<'info, GlobalConfig>,
 }
 
-pub fn handle_admin_update_global(ctx: Context<AdminUpdateGlobal>, params: ConfigParams) -> Result<()> {
+pub fn handle_admin_update_global(
+    ctx: Context<AdminUpdateGlobal>,
+    params: ConfigParams,
+) -> Result<()> {
     let config = &mut ctx.accounts.config;
     config.aplicar(&params)?;
     let evento = config.evento();
@@ -104,7 +131,49 @@ pub fn handle_admin_update_global(ctx: Context<AdminUpdateGlobal>, params: Confi
 
 pub fn handle_admin_set_modo(ctx: Context<AdminUpdateGlobal>, modo: ModoOperacao) -> Result<()> {
     let config = &mut ctx.accounts.config;
+    if modo == ModoOperacao::Normal && config.modo != ModoOperacao::Normal {
+        config.retomado_em = Clock::get()?.unix_timestamp;
+    }
     config.modo = modo;
+    let evento = config.evento();
+    emit_cpi!(evento);
+    Ok(())
+}
+
+/// Passo 1 da troca de admin. `Pubkey::default()` cancela uma proposta pendente.
+pub fn handle_admin_propose_admin(
+    ctx: Context<AdminUpdateGlobal>,
+    novo_admin: Pubkey,
+) -> Result<()> {
+    let config = &mut ctx.accounts.config;
+    require!(
+        novo_admin == Pubkey::default() || !config.eh_chave_de_papel(&novo_admin),
+        EcolLoteError::ChavesDeConfigInvalidas
+    );
+    config.admin_pendente = novo_admin;
+    let evento = config.evento();
+    emit_cpi!(evento);
+    Ok(())
+}
+
+/// Passo 2: o novo admin prova que controla a chave assinando.
+#[event_cpi]
+#[derive(Accounts)]
+pub struct AdminAcceptAdmin<'info> {
+    pub novo_admin: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [SEED_GLOBAL],
+        bump = config.bump,
+        constraint = config.admin_pendente == novo_admin.key() @ EcolLoteError::SemAdminPendente
+    )]
+    pub config: Account<'info, GlobalConfig>,
+}
+
+pub fn handle_admin_accept_admin(ctx: Context<AdminAcceptAdmin>) -> Result<()> {
+    let config = &mut ctx.accounts.config;
+    config.admin = ctx.accounts.novo_admin.key();
+    config.admin_pendente = Pubkey::default();
     let evento = config.evento();
     emit_cpi!(evento);
     Ok(())

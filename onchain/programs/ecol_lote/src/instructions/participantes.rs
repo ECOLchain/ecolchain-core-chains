@@ -33,15 +33,29 @@ pub fn handle_operador_register_participante(
     papel: Papel,
     kyc_hash: [u8; 32],
 ) -> Result<()> {
-    ctx.accounts.config.exigir_modo_normal()?;
+    let config = &ctx.accounts.config;
+    config.exigir_modo_normal()?;
     require!(kyc_hash != [0; 32], EcolLoteError::ReferenciaVazia);
+    require!(
+        carteira != Pubkey::default(),
+        EcolLoteError::ParametroInvalido
+    );
+    require!(
+        !config.eh_chave_de_papel(&carteira),
+        EcolLoteError::CarteiraReservada
+    );
     let participante = &mut ctx.accounts.participante;
     participante.carteira = carteira;
     participante.papel = papel;
     participante.ativo = true;
     participante.kyc_hash = kyc_hash;
     participante.bump = ctx.bumps.participante;
-    emit_cpi!(ParticipanteAtualizado { carteira, papel, ativo: true, kyc_hash });
+    emit_cpi!(ParticipanteAtualizado {
+        carteira,
+        papel,
+        ativo: true,
+        kyc_hash
+    });
     Ok(())
 }
 

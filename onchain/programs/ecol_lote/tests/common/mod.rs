@@ -8,9 +8,11 @@ use {
         AccountDeserialize, InstructionData, ToAccountMetas,
     },
     ecol_lote::{
-        accounts as ctas, instruction as ixs, ConfigParams, DecisaoDisputa, EstadoLote,
-        GlobalConfig, Lote, Material, ModoOperacao, MotivoDisputa, Papel, Participante,
-        SEED_GLOBAL, SEED_LOTE, SEED_PARTICIPANTE,
+        accounts as ctas, instruction as ixs,
+        pesagem::{mensagem, TipoPesagem},
+        ConfigParams, DadosLote, DecisaoDisputa, EstadoLote, GlobalConfig, Lote, Material,
+        ModoOperacao, MotivoDisputa, Papel, Participante, SEED_ASSET, SEED_AUTORIDADE_ASSET,
+        SEED_BALANCA, SEED_GLOBAL, SEED_LOTE, SEED_PARTICIPANTE,
     },
     litesvm::{types::TransactionMetadata, LiteSVM},
     solana_keypair::Keypair,
@@ -27,6 +29,8 @@ pub const PESO_G: u64 = 1_000_000; // 1 t
 
 pub struct Ambiente {
     pub svm: LiteSVM,
+    /// Fee payer da EcolChain (Kora/relayer). Sem papel on-chain: pagar a taxa não autoriza nada.
+    pub patrocinador: Keypair,
     pub upgrade_authority: Keypair,
     pub admin: Keypair,
     pub arbitro: Keypair,
@@ -36,6 +40,10 @@ pub struct Ambiente {
     pub cooperativa: Keypair,
     pub industria: Keypair,
     pub transportador: Keypair,
+    /// Keypair do equipamento de pesagem instalado na cooperativa.
+    pub balanca_coop: Keypair,
+    /// Keypair do equipamento de pesagem instalado na indústria.
+    pub balanca_ind: Keypair,
 }
 
 pub fn pda(seeds: &[&[u8]]) -> Pubkey {
@@ -52,6 +60,47 @@ pub fn participante_pda(carteira: &Pubkey) -> Pubkey {
 
 pub fn lote_pda(cooperativa: &Pubkey, lote_id: u64) -> Pubkey {
     pda(&[SEED_LOTE, cooperativa.as_ref(), &lote_id.to_le_bytes()])
+}
+
+pub fn balanca_pda(dispositivo: &Pubkey) -> Pubkey {
+    pda(&[SEED_BALANCA, dispositivo.as_ref()])
+}
+
+pub fn asset_pda(lote: &Pubkey) -> Pubkey {
+    pda(&[SEED_ASSET, lote.as_ref()])
+}
+
+pub fn autoridade_asset() -> Pubkey {
+    pda(&[SEED_AUTORIDADE_ASSET])
+}
+
+/// Dono gravado no Core asset (layout BaseAssetV1: key u8 | owner Pubkey | ...).
+pub fn dono_do_asset(svm: &LiteSVM, asset: &Pubkey) -> Pubkey {
+    let conta = svm.get_account(asset).expect("asset não existe");
+    assert_eq!(
+        conta.owner,
+        mpl_core::ID,
+        "asset não pertence ao Metaplex Core"
+    );
+    Pubkey::try_from(&conta.data[1..33]).unwrap()
+}
+
+/// Instrução Ed25519 com a balança assinando a pesagem, como o app/firmware fará.
+pub fn ix_pesagem(
+    balanca: &Keypair,
+    tipo: TipoPesagem,
+    lote: &Pubkey,
+    peso_g: u64,
+    ts: i64,
+) -> Instruction {
+    let msg = mensagem(tipo, lote, peso_g, ts);
+    let assinatura = balanca.sign_message(&msg);
+    let assinatura: [u8; 64] = assinatura.as_ref().try_into().unwrap();
+    solana_ed25519_program::new_ed25519_instruction_with_signature(
+        &msg,
+        &assinatura,
+        &balanca.pubkey().to_bytes(),
+    )
 }
 
 pub fn event_authority() -> Pubkey {
@@ -75,8 +124,16 @@ impl Ambiente {
     /// (o LiteSVM a cria vazia), sem inicializar a configuração.
     pub fn novo_sem_config() -> Self {
         let mut svm = LiteSVM::new();
-        let bytes = include_bytes!(concat!(env!("CARGO_TARGET_TMPDIR"), "/../deploy/ecol_lote.so"));
+        let bytes = include_bytes!(concat!(
+            env!("CARGO_TARGET_TMPDIR"),
+            "/../deploy/ecol_lote.so"
+        ));
         svm.add_program(ecol_lote::id(), bytes).unwrap();
+        let core = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/fixtures/mpl_core.so"
+        ));
+        svm.add_program(mpl_core::ID, core).unwrap();
 
         let upgrade_authority = Keypair::new();
         let program_data = Pubkey::find_program_address(
@@ -92,6 +149,7 @@ impl Ambiente {
 
         let mut amb = Ambiente {
             svm,
+            patrocinador: Keypair::new(),
             upgrade_authority,
             admin: Keypair::new(),
             arbitro: Keypair::new(),
@@ -101,10 +159,12 @@ impl Ambiente {
             cooperativa: Keypair::new(),
             industria: Keypair::new(),
             transportador: Keypair::new(),
+            balanca_coop: Keypair::new(),
+            balanca_ind: Keypair::new(),
         };
-        // Só o operador (fee payer da EcolChain) e o cranker precisam de SOL.
-        let operador = amb.operador.pubkey();
-        amb.svm.airdrop(&operador, 10_000_000_000).unwrap();
+        // Só o patrocinador (fee payer) precisa de SOL.
+        let patrocinador = amb.patrocinador.pubkey();
+        amb.svm.airdrop(&patrocinador, 10_000_000_000).unwrap();
         amb.set_tempo(T0);
         amb
     }
@@ -121,7 +181,106 @@ impl Ambiente {
         ] {
             amb.registrar(carteira, papel).unwrap();
         }
+        let (coop, bc) = (amb.cooperativa.pubkey(), amb.balanca_coop.pubkey());
+        amb.registrar_balanca(coop, bc).unwrap();
+        let (ind, bi) = (amb.industria.pubkey(), amb.balanca_ind.pubkey());
+        amb.registrar_balanca(ind, bi).unwrap();
         amb
+    }
+
+    pub fn registrar_balanca(
+        &mut self,
+        dono: Pubkey,
+        dispositivo: Pubkey,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let operador = self.operador.insecure_clone();
+        let ix = self.ix(
+            ixs::OperadorRegisterBalanca { dispositivo },
+            ctas::OperadorRegisterBalanca {
+                payer: self.patrocinador.pubkey(),
+                operador: operador.pubkey(),
+                config: config_pda(),
+                dono_part: participante_pda(&dono),
+                balanca: balanca_pda(&dispositivo),
+                system_program: system_program::ID,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[&operador])
+    }
+
+    pub fn set_balanca_ativa(
+        &mut self,
+        balanca: Pubkey,
+        ativa: bool,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let operador = self.operador.insecure_clone();
+        let ix = self.ix(
+            ixs::OperadorSetBalancaAtiva { ativa },
+            ctas::OperadorSetBalancaAtiva {
+                operador: operador.pubkey(),
+                config: config_pda(),
+                balanca,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[&operador])
+    }
+
+    pub fn agora(&self) -> i64 {
+        self.svm.get_sysvar::<Clock>().unix_timestamp
+    }
+
+    pub fn dados(&self, lote_id: u64, peso_g: u64) -> DadosLote {
+        DadosLote {
+            lote_id,
+            material: Material::Plastico,
+            peso_g,
+            ts_pesagem: self.agora(),
+            coletor_ref: h("coletor+salt"),
+            evidencias_hash: h("fotos+ticket"),
+            uri: "https://arweave.net/lote-metadata.json".to_string(),
+        }
+    }
+
+    /// Instrução de criação crua, sem a pesagem; os testes de ataque montam a transação à mão.
+    pub fn ix_criar_lote(
+        &self,
+        cooperativa: &Pubkey,
+        balanca: Pubkey,
+        dados: DadosLote,
+    ) -> Instruction {
+        let lote = lote_pda(cooperativa, dados.lote_id);
+        self.ix(
+            ixs::CooperativaCreateLote { dados },
+            ctas::CooperativaCreateLote {
+                payer: self.patrocinador.pubkey(),
+                cooperativa: *cooperativa,
+                cooperativa_part: participante_pda(cooperativa),
+                config: config_pda(),
+                balanca,
+                lote,
+                asset: asset_pda(&lote),
+                autoridade_asset: autoridade_asset(),
+                mpl_core_program: mpl_core::ID,
+                instrucoes_sysvar: solana_instructions_sysvar::ID,
+                system_program: system_program::ID,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        )
+    }
+
+    pub fn custodia(&self, lote: &Pubkey) -> ctas::ContasCustodia {
+        ctas::ContasCustodia {
+            payer: self.patrocinador.pubkey(),
+            asset: asset_pda(lote),
+            autoridade_asset: autoridade_asset(),
+            mpl_core_program: mpl_core::ID,
+            system_program: system_program::ID,
+        }
     }
 
     pub fn set_tempo(&mut self, unix_timestamp: i64) {
@@ -130,12 +289,24 @@ impl Ambiente {
         self.svm.set_sysvar(&clock);
     }
 
-    /// Envia com o operador como fee payer, como a EcolChain fará em produção.
-    pub fn enviar(&mut self, ix: Instruction, assinantes: &[&Keypair]) -> Result<TransactionMetadata, TransactionError> {
+    /// Envia com o patrocinador como fee payer, como a EcolChain fará em produção.
+    pub fn enviar(
+        &mut self,
+        ix: Instruction,
+        assinantes: &[&Keypair],
+    ) -> Result<TransactionMetadata, TransactionError> {
+        self.enviar_varias(&[ix], assinantes)
+    }
+
+    pub fn enviar_varias(
+        &mut self,
+        ixs: &[Instruction],
+        assinantes: &[&Keypair],
+    ) -> Result<TransactionMetadata, TransactionError> {
         self.svm.expire_blockhash();
-        let payer = self.operador.insecure_clone();
+        let payer = self.patrocinador.insecure_clone();
         let blockhash = self.svm.latest_blockhash();
-        let msg = Message::new_with_blockhash(&[ix], Some(&payer.pubkey()), &blockhash);
+        let msg = Message::new_with_blockhash(ixs, Some(&payer.pubkey()), &blockhash);
         let mut todos: Vec<&Keypair> = vec![&payer];
         for a in assinantes {
             if a.pubkey() != payer.pubkey() {
@@ -152,7 +323,6 @@ impl Ambiente {
 
     pub fn params(&self) -> ConfigParams {
         ConfigParams {
-            admin: self.admin.pubkey(),
             arbitro: self.arbitro.pubkey(),
             operador: self.operador.pubkey(),
             intermediador: self.intermediador.pubkey(),
@@ -162,11 +332,17 @@ impl Ambiente {
         }
     }
 
-    pub fn init_global(&mut self, autoridade: &Keypair) -> Result<TransactionMetadata, TransactionError> {
+    pub fn init_global(
+        &mut self,
+        autoridade: &Keypair,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let ix = self.ix(
-            ixs::AdminInitGlobal { params: self.params() },
+            ixs::AdminInitGlobal {
+                admin: self.admin.pubkey(),
+                params: self.params(),
+            },
             ctas::AdminInitGlobal {
-                payer: self.operador.pubkey(),
+                payer: self.patrocinador.pubkey(),
                 upgrade_authority: autoridade.pubkey(),
                 config: config_pda(),
                 este_programa: ecol_lote::id(),
@@ -183,7 +359,11 @@ impl Ambiente {
         self.enviar(ix, &[autoridade])
     }
 
-    pub fn update_global(&mut self, admin: &Keypair, params: ConfigParams) -> Result<TransactionMetadata, TransactionError> {
+    pub fn update_global(
+        &mut self,
+        admin: &Keypair,
+        params: ConfigParams,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let ix = self.ix(
             ixs::AdminUpdateGlobal { params },
             ctas::AdminUpdateGlobal {
@@ -196,7 +376,10 @@ impl Ambiente {
         self.enviar(ix, &[admin])
     }
 
-    pub fn set_modo(&mut self, modo: ModoOperacao) -> Result<TransactionMetadata, TransactionError> {
+    pub fn set_modo(
+        &mut self,
+        modo: ModoOperacao,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let admin = self.admin.insecure_clone();
         let ix = self.ix(
             ixs::AdminSetModo { modo },
@@ -210,12 +393,20 @@ impl Ambiente {
         self.enviar(ix, &[&admin])
     }
 
-    pub fn registrar(&mut self, carteira: Pubkey, papel: Papel) -> Result<TransactionMetadata, TransactionError> {
+    pub fn registrar(
+        &mut self,
+        carteira: Pubkey,
+        papel: Papel,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let operador = self.operador.insecure_clone();
         let ix = self.ix(
-            ixs::OperadorRegisterParticipante { carteira, papel, kyc_hash: h("kyc") },
+            ixs::OperadorRegisterParticipante {
+                carteira,
+                papel,
+                kyc_hash: h("kyc"),
+            },
             ctas::OperadorRegisterParticipante {
-                payer: operador.pubkey(),
+                payer: self.patrocinador.pubkey(),
                 operador: operador.pubkey(),
                 config: config_pda(),
                 participante: participante_pda(&carteira),
@@ -227,7 +418,11 @@ impl Ambiente {
         self.enviar(ix, &[&operador])
     }
 
-    pub fn set_ativo(&mut self, carteira: Pubkey, ativo: bool) -> Result<TransactionMetadata, TransactionError> {
+    pub fn set_ativo(
+        &mut self,
+        carteira: Pubkey,
+        ativo: bool,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let operador = self.operador.insecure_clone();
         let ix = self.ix(
             ixs::OperadorSetParticipanteAtivo { ativo },
@@ -242,27 +437,37 @@ impl Ambiente {
         self.enviar(ix, &[&operador])
     }
 
-    pub fn criar_lote_por(&mut self, cooperativa: &Keypair, lote_id: u64, peso_g: u64) -> Result<TransactionMetadata, TransactionError> {
-        let ix = self.ix(
-            ixs::CooperativaCreateLote {
-                lote_id,
-                material: Material::Plastico,
-                peso_g,
-                coletor_ref: h("coletor+salt"),
-                evidencias_hash: h("fotos+ticket"),
-            },
-            ctas::CooperativaCreateLote {
-                payer: self.operador.pubkey(),
-                cooperativa: cooperativa.pubkey(),
-                cooperativa_part: participante_pda(&cooperativa.pubkey()),
-                config: config_pda(),
-                lote: lote_pda(&cooperativa.pubkey(), lote_id),
-                system_program: system_program::ID,
-                event_authority: event_authority(),
-                program: ecol_lote::id(),
-            },
+    /// Criação normal: pesagem assinada pela `balanca` + instrução do programa.
+    pub fn criar_lote_com(
+        &mut self,
+        cooperativa: &Keypair,
+        balanca: &Keypair,
+        lote_id: u64,
+        peso_g: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let dados = self.dados(lote_id, peso_g);
+        let lote = lote_pda(&cooperativa.pubkey(), lote_id);
+        let pesagem = ix_pesagem(
+            balanca,
+            TipoPesagem::Origem,
+            &lote,
+            peso_g,
+            dados.ts_pesagem,
         );
-        self.enviar(ix, &[cooperativa])
+        let criar =
+            self.ix_criar_lote(&cooperativa.pubkey(), balanca_pda(&balanca.pubkey()), dados);
+        self.enviar_varias(&[pesagem, criar], &[cooperativa])
+    }
+
+    /// Criação com a balança da cooperativa principal.
+    pub fn criar_lote_por(
+        &mut self,
+        cooperativa: &Keypair,
+        lote_id: u64,
+        peso_g: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let balanca = self.balanca_coop.insecure_clone();
+        self.criar_lote_com(cooperativa, &balanca, lote_id, peso_g)
     }
 
     pub fn criar_lote(&mut self, lote_id: u64) -> Result<TransactionMetadata, TransactionError> {
@@ -270,11 +475,21 @@ impl Ambiente {
         self.criar_lote_por(&coop, lote_id, PESO_G)
     }
 
-    pub fn anunciar_por(&mut self, cooperativa: &Keypair, lote: Pubkey, prazo_leilao: i64, preco_minimo_centavos: u64) -> Result<TransactionMetadata, TransactionError> {
+    pub fn anunciar_por(
+        &mut self,
+        cooperativa: &Keypair,
+        lote: Pubkey,
+        prazo_leilao: i64,
+        preco_minimo_centavos: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let ix = self.ix(
-            ixs::CooperativaListLote { prazo_leilao, preco_minimo_centavos },
+            ixs::CooperativaListLote {
+                prazo_leilao,
+                preco_minimo_centavos,
+            },
             ctas::CooperativaListLote {
                 cooperativa: cooperativa.pubkey(),
+                cooperativa_part: participante_pda(&cooperativa.pubkey()),
                 config: config_pda(),
                 lote,
                 event_authority: event_authority(),
@@ -289,7 +504,10 @@ impl Ambiente {
         self.anunciar_por(&coop, lote, T0 + 3600, 25_000)
     }
 
-    pub fn encerrar_sem_lance(&mut self, lote: Pubkey) -> Result<TransactionMetadata, TransactionError> {
+    pub fn encerrar_sem_lance(
+        &mut self,
+        lote: Pubkey,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let operador = self.operador.insecure_clone();
         let ix = self.ix(
             ixs::OperadorCloseLeilaoSemLance {},
@@ -304,12 +522,37 @@ impl Ambiente {
         self.enviar(ix, &[&operador])
     }
 
-    pub fn vender_com(&mut self, industria: &Keypair, intermediador: &Keypair, lote: Pubkey, valor_centavos: u64) -> Result<TransactionMetadata, TransactionError> {
+    pub fn vender_com(
+        &mut self,
+        industria: &Keypair,
+        intermediador: &Keypair,
+        lote: Pubkey,
+        valor_centavos: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let operador = self.operador.insecure_clone();
+        self.vender_completo(industria, &operador, intermediador, lote, valor_centavos)
+    }
+
+    pub fn vender_completo(
+        &mut self,
+        industria: &Keypair,
+        operador: &Keypair,
+        intermediador: &Keypair,
+        lote: Pubkey,
+        valor_centavos: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let cooperativa = self.lote(lote).cooperativa;
         let ix = self.ix(
-            ixs::IndustriaAcceptVenda { valor_centavos, escrow_ref_hash: h("escrow-123"), lances_root: h("lances") },
+            ixs::IndustriaAcceptVenda {
+                valor_centavos,
+                escrow_ref_hash: h("escrow-123"),
+                lances_root: h("lances"),
+            },
             ctas::IndustriaAcceptVenda {
                 industria: industria.pubkey(),
                 industria_part: participante_pda(&industria.pubkey()),
+                cooperativa_part: participante_pda(&cooperativa),
+                operador: operador.pubkey(),
                 intermediador: intermediador.pubkey(),
                 config: config_pda(),
                 lote,
@@ -317,23 +560,33 @@ impl Ambiente {
                 program: ecol_lote::id(),
             },
         );
-        self.enviar(ix, &[industria, intermediador])
+        self.enviar(ix, &[industria, operador, intermediador])
     }
 
     pub fn vender(&mut self, lote: Pubkey) -> Result<TransactionMetadata, TransactionError> {
-        let (ind, inter) = (self.industria.insecure_clone(), self.intermediador.insecure_clone());
+        let (ind, inter) = (
+            self.industria.insecure_clone(),
+            self.intermediador.insecure_clone(),
+        );
         self.vender_com(&ind, &inter, lote, 25_000)
     }
 
-    pub fn retirar_com(&mut self, transportador: &Keypair, cooperativa: &Keypair, lote: Pubkey) -> Result<TransactionMetadata, TransactionError> {
+    pub fn retirar_com(
+        &mut self,
+        transportador: &Keypair,
+        cooperativa: &Keypair,
+        lote: Pubkey,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let ix = self.ix(
             ixs::TransportadorPickupLote {},
             ctas::TransportadorPickupLote {
                 transportador: transportador.pubkey(),
                 transportador_part: participante_pda(&transportador.pubkey()),
                 cooperativa: cooperativa.pubkey(),
+                cooperativa_part: participante_pda(&cooperativa.pubkey()),
                 config: config_pda(),
                 lote,
+                custodia: self.custodia(&lote),
                 event_authority: event_authority(),
                 program: ecol_lote::id(),
             },
@@ -342,32 +595,68 @@ impl Ambiente {
     }
 
     pub fn retirar(&mut self, lote: Pubkey) -> Result<TransactionMetadata, TransactionError> {
-        let (t, c) = (self.transportador.insecure_clone(), self.cooperativa.insecure_clone());
+        let (t, c) = (
+            self.transportador.insecure_clone(),
+            self.cooperativa.insecure_clone(),
+        );
         self.retirar_com(&t, &c, lote)
     }
 
-    pub fn receber_por(&mut self, industria: &Keypair, lote: Pubkey, peso_recebido_g: u64) -> Result<TransactionMetadata, TransactionError> {
-        let ix = self.ix(
-            ixs::IndustriaConfirmRecebimento { peso_recebido_g },
+    pub fn ix_receber(
+        &self,
+        industria: &Pubkey,
+        lote: Pubkey,
+        peso_recebido_g: u64,
+        balanca: Option<Pubkey>,
+        ts_pesagem: Option<i64>,
+    ) -> Instruction {
+        self.ix(
+            ixs::IndustriaConfirmRecebimento {
+                peso_recebido_g,
+                ts_pesagem,
+            },
             ctas::IndustriaConfirmRecebimento {
-                industria: industria.pubkey(),
+                industria: *industria,
+                balanca,
+                instrucoes_sysvar: solana_instructions_sysvar::ID,
                 config: config_pda(),
                 lote,
+                custodia: self.custodia(&lote),
                 event_authority: event_authority(),
                 program: ecol_lote::id(),
             },
-        );
+        )
+    }
+
+    /// Recebimento sem pesagem atestada.
+    pub fn receber_por(
+        &mut self,
+        industria: &Keypair,
+        lote: Pubkey,
+        peso_recebido_g: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix_receber(&industria.pubkey(), lote, peso_recebido_g, None, None);
         self.enviar(ix, &[industria])
     }
 
-    pub fn receber(&mut self, lote: Pubkey, peso_recebido_g: u64) -> Result<TransactionMetadata, TransactionError> {
+    pub fn receber(
+        &mut self,
+        lote: Pubkey,
+        peso_recebido_g: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let ind = self.industria.insecure_clone();
         self.receber_por(&ind, lote, peso_recebido_g)
     }
 
-    pub fn liberar_por(&mut self, intermediador: &Keypair, lote: Pubkey) -> Result<TransactionMetadata, TransactionError> {
+    pub fn liberar_por(
+        &mut self,
+        intermediador: &Keypair,
+        lote: Pubkey,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let ix = self.ix(
-            ixs::IntermediadorConfirmLiberacao { liberacao_ref_hash: h("pix-liberacao") },
+            ixs::IntermediadorConfirmLiberacao {
+                liberacao_ref_hash: h("pix-liberacao"),
+            },
             ctas::IntermediadorConfirmLiberacao {
                 intermediador: intermediador.pubkey(),
                 config: config_pda(),
@@ -384,7 +673,12 @@ impl Ambiente {
         self.liberar_por(&inter, lote)
     }
 
-    pub fn abrir_disputa(&mut self, parte: &Keypair, lote: Pubkey, motivo: MotivoDisputa) -> Result<TransactionMetadata, TransactionError> {
+    pub fn abrir_disputa(
+        &mut self,
+        parte: &Keypair,
+        lote: Pubkey,
+        motivo: MotivoDisputa,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let ix = self.ix(
             ixs::ParteOpenDisputa { motivo },
             ctas::ParteOpenDisputa {
@@ -413,7 +707,13 @@ impl Ambiente {
         self.enviar(ix, &[&cranker])
     }
 
-    pub fn resolver(&mut self, arbitro: &Keypair, intermediador: Option<&Keypair>, lote: Pubkey, decisao: DecisaoDisputa) -> Result<TransactionMetadata, TransactionError> {
+    pub fn resolver(
+        &mut self,
+        arbitro: &Keypair,
+        intermediador: Option<&Keypair>,
+        lote: Pubkey,
+        decisao: DecisaoDisputa,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let ix = self.ix(
             ixs::ArbitroResolveDisputa { decisao },
             ctas::ArbitroResolveDisputa {
@@ -432,7 +732,12 @@ impl Ambiente {
         self.enviar(ix, &assinantes)
     }
 
-    pub fn agregar_por(&mut self, autoridade: &Keypair, lote: Pubkey, credito: Pubkey) -> Result<TransactionMetadata, TransactionError> {
+    pub fn agregar_por(
+        &mut self,
+        autoridade: &Keypair,
+        lote: Pubkey,
+        credito: Pubkey,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let ix = self.ix(
             ixs::CreditoMarkAgregado { credito },
             ctas::CreditoMarkAgregado {
@@ -476,12 +781,18 @@ impl Ambiente {
 
 /// Afirma que a transação falhou com o erro `esperado` do programa.
 #[track_caller]
-pub fn assert_erro(res: Result<TransactionMetadata, TransactionError>, esperado: ecol_lote::error::EcolLoteError) {
+pub fn assert_erro(
+    res: Result<TransactionMetadata, TransactionError>,
+    esperado: ecol_lote::error::EcolLoteError,
+) {
     let esperado_nome = format!("{esperado:?}");
     let codigo_esperado = codigo(esperado);
     match res {
         Err(TransactionError::InstructionError(_, InstructionError::Custom(c))) => {
-            assert_eq!(c, codigo_esperado, "esperava {esperado_nome} ({codigo_esperado}), veio {c}")
+            assert_eq!(
+                c, codigo_esperado,
+                "esperava {esperado_nome} ({codigo_esperado}), veio {c}"
+            )
         }
         outro => panic!("esperava {esperado_nome}, veio {outro:?}"),
     }

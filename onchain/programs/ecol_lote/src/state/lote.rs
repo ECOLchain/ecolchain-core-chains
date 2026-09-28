@@ -81,6 +81,14 @@ impl EstadoLote {
         }
     }
 
+    /// A cooperativa retira o anúncio a qualquer momento (reprecificar ou desistir).
+    pub fn cancelar_anuncio(self) -> Result<Self> {
+        match self {
+            EstadoLote::Anunciado { .. } => Ok(EstadoLote::SemLance),
+            _ => err!(EcolLoteError::TransicaoInvalida),
+        }
+    }
+
     pub fn encerrar_sem_lance(self, agora: i64) -> Result<Self> {
         match self {
             EstadoLote::Anunciado { prazo_leilao } => {
@@ -124,13 +132,19 @@ impl EstadoLote {
         }
     }
 
+    pub fn etapa_disputavel(self) -> Option<EtapaDisputavel> {
+        match self {
+            EstadoLote::Vendido => Some(EtapaDisputavel::Vendido),
+            EstadoLote::EmTransporte => Some(EtapaDisputavel::EmTransporte),
+            EstadoLote::Recebido => Some(EtapaDisputavel::Recebido),
+            _ => None,
+        }
+    }
+
     pub fn abrir_disputa(self, motivo: MotivoDisputa) -> Result<Self> {
-        let origem = match self {
-            EstadoLote::Vendido => EtapaDisputavel::Vendido,
-            EstadoLote::EmTransporte => EtapaDisputavel::EmTransporte,
-            EstadoLote::Recebido => EtapaDisputavel::Recebido,
-            _ => return err!(EcolLoteError::TransicaoInvalida),
-        };
+        let origem = self
+            .etapa_disputavel()
+            .ok_or(EcolLoteError::TransicaoInvalida)?;
         Ok(EstadoLote::EmDisputa { motivo, origem })
     }
 
@@ -147,6 +161,17 @@ impl EstadoLote {
     pub fn resolver_prosseguir(self) -> Result<Self> {
         match self {
             EstadoLote::EmDisputa { origem, .. } => Ok(origem.estado()),
+            _ => err!(EcolLoteError::TransicaoInvalida),
+        }
+    }
+
+    /// Árbitro resolve e liquida de uma vez (total ou parcial). Só depois da entrega.
+    pub fn resolver_liberacao(self) -> Result<Self> {
+        match self {
+            EstadoLote::EmDisputa {
+                origem: EtapaDisputavel::Recebido,
+                ..
+            } => Ok(EstadoLote::Reciclado),
             _ => err!(EcolLoteError::TransicaoInvalida),
         }
     }
@@ -192,8 +217,22 @@ pub struct Lote {
     pub lances_root: [u8; 32],
     /// Prazo para o recebimento, fixado na venda.
     pub prazo_entrega: i64,
+    /// Tolerância de peso vigente na venda (mudanças posteriores do config não afetam o lote).
+    pub tolerancia_peso_bps: u16,
+    /// Quanto do escrow foi liberado à cooperativa (o resto, se houver, foi reembolsado).
+    pub valor_liberado_centavos: u64,
+    /// Etapa cuja disputa o árbitro já julgou com "prosseguir": as partes não a reabrem.
+    pub etapa_julgada: Option<EtapaDisputavel>,
     /// Crédito de carbono ao qual o lote foi agregado.
     pub credito: Pubkey,
+    /// Balança (PDA) que atestou a pesagem de origem.
+    pub balanca_origem: Pubkey,
+    /// Horário assinado pela balança na pesagem de origem.
+    pub ts_pesagem: i64,
+    /// Core asset (recibo) do lote.
+    pub asset: Pubkey,
+    /// Recebimento confirmado com pesagem assinada por balança da indústria.
+    pub recebimento_atestado: bool,
     pub estado: EstadoLote,
     /// Número de sequência do último evento emitido para este lote (auditoria detecta lacunas).
     pub seq: u64,
@@ -223,11 +262,17 @@ impl Lote {
         let limite = u128::from(self.peso_g)
             .checked_mul(u128::from(tolerancia_bps))
             .ok_or(EcolLoteError::Overflow)?;
-        Ok(diferenca * u128::from(BPS_BASE) > limite)
+        let diferenca_bps = diferenca
+            .checked_mul(u128::from(BPS_BASE))
+            .ok_or(EcolLoteError::Overflow)?;
+        Ok(diferenca_bps > limite)
     }
 
     pub fn eh_parte(&self, chave: &Pubkey) -> bool {
-        *chave == self.cooperativa || *chave == self.industria || *chave == self.transportador
+        *chave != Pubkey::default()
+            && (*chave == self.cooperativa
+                || *chave == self.industria
+                || *chave == self.transportador)
     }
 }
 
@@ -240,14 +285,23 @@ mod testes {
     fn todos_os_estados() -> Vec<EstadoLote> {
         vec![
             EstadoLote::Criado,
-            EstadoLote::Anunciado { prazo_leilao: AGORA },
+            EstadoLote::Anunciado {
+                prazo_leilao: AGORA,
+            },
             EstadoLote::SemLance,
             EstadoLote::Vendido,
             EstadoLote::EmTransporte,
             EstadoLote::Recebido,
             EstadoLote::Reciclado,
             EstadoLote::Agregado,
-            EstadoLote::EmDisputa { motivo: MotivoDisputa::Outro, origem: EtapaDisputavel::EmTransporte },
+            EstadoLote::EmDisputa {
+                motivo: MotivoDisputa::Outro,
+                origem: EtapaDisputavel::EmTransporte,
+            },
+            EstadoLote::EmDisputa {
+                motivo: MotivoDisputa::Outro,
+                origem: EtapaDisputavel::Recebido,
+            },
             EstadoLote::Reembolsado,
         ]
     }
@@ -267,6 +321,8 @@ mod testes {
             ("expirar_prazo", |e| e.expirar_prazo(AGORA + 1, AGORA)),
             ("resolver_prosseguir", |e| e.resolver_prosseguir()),
             ("resolver_reembolso", |e| e.resolver_reembolso()),
+            ("resolver_liberacao", |e| e.resolver_liberacao()),
+            ("cancelar_anuncio", |e| e.cancelar_anuncio()),
             ("agregar", |e| e.agregar()),
         ]
     }
@@ -277,12 +333,28 @@ mod testes {
         matches!(
             (estado, transicao),
             (Criado | SemLance, "anunciar")
-                | (Anunciado { .. }, "encerrar_sem_lance" | "vender")
-                | (Vendido, "iniciar_transporte" | "abrir_disputa" | "expirar_prazo")
+                | (
+                    Anunciado { .. },
+                    "encerrar_sem_lance" | "vender" | "cancelar_anuncio"
+                )
+                | (
+                    Vendido,
+                    "iniciar_transporte" | "abrir_disputa" | "expirar_prazo"
+                )
                 | (EmTransporte, "receber" | "abrir_disputa" | "expirar_prazo")
                 | (Recebido, "liberar_escrow" | "abrir_disputa")
                 | (Reciclado, "agregar")
-                | (EmDisputa { .. }, "resolver_prosseguir" | "resolver_reembolso")
+                | (
+                    EmDisputa { .. },
+                    "resolver_prosseguir" | "resolver_reembolso"
+                )
+                | (
+                    EmDisputa {
+                        origem: EtapaDisputavel::Recebido,
+                        ..
+                    },
+                    "resolver_liberacao"
+                )
         )
     }
 
@@ -309,8 +381,15 @@ mod testes {
 
     #[test]
     fn prosseguir_volta_a_origem() {
-        for origem in [EtapaDisputavel::Vendido, EtapaDisputavel::EmTransporte, EtapaDisputavel::Recebido] {
-            let e = EstadoLote::EmDisputa { motivo: MotivoDisputa::Outro, origem };
+        for origem in [
+            EtapaDisputavel::Vendido,
+            EtapaDisputavel::EmTransporte,
+            EtapaDisputavel::Recebido,
+        ] {
+            let e = EstadoLote::EmDisputa {
+                motivo: MotivoDisputa::Outro,
+                origem,
+            };
             assert_eq!(e.resolver_prosseguir().unwrap(), origem.estado());
         }
     }
@@ -332,7 +411,14 @@ mod testes {
             escrow_ref_hash: [0; 32],
             lances_root: [0; 32],
             prazo_entrega: 0,
+            tolerancia_peso_bps: 0,
+            valor_liberado_centavos: 0,
+            etapa_julgada: None,
             credito: Pubkey::default(),
+            balanca_origem: Pubkey::default(),
+            ts_pesagem: 0,
+            asset: Pubkey::default(),
+            recebimento_atestado: false,
             estado: EstadoLote::EmTransporte,
             seq: 0,
             criado_em: 0,

@@ -72,6 +72,7 @@ pub struct ParticipanteAtualizado {
 #[event]
 pub struct ConfigAtualizada {
     pub admin: Pubkey,
+    pub admin_pendente: Pubkey,
     pub arbitro: Pubkey,
     pub operador: Pubkey,
     pub intermediador: Pubkey,
@@ -79,4 +80,23 @@ pub struct ConfigAtualizada {
     pub prazo_entrega_s: i64,
     pub tolerancia_peso_bps: u16,
     pub modo: ModoOperacao,
+}
+
+#[event]
+pub struct BalancaAtualizada {
+    pub balanca: Pubkey,
+    pub dono: Pubkey,
+    pub dispositivo: Pubkey,
+    pub ativa: bool,
+}
+
+/// Pesagem atestada por balança (origem ou recebimento).
+#[event]
+pub struct PesagemAtestada {
+    pub lote: Pubkey,
+    pub seq: u64,
+    pub balanca: Pubkey,
+    pub peso_g: u64,
+    pub ts_pesagem: i64,
+    pub recebimento: bool,
 }

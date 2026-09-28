@@ -26,7 +26,10 @@ pub struct CreditoMarkAgregado<'info> {
     pub lote: Account<'info, Lote>,
 }
 
-pub fn handle_credito_mark_agregado(ctx: Context<CreditoMarkAgregado>, credito: Pubkey) -> Result<()> {
+pub fn handle_credito_mark_agregado(
+    ctx: Context<CreditoMarkAgregado>,
+    credito: Pubkey,
+) -> Result<()> {
     ctx.accounts.config.exigir_modo_normal()?;
     let agora = Clock::get()?.unix_timestamp;
     let lote_key = ctx.accounts.lote.key();
@@ -35,6 +38,13 @@ pub fn handle_credito_mark_agregado(ctx: Context<CreditoMarkAgregado>, credito: 
     let para = lote.estado.agregar()?;
     lote.credito = credito;
     let (de, seq) = lote.transicionar(para, agora)?;
-    emit_cpi!(LoteTransicionado { lote: lote_key, seq, de, para, ator, ts: agora });
+    emit_cpi!(LoteTransicionado {
+        lote: lote_key,
+        seq,
+        de,
+        para,
+        ator,
+        ts: agora
+    });
     Ok(())
 }

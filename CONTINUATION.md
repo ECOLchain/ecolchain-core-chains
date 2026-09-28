@@ -45,11 +45,23 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 | Fase | Status |
 |---|---|
 | F0 Setup (workspace, ADRs) | ✅ (CI pendente: repositório sem remoto) |
-| F1 `ecol_lote` núcleo | ✅ 16 instruções, 18 testes passando (4 unitários da máquina de estados + 14 LiteSVM), clippy limpo |
-| F2 Balança Ed25519, Core asset, atestações | ⏳ próximo |
-| F3 `ecol_credito` | — |
+| F1 `ecol_lote` núcleo | ✅ |
+| F2 Balança Ed25519, Core asset, atestações | ✅ + auditoria (solana-ai-kit) com 10 achados corrigidos — `docs/security-audit-2026-09-28.md` |
+| F3 `ecol_credito` | ⏳ próximo (tratar achado 14 da auditoria) |
 | F4 `ecol_reparticao` | — |
 | F5 Codama, devnet, Squads, segurança | — |
+
+**Estado atual do `ecol_lote`:** 21 instruções; 46 testes (5 unitários + 41 LiteSVM: fluxo, autorização, pesagem/asset, regressões da auditoria, compute units); clippy estrito limpo. Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
+
+**Boas práticas:** seguir o [solana-ai-kit](https://github.com/solanabr/solana-ai-kit) (pedido do usuário em 2026-09-28): checklists `/audit-solana`, `safe-solana-builder`, Trail of Bits; aritmética checada, sem `unwrap` em produção, `init_if_needed` proibido, auditoria antes de fechar cada fase.
+
+**Ajustes em relação ao plano (F2):**
+- Seeds da balança = `["balanca", dispositivo]` (um equipamento, um dono).
+- Titularidade do Core asset acompanha a custódia: cooperativa → transportador (retirada) → indústria (recebimento).
+- Sem plugin `Attributes` no asset: o estado canônico fica na PDA; o asset é derivável do lote (`["asset", lote]`).
+- Surfpool: a lógica de tempo foi coberta no LiteSVM (`set_sysvar` de `Clock`); o teste de integração em Surfpool fica para o E2E da F5.
+- Correções da auditoria: disputa julgada não reabre, decisão `Liberar` (parcial), venda co-assinada pelo operador, crank só em Normal + carência 48 h, participante inativo sem novos compromissos, chaves de config distintas, admin em dois passos, liberação em `SomenteDisputas`, anúncio com teto/cancelamento, tolerância fixada na venda, fee payer separado do operador.
+- Abertos: `close` de contas terminais (achado 13), confiança na PDA do `ecol_credito` (14, na F3), taxa de ~0,0015 SOL do Core a confirmar.
 
 **Ajustes em relação ao plano (F1):**
 - `cooperativa_list_lote` cobre anúncio e reanúncio (uma instrução só).
@@ -178,6 +190,7 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 - Explicado o conceito de escrow e as opções A/B.
 - Diagrama alterado: nova linha em "❓ PREMISSAS EM ABERTO" (`t_1014`), retângulo `r_1013` +16 px de altura.
 - Criado este `CONTINUATION.md`.
+- Sessão 4: F2 concluída (balança Ed25519, Core asset); auditoria com checklists do solana-ai-kit, 10 achados corrigidos com testes de regressão; custo real medido.
 - Sessão 3: plano dos programs aprovado; F0 (workspace `onchain/`, ADRs, git init) e F1 (`ecol_lote` com máquina de estados, 18 testes) concluídas.
 - Sessão 2: gerado `docs/Proposta_04.excalidraw` (novo quadro ✅ Decisões, premissas em aberto revisadas, tokens → R$, Core asset, coletor R$ na entrega, Zupy resgata direitos, multisig, custos revisados).
 - Sessão 2: fechadas 8 premissas (escrow R$, sem token próprio, Core asset, carteira embutida/MPC, crédito só referência, coletor R$ + cupons, direito on-chain com Zupy resgatando, multisig com terceiros).

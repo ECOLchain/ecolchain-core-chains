@@ -3,10 +3,12 @@
 //! O dinheiro (escrow em R$) fica off-chain com um intermediador; este programa registra cada etapa,
 //! quem a assinou e as atestações do intermediador, para auditoria.
 
+pub mod ativo;
 pub mod constants;
 pub mod error;
 pub mod events;
 pub mod instructions;
+pub mod pesagem;
 pub mod state;
 
 use anchor_lang::prelude::*;
@@ -21,16 +23,31 @@ declare_id!("AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD");
 pub mod ecol_lote {
     use super::*;
 
-    pub fn admin_init_global(ctx: Context<AdminInitGlobal>, params: ConfigParams) -> Result<()> {
-        instructions::admin::handle_admin_init_global(ctx, params)
+    pub fn admin_init_global(
+        ctx: Context<AdminInitGlobal>,
+        admin: Pubkey,
+        params: ConfigParams,
+    ) -> Result<()> {
+        instructions::admin::handle_admin_init_global(ctx, admin, params)
     }
 
-    pub fn admin_update_global(ctx: Context<AdminUpdateGlobal>, params: ConfigParams) -> Result<()> {
+    pub fn admin_update_global(
+        ctx: Context<AdminUpdateGlobal>,
+        params: ConfigParams,
+    ) -> Result<()> {
         instructions::admin::handle_admin_update_global(ctx, params)
     }
 
     pub fn admin_set_modo(ctx: Context<AdminUpdateGlobal>, modo: ModoOperacao) -> Result<()> {
         instructions::admin::handle_admin_set_modo(ctx, modo)
+    }
+
+    pub fn admin_propose_admin(ctx: Context<AdminUpdateGlobal>, novo_admin: Pubkey) -> Result<()> {
+        instructions::admin::handle_admin_propose_admin(ctx, novo_admin)
+    }
+
+    pub fn admin_accept_admin(ctx: Context<AdminAcceptAdmin>) -> Result<()> {
+        instructions::admin::handle_admin_accept_admin(ctx)
     }
 
     pub fn operador_register_participante(
@@ -39,7 +56,9 @@ pub mod ecol_lote {
         papel: Papel,
         kyc_hash: [u8; 32],
     ) -> Result<()> {
-        instructions::participantes::handle_operador_register_participante(ctx, carteira, papel, kyc_hash)
+        instructions::participantes::handle_operador_register_participante(
+            ctx, carteira, papel, kyc_hash,
+        )
     }
 
     pub fn operador_set_participante_ativo(
@@ -49,22 +68,25 @@ pub mod ecol_lote {
         instructions::participantes::handle_operador_set_participante_ativo(ctx, ativo)
     }
 
+    pub fn operador_register_balanca(
+        ctx: Context<OperadorRegisterBalanca>,
+        dispositivo: Pubkey,
+    ) -> Result<()> {
+        instructions::balancas::handle_operador_register_balanca(ctx, dispositivo)
+    }
+
+    pub fn operador_set_balanca_ativa(
+        ctx: Context<OperadorSetBalancaAtiva>,
+        ativa: bool,
+    ) -> Result<()> {
+        instructions::balancas::handle_operador_set_balanca_ativa(ctx, ativa)
+    }
+
     pub fn cooperativa_create_lote(
         ctx: Context<CooperativaCreateLote>,
-        lote_id: u64,
-        material: Material,
-        peso_g: u64,
-        coletor_ref: [u8; 32],
-        evidencias_hash: [u8; 32],
+        dados: DadosLote,
     ) -> Result<()> {
-        instructions::lote_criacao::handle_cooperativa_create_lote(
-            ctx,
-            lote_id,
-            material,
-            peso_g,
-            coletor_ref,
-            evidencias_hash,
-        )
+        instructions::lote_criacao::handle_cooperativa_create_lote(ctx, dados)
     }
 
     pub fn cooperativa_list_lote(
@@ -72,10 +94,20 @@ pub mod ecol_lote {
         prazo_leilao: i64,
         preco_minimo_centavos: u64,
     ) -> Result<()> {
-        instructions::marketplace::handle_cooperativa_list_lote(ctx, prazo_leilao, preco_minimo_centavos)
+        instructions::marketplace::handle_cooperativa_list_lote(
+            ctx,
+            prazo_leilao,
+            preco_minimo_centavos,
+        )
     }
 
-    pub fn operador_close_leilao_sem_lance(ctx: Context<OperadorCloseLeilaoSemLance>) -> Result<()> {
+    pub fn cooperativa_cancel_anuncio(ctx: Context<CooperativaListLote>) -> Result<()> {
+        instructions::marketplace::handle_cooperativa_cancel_anuncio(ctx)
+    }
+
+    pub fn operador_close_leilao_sem_lance(
+        ctx: Context<OperadorCloseLeilaoSemLance>,
+    ) -> Result<()> {
         instructions::marketplace::handle_operador_close_leilao_sem_lance(ctx)
     }
 
@@ -100,8 +132,13 @@ pub mod ecol_lote {
     pub fn industria_confirm_recebimento(
         ctx: Context<IndustriaConfirmRecebimento>,
         peso_recebido_g: u64,
+        ts_pesagem: Option<i64>,
     ) -> Result<()> {
-        instructions::logistica::handle_industria_confirm_recebimento(ctx, peso_recebido_g)
+        instructions::logistica::handle_industria_confirm_recebimento(
+            ctx,
+            peso_recebido_g,
+            ts_pesagem,
+        )
     }
 
     pub fn intermediador_confirm_liberacao(
