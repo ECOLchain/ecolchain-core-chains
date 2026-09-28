@@ -106,3 +106,20 @@ mod testes {
         assert!(!verificar(&p, folha(1, &b, Papel::Coletor, 100), &r));
     }
 }
+
+#[cfg(test)]
+mod vetor_compartilhado {
+    use super::*;
+
+    /// Mesmo vetor em `clients/test/arvore.test.ts`: garante que o gerador TS e o programa
+    /// calculam a mesma folha.
+    #[test]
+    fn folha_fixa() {
+        let b = Pubkey::new_from_array([7; 32]);
+        let h = folha(3, &b, Papel::Industria, 3_250);
+        let hex: String = h.iter().map(|x| format!("{x:02x}")).collect();
+        assert_eq!(hex, VETOR);
+    }
+
+    const VETOR: &str = "0bc16b3d8ce1484b7b16cabbad84e58357203e433e806442ad12b59549280d3c";
+}

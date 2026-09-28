@@ -1,0 +1,31 @@
+{
+  "name": "@ecolchain/clients",
+  "private": true,
+  "type": "module",
+  "description": "Clientes TypeScript (Codama + @solana/kit) dos programas EcolChain, gerador da árvore de direitos e E2E em Surfpool",
+  "scripts": {
+    "gerar": "tsx scripts/gerar-clientes.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "e2e": "node --import tsx --test e2e/*.test.ts"
+  },
+  "engines": {
+    "node": ">=20.18"
+  },
+  "dependencies": {
+    "@solana/kit": "8.4.0",
+    "@solana/kit-plugin-rpc": "0.18.0",
+    "@solana/kit-plugin-signer": "0.18.0",
+    "@solana/program-client-core": "^8.3.0"
+  },
+  "devDependencies": {
+    "@codama/nodes-from-anchor": "1.5.6",
+    "@codama/renderers-js": "2.5.0",
+    "@solana/surfpool": "1.6.0",
+    "@solana/sysvars": "8.4.0",
+    "@types/node": "26.6.3",
+    "codama": "1.11.0",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  }
+}
