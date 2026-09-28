@@ -75,6 +75,22 @@ serial único por PDA `["serial", padrão, sha256(serial)]`.
 | C1 | Média | O operador sozinho pode agregar lotes a um crédito que nunca é submetido ou que é rejeitado: os lotes ficariam `Agregado` para sempre | **Corrigido** (decisão do usuário): prazo de 180 dias em `EmFormacao`; crank público `public_release_lotes` declara `Abandonado` e, em `Rejeitado`/`Abandonado`, devolve os lotes a `Reciclado` via `credito_mark_desagregado` (mesma PDA, só para o crédito ao qual o lote está vinculado) |
 | C2 | Média | O valor da venda do crédito (base da repartição) era declarado por operador + comprador | **Corrigido** (decisão do usuário): o intermediador de pagamento co-assina a venda com `pagamento_ref_hash` |
 
+## Adendo F4 — `ecol_reparticao`
+
+Revisão com o mesmo checklist. Sem achados técnicos:
+- **Merkle:** folha (`0x00`) e nó (`0x01`) com prefixos distintos e pares ordenados; o programa sempre calcula a folha a partir de (índice, beneficiário, papel, valor), então um nó interno nunca é aceito como folha (segunda pré-imagem); prova limitada a 16 níveis.
+- **Tetos por papel calculados on-chain** a partir de `valor_venda_centavos` do `Credito` (owner `ecol_credito` + discriminator checados; venda atestada pelo intermediador desde a C2) e dos percentuais; resíduo de arredondamento para a EcolChain; uma árvore que prometa mais que o teto de um papel é barrada no resgate (`arvore_gananciosa_nao_passa_do_teto_do_papel`; mutação de controle confirmada).
+- **Resgate:** Zupy + beneficiário assinam; beneficiário com cadastro no `ecol_lote` (`seeds::program`) e papel igual ao da folha; bitmap impede resgate duplo; distribuição só depois do repasse atestado pelo intermediador.
+- Uma distribuição por crédito (PDA `["dist", credito]`); percentuais copiados na distribuição (mudança posterior do config não afeta); init pela upgrade authority; admin em dois passos; chaves distintas; aritmética checada.
+
+**Riscos residuais (confiança/negócio):**
+
+| # | Sev. | Tema | Mitigação atual / opção |
+|---|---|---|---|
+| R1 | Média | A divisão **dentro** de cada papel (qual coletor, qual cooperativa recebe quanto) depende da árvore publicada pelo operador; o programa só garante o teto do papel | Árvore gerada por código determinístico (`ecol_reparticao::merkle`) a partir dos lotes do crédito, publicada para auditoria. Opção: co-assinatura de um auditor/validador na criação |
+| R2 | Média | O percentual negociado da indústria (65–79%) é informado só pelo operador | Opção: exigir assinatura da(s) indústria(s) do crédito, ou gravar o acordo por indústria |
+| R3 | Info | Direitos não resgatados não expiram; o saldo fica com a Zupy | Definir prazo de resgate e destino dos valores não resgatados (contrato com a Zupy) |
+
 ## Veredito
 
 Pronto para seguir para F3/F4. **Antes de mainnet:** auditoria externa, fuzzing, `close` de contas (#13), revisão da F3 (#14) e build verificável.

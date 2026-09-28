@@ -1270,6 +1270,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecol_reparticao"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "ecol_credito",
+ "ecol_lote",
+ "litesvm",
+ "mpl-core",
+ "solana-account",
+ "solana-ed25519-program",
+ "solana-instructions-sysvar",
+ "solana-keypair",
+ "solana-message",
+ "solana-sdk-ids",
+ "solana-sha256-hasher",
+ "solana-signer",
+ "solana-transaction",
+ "solana-transaction-error",
+]
+
+[[package]]
 name = "ed25519"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

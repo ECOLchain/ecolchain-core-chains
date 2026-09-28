@@ -48,14 +48,18 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 | F1 `ecol_lote` núcleo | ✅ |
 | F2 Balança Ed25519, Core asset, atestações | ✅ + auditoria (solana-ai-kit) com 10 achados corrigidos — `docs/security-audit-2026-09-28.md` |
 | F3 `ecol_credito` | ✅ 13 instruções, 19 testes (CPI real com o `ecol_lote`); achado 14, C1 e C2 resolvidos |
-| F4 `ecol_reparticao` | ⏳ próximo |
-| F5 Codama, devnet, Squads, segurança | — |
+| F4 `ecol_reparticao` | ✅ 8 instruções, 17 testes (3 programas encadeados); riscos R1–R3 registrados |
+| F5 Codama, devnet, Squads, segurança | ⏳ próximo (inclui script TS gerador da árvore e E2E em Surfpool) |
 
 **Estado atual do `ecol_lote`:** 21 instruções; 46 testes (5 unitários + 41 LiteSVM: fluxo, autorização, pesagem/asset, regressões da auditoria, compute units); clippy estrito limpo. Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
 
 **Boas práticas:** seguir o [solana-ai-kit](https://github.com/solanabr/solana-ai-kit) (pedido do usuário em 2026-09-28): checklists `/audit-solana`, `safe-solana-builder`, Trail of Bits; aritmética checada, sem `unwrap` em produção, `init_if_needed` proibido, auditoria antes de fechar cada fase.
 
 **`ecol_credito` (F3):** `Credito` = PDA `["credito", credito_id]` (o serial só existe após a emissão; unicidade via PDA `["serial", padrão, sha256(serial)]`). Estados `EmFormacao → EmValidacao → Emitido → Vendido → Aposentado`, ou `Rejeitado`. Agregação por CPI assinada pela PDA `["autoridade_credito"]` (é a `credito_autoridade` do `ecol_lote`), até 10 lotes/tx, mesmo material; `lotes_hash` encadeado (`sha256(h ‖ lote ‖ peso)`) em vez de raiz Merkle off-chain. Papel novo: **registrador** (atesta emissão, rejeição e aposentadoria no registro). Venda assinada por operador + comprador + intermediador.
+
+**`ecol_reparticao` (F4):** `Distribuicao` = PDA `["dist", credito]` (uma por crédito vendido). Tetos por papel calculados on-chain: `floor(receita × bps / 10.000)` para coletor (5%), cooperativa (10%), transportador (5%) e indústria (65–79%, negociado); EcolChain = restante (1–15% + resíduo). Árvore Merkle (folha `0x00`, nó `0x01`, pares ordenados) distribui dentro de cada papel; resgate por Zupy + beneficiário (cadastrado no `ecol_lote` com o papel da folha), bitmap contra resgate duplo, teto por papel. Estados `Pendente → Financiada` (intermediador atesta repasse à Zupy e à EcolChain). Exemplo do diagrama (US$ 50): 250 / 500 / 250 / 3.250 e EcolChain 750. Gerador da árvore em Rust (`ecol_reparticao::merkle`); script TS fica para a F5.
+
+**Riscos residuais da F4 (decidir antes de mainnet):** R1 divisão dentro do papel depende do operador; R2 percentual da indústria informado só pelo operador; R3 direitos não resgatados não expiram.
 
 **Decisões C1 e C2 (usuário, 2026-09-28):**
 - C1: desagregar com prazo — crédito em formação por mais de 180 dias vira `Abandonado`; em `Rejeitado`/`Abandonado`, o crank público `public_release_lotes` devolve os lotes a `Reciclado` (`ecol_lote::credito_mark_desagregado`).
@@ -196,6 +200,7 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 - Explicado o conceito de escrow e as opções A/B.
 - Diagrama alterado: nova linha em "❓ PREMISSAS EM ABERTO" (`t_1014`), retângulo `r_1013` +16 px de altura.
 - Criado este `CONTINUATION.md`.
+- Sessão 6: F4 concluída (`ecol_reparticao`); `Cenario` do `ecol_credito` extraído para `tests/cenario/mod.rs` e reutilizado; workspace com 84 testes.
 - Sessão 5: F3 concluída (`ecol_credito`); decisões C1 (desagregar com prazo) e C2 (intermediador atesta venda) implementadas; workspace com 67 testes.
 - Sessão 4: F2 concluída (balança Ed25519, Core asset); auditoria com checklists do solana-ai-kit, 10 achados corrigidos com testes de regressão; custo real medido.
 - Sessão 3: plano dos programs aprovado; F0 (workspace `onchain/`, ADRs, git init) e F1 (`ecol_lote` com máquina de estados, 18 testes) concluídas.
