@@ -49,9 +49,9 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 | F2 Balança Ed25519, Core asset, atestações | ✅ + auditoria (solana-ai-kit) com 10 achados corrigidos — `docs/security-audit-2026-09-28.md` |
 | F3 `ecol_credito` | ✅ 13 instruções, 19 testes (CPI real com o `ecol_lote`); achado 14, C1 e C2 resolvidos |
 | F4 `ecol_reparticao` | ✅ 8 instruções, 17 testes (3 programas encadeados); riscos R1–R3 registrados |
-| F5 Codama, devnet, Squads, segurança | 🟡 clientes Codama, gerador TS da árvore, E2E Surfpool e testes de propriedade ✅ — **bloqueado**: build verificável (Docker no WSL), deploy devnet (SOL), Squads (membros) |
+| F5 Codama, devnet, Squads, segurança | ✅ clientes Codama, gerador TS da árvore, E2E Surfpool, testes de propriedade; **deploy devnet verificável + Squads 3 de 5** (2026-09-28) |
 
-**Estado atual do `ecol_lote`:** 21 instruções; 46 testes (5 unitários + 41 LiteSVM: fluxo, autorização, pesagem/asset, regressões da auditoria, compute units); clippy estrito limpo. Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
+**Estado atual do `ecol_lote`:** 28 instruções (materiais, guardião e entregas desde a sessão 10); 64 testes (5 unitários + 41 LiteSVM: fluxo, autorização, pesagem/asset, regressões da auditoria, compute units); clippy estrito limpo. Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
 
 **Boas práticas:** seguir o [solana-ai-kit](https://github.com/solanabr/solana-ai-kit) (pedido do usuário em 2026-09-28): checklists `/audit-solana`, `safe-solana-builder`, Trail of Bits; aritmética checada, sem `unwrap` em produção, `init_if_needed` proibido, auditoria antes de fechar cada fase.
 
@@ -65,15 +65,19 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 
 **Deploy devnet — decidido (2026-09-28):** esperar o build verificável; Squads com 5 chaves de teste, quórum 3 (vault 0 = upgrade authority + `admin`; vault 1 = `arbitro`; timelock 1 h na devnet).
 
-**Pronto para rodar** (`onchain/scripts/deploy-devnet.sh`): checagens (sem mainnet, Docker, `solana-verify`, saldo ≥ 11 SOL) → confirmação → `anchor build --verifiable` → `ops/chaves-devnet.ts` + `ops/squads-devnet.ts` → `solana program deploy` dos 3 → `clients/scripts/init-devnet.ts` → hash on-chain × build → upgrade authority para o vault 0. Chaves de teste em `onchain/.devnet/` (fora do git). SDK do Squads (web3.js v1, 4 vulnerabilidades altas transitivas no `npm audit`) isolado em `onchain/ops/`, só para operação.
+**Deploy devnet — feito (2026-09-28)** com `onchain/scripts/deploy-devnet.sh` (build verificável `quay.io/ottersec/anchor:v1.1.2`; hash on-chain = build nos 3):
 
-**O que falta do usuário:**
-1. Ativar Docker Desktop → Settings → Resources → WSL integration para esta distro.
-2. `cargo install solana-verify`.
-3. Completar SOL de devnet na carteira `55VZeJExV1eDXTDJRLcCRmWyBsqT5VjEJcP9K9aeQSj8` (tem ~4,05; precisa ≥ 11) em https://faucet.solana.com.
-4. Rodar `onchain/scripts/deploy-devnet.sh`.
+| Item | Endereço |
+|---|---|
+| `ecol_lote` | `AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD` (hash `1a673abc…72ed`) |
+| `ecol_credito` | `FZtf8txpz79i4dcXcwP1NqqSMJUoZJKwjJSfjD3Y1doQ` (hash `31be82e8…5ce0`) |
+| `ecol_reparticao` | `HTLtLauuXt9PqBzJfHaWPpeJUdtWpDcAa5ZsMSnP8k8K` (hash `722c20e8…af2d`) |
+| Squads multisig (3 de 5, timelock 1 h) | `9W2HFHrGQ4sTtCaRCSeZ2ydiyuGAzg1Exb5jYFw3ZFjd` |
+| Vault 0 (upgrade authority + `admin`) | `5QLoaHGatRQnhiJxFBXhvkJ9GdDbzhCvySXwNCKiwXHj` |
+| Vault 1 (`arbitro`) | `BKgC9T4fCyMA1AMe3fNJTquQjvufgjQcdCkXjjV1yh7G` |
+| operador / intermediador / registrador / zupy | `AURz…5ZGa` / `39J3…82Ez` / `p2e2…mYz` / `GTKW…9cb` |
 
-**Atenção:** as keypairs dos programas (`onchain/target/deploy/*-keypair.json`) definem os endereços e ficam fora do git — fazer backup seguro antes do deploy.
+Configs inicializadas nos 3 programas. Custo ≈ 7,5 SOL (14,05 → 6,57). Chaves de teste e `squads.json` em `onchain/.devnet/` (fora do git); backup das keypairs dos programas em `~/backup-ecolchain/`. Upgrades e mudanças de config agora só por proposta no Squads.
 
 **Decisões C1 e C2 (usuário, 2026-09-28):**
 - C1: desagregar com prazo — crédito em formação por mais de 180 dias vira `Abandonado`; em `Rejeitado`/`Abandonado`, o crank público `public_release_lotes` devolve os lotes a `Reciclado` (`ecol_lote::credito_mark_desagregado`).
@@ -173,7 +177,8 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 | 2026-09-28 | **Crédito de carbono: só registro/referência on-chain** (nº de série, lotes agregados, prova de aposentadoria); sem tokenização |
 | 2026-09-28 | **Coletor: R$ (Pix) na entrega** pela cooperativa + 5% do crédito em cupons Zupy depois |
 | 2026-09-28 | **Zupy: direito por participante on-chain** (Merkle distributor); Zupy só resgata em cupons e publica recibo on-chain |
-| 2026-09-28 | **Governança: Squads multisig com terceiros** (ex. 3-de-5: EcolChain, cooperativas, indústria, auditor) + timelock; controla upgrade, `Config` e árbitro |
+| 2026-09-28 | **Entregas dos coletores on-chain**, uma por coletor e material, com a balança da cooperativa assinando; lotes montados a partir das entregas; **lances fora da blockchain** |
+| 2026-09-28 | ~~Governança: Squads multisig com terceiros~~ → **substituída (ADR 0009): Squads 3 de 5 só com chaves da EcolChain**; timelock 0 na devnet e 24 h na mainnet; controla upgrade, configs e árbitro |
 
 ---
 
@@ -214,6 +219,9 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 - Explicado o conceito de escrow e as opções A/B.
 - Diagrama alterado: nova linha em "❓ PREMISSAS EM ABERTO" (`t_1014`), retângulo `r_1013` +16 px de altura.
 - Criado este `CONTINUATION.md`.
+- Sessão 10: **entregas dos coletores** on-chain (`Entrega`, `cooperativa_register_entrega` com pesagem Ed25519 tipo 2, `cooperativa_add_entregas` para montar o lote; lote só vai a leilão com entregas; `coletor_ref` saiu do lote; repartição dos coletores pelo peso das entregas, R1 reduzido). Upgrades na devnet por Squads (#5–#12, timelock já em 0); ampliação de programa fora da proposta (CPI proibida). 111 testes Rust, 5 TS, 2 E2E. Lances continuam off-chain (decisão do usuário). Guardião nos 3 programas (`admin_set_guardiao`, `guardiao_pausar`, só restringe); Squads do guardião 1 de 5 com os mesmos membros, sem timelock (`ops/guardiao-devnet.ts`, `pausar.ts`, `retomar.ts`); 103 testes Rust. Governança revista (ADR 0009): multisig 3 de 5 só com chaves da EcolChain, timelock 0 na devnet (proposta #3) e 24 h na mainnet; chaves de membro renomeadas para `ecolchain-*`. Simplificação da administração. Materiais viraram cadastro on-chain (`Material`, PDA `["material", codigo]`, `operador_create_material`/`operador_update_material`; lotes e créditos guardam o código u16). Operador da devnet passou para a carteira Solflare do usuário (`EhY5…ec8X`) por proposta Squads; upgrade do `ecol_lote` e `ecol_credito` por proposta Squads (com ampliação da conta). Menu Administração na interface com Participantes, Balanças e Materiais funcionais. Scripts `ops/proposta.ts`, `trocar-operador.ts`, `propor-upgrade.ts`. 96 testes Rust + 4 TS + 2 E2E.
+- Sessão 9: interface web iniciada em `web/` (React 19 + Tailwind 4 + Vite): header fixo com logo provisório, fonte P/M/G, tema claro/escuro, idiomas pt-BR/en-US/es-ES, seletor devnet/localnet, carteira via Wallet Standard; menu lateral recolhível com opções por papel da carteira (lidas on-chain) e desabilitadas sem carteira; painel ainda a definir.
+- Sessão 8: README.md na raiz; deploy devnet verificável dos 3 programas + Squads 3 de 5 + configs inicializadas.
 - Sessão 7: F5 parcial — clientes Codama, gerador TS da árvore, E2E Surfpool, testes de propriedade; scripts de deploy devnet (verificável + Squads 3 de 5) prontos, aguardando Docker e SOL do usuário.
 - Sessão 6: F4 concluída (`ecol_reparticao`); `Cenario` do `ecol_credito` extraído para `tests/cenario/mod.rs` e reutilizado; workspace com 84 testes.
 - Sessão 5: F3 concluída (`ecol_credito`); decisões C1 (desagregar com prazo) e C2 (intermediador atesta venda) implementadas; workspace com 67 testes.

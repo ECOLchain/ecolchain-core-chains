@@ -1,6 +1,6 @@
 # ADR 0008 — Governança por multisig Squads com terceiros + timelock
 
-- **Status:** aceita
+- **Status:** substituída pela [ADR 0009](0009-governanca-multisig-so-ecolchain.md)
 - **Data:** 2026-09-28
 
 ## Contexto

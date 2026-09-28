@@ -9,4 +9,5 @@ Decisões de 2026-09-28. Formato: contexto, decisão, consequências.
 - [0005 — Crédito de carbono só como registro on-chain](0005-credito-so-como-registro.md)
 - [0006 — Coletor recebe R$ na entrega + cupons depois](0006-coletor-recebe-reais-na-entrega.md)
 - [0007 — Direito por participante on-chain; Zupy só resgata](0007-direito-on-chain-zupy-resgata.md)
-- [0008 — Governança por multisig Squads com terceiros + timelock](0008-governanca-multisig-com-terceiros.md)
+- [0008 — Governança por multisig Squads com terceiros + timelock](0008-governanca-multisig-com-terceiros.md) (substituída pela 0009)
+- [0009 — Governança por multisig 3 de 5 só com chaves da EcolChain](0009-governanca-multisig-so-ecolchain.md)
