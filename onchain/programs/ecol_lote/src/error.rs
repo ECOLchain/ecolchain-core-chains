@@ -74,4 +74,6 @@ pub enum EcolLoteError {
     SemAdminPendente,
     #[msg("Valor a liberar maior que o valor da venda")]
     ValorLiberadoInvalido,
+    #[msg("Lote não está agregado a este crédito")]
+    LoteDeOutroCredito,
 }

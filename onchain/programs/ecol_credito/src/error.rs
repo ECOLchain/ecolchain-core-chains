@@ -36,4 +36,12 @@ pub enum EcolCreditoError {
     ReferenciaVazia,
     #[msg("Estouro aritmético")]
     Overflow,
+    #[msg("Prazo de formação do crédito ainda não expirou")]
+    PrazoNaoExpirado,
+    #[msg("Lotes só podem ser liberados de crédito rejeitado ou abandonado")]
+    LiberacaoNaoPermitida,
+    #[msg("Lote não pertence a este crédito")]
+    LoteDeOutroCredito,
+    #[msg("Assinante não é o intermediador de pagamento")]
+    NaoEhIntermediador,
 }

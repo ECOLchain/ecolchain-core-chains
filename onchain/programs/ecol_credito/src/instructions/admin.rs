@@ -12,6 +12,7 @@ impl CreditoConfig {
             admin_pendente: self.admin_pendente,
             operador: self.operador,
             registrador: self.registrador,
+            intermediador: self.intermediador,
             pausado: self.pausado,
         }
     }
@@ -41,11 +42,13 @@ pub fn handle_admin_init_config(
     admin: Pubkey,
     operador: Pubkey,
     registrador: Pubkey,
+    intermediador: Pubkey,
 ) -> Result<()> {
     let config = &mut ctx.accounts.config;
     config.admin = admin;
     config.operador = operador;
     config.registrador = registrador;
+    config.intermediador = intermediador;
     config.validar_chaves()?;
     config.bump = ctx.bumps.config;
     let evento = config.evento();
@@ -65,10 +68,12 @@ pub fn handle_admin_update_config(
     ctx: Context<AdminUpdateConfig>,
     operador: Pubkey,
     registrador: Pubkey,
+    intermediador: Pubkey,
 ) -> Result<()> {
     let config = &mut ctx.accounts.config;
     config.operador = operador;
     config.registrador = registrador;
+    config.intermediador = intermediador;
     config.validar_chaves()?;
     let evento = config.evento();
     emit_cpi!(evento);
@@ -90,7 +95,7 @@ pub fn handle_admin_propose_admin(
 ) -> Result<()> {
     let config = &mut ctx.accounts.config;
     require!(
-        novo_admin != config.operador && novo_admin != config.registrador,
+        novo_admin == Pubkey::default() || !config.eh_chave_de_papel(&novo_admin),
         EcolCreditoError::ChavesDeConfigInvalidas
     );
     config.admin_pendente = novo_admin;

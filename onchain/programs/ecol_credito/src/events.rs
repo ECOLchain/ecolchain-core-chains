@@ -55,6 +55,14 @@ pub struct CreditoVendido {
     pub seq: u64,
     pub comprador: Pubkey,
     pub valor_centavos: u64,
+    pub pagamento_ref_hash: [u8; 32],
+}
+
+#[event]
+pub struct LoteLiberado {
+    pub credito: Pubkey,
+    pub seq: u64,
+    pub lote: Pubkey,
 }
 
 #[event]
@@ -70,5 +78,6 @@ pub struct CreditoConfigAtualizada {
     pub admin_pendente: Pubkey,
     pub operador: Pubkey,
     pub registrador: Pubkey,
+    pub intermediador: Pubkey,
     pub pausado: bool,
 }

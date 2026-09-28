@@ -19,3 +19,7 @@ pub const SERIAL_MAX_LEN: usize = 64;
 
 /// Lotes por transação em `operador_add_lotes` (cada lote custa uma CPI e 1 conta gravável).
 pub const MAX_LOTES_POR_TX: usize = 10;
+
+/// Prazo para um crédito sair de `EmFormacao`. Depois disso qualquer um pode declará-lo abandonado
+/// e liberar os lotes (180 dias).
+pub const PRAZO_FORMACAO_S: i64 = 180 * 24 * 3600;

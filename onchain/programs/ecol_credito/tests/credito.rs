@@ -112,6 +112,7 @@ impl Cenario {
                 admin: self.amb.admin.pubkey(),
                 operador: self.amb.operador.pubkey(),
                 registrador: self.registrador.pubkey(),
+                intermediador: self.amb.intermediador.pubkey(),
             },
             ctas::AdminInitConfig {
                 payer: self.amb.patrocinador.pubkey(),
@@ -282,26 +283,64 @@ impl Cenario {
         id: u64,
         valor: u64,
     ) -> Result<TransactionMetadata, TransactionError> {
+        let inter = self.amb.intermediador.insecure_clone();
+        self.vender_atestado(comprador, &inter, id, valor)
+    }
+
+    fn vender_atestado(
+        &mut self,
+        comprador: &Keypair,
+        intermediador: &Keypair,
+        id: u64,
+        valor: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let op = self.amb.operador.insecure_clone();
         let ix = self.ix(
             ixs::OperadorRecordVenda {
                 valor_centavos: valor,
+                pagamento_ref_hash: h("pix-venda-credito"),
             },
             ctas::OperadorRecordVenda {
                 operador: op.pubkey(),
                 comprador: comprador.pubkey(),
+                intermediador: intermediador.pubkey(),
                 config: config_credito(),
                 credito: credito_pda(id),
                 event_authority: event_authority_credito(),
                 program: ecol_credito::id(),
             },
         );
-        self.amb.enviar(ix, &[&op, comprador])
+        self.amb.enviar(ix, &[&op, comprador, intermediador])
     }
 
     fn vender(&mut self, id: u64) -> Result<TransactionMetadata, TransactionError> {
         let c = self.comprador.insecure_clone();
         self.vender_com(&c, id, 5_000)
+    }
+
+    fn liberar_lotes(
+        &mut self,
+        id: u64,
+        lotes: &[Pubkey],
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let cranker = Keypair::new();
+        let mut ix = self.ix(
+            ixs::PublicReleaseLotes {},
+            ctas::PublicReleaseLotes {
+                cranker: cranker.pubkey(),
+                config: config_credito(),
+                credito: credito_pda(id),
+                autoridade: autoridade(),
+                lote_config: config_pda(),
+                lote_event_authority: event_authority(),
+                ecol_lote_program: ecol_lote::id(),
+                event_authority: event_authority_credito(),
+                program: ecol_credito::id(),
+            },
+        );
+        ix.accounts
+            .extend(lotes.iter().map(|l| AccountMeta::new(*l, false)));
+        self.amb.enviar(ix, &[&cranker])
     }
 
     fn credito(&self, id: u64) -> Credito {
@@ -461,7 +500,7 @@ fn rejeicao_encerra_sem_emissao() {
     c.rejeitar(1).unwrap();
     assert_eq!(c.credito(1).estado, EstadoCredito::Rejeitado);
     assert_erro_credito(c.emitir(1, "VCS-9"), C::TransicaoInvalida);
-    // Lotes de crédito rejeitado continuam agregados (não são reaproveitados).
+    // Até alguém liberar, os lotes seguem agregados.
     assert_eq!(c.amb.lote(lote).estado, EstadoLote::Agregado);
 }
 
@@ -530,6 +569,7 @@ fn init_exige_upgrade_authority_e_pausa_bloqueia() {
         ixs::AdminUpdateConfig {
             operador: c.registrador.pubkey(),
             registrador: c.registrador.pubkey(),
+            intermediador: c.amb.intermediador.pubkey(),
         },
         ctas::AdminUpdateConfig {
             admin: admin.pubkey(),
@@ -557,4 +597,118 @@ fn init_por_intruso_falha() {
     };
     let intruso = Keypair::new();
     assert_erro_credito(c.init(&intruso), C::NaoEhUpgradeAuthority);
+}
+
+/// C1: lotes de crédito rejeitado voltam a `Reciclado` e entram em outro crédito.
+#[test]
+fn rejeicao_libera_lotes_para_outro_credito() {
+    let mut c = Cenario::novo();
+    let lotes: Vec<Pubkey> = (1..=2).map(|i| c.lote_reciclado(i)).collect();
+    c.criar_credito(1);
+    c.add_lotes(1, &lotes).unwrap();
+    c.submeter(1).unwrap();
+    // Antes da rejeição não há liberação.
+    assert_erro_credito(c.liberar_lotes(1, &lotes), C::LiberacaoNaoPermitida);
+    c.rejeitar(1).unwrap();
+
+    c.liberar_lotes(1, &lotes).unwrap();
+    for l in &lotes {
+        let lote = c.amb.lote(*l);
+        assert_eq!(
+            (lote.estado, lote.credito),
+            (EstadoLote::Reciclado, Pubkey::default())
+        );
+    }
+    assert_eq!(c.credito(1).qtd_lotes_liberados, 2);
+    // Liberar de novo: o lote já não pertence ao crédito.
+    assert_erro_credito(c.liberar_lotes(1, &lotes[..1]), C::LoteDeOutroCredito);
+
+    c.criar_credito(2);
+    c.add_lotes(2, &lotes).unwrap();
+    assert_eq!(c.amb.lote(lotes[0]).credito, credito_pda(2));
+}
+
+/// C1: crédito esquecido em formação libera os lotes após 180 dias, por qualquer um.
+#[test]
+fn credito_abandonado_libera_lotes_apos_prazo() {
+    let mut c = Cenario::novo();
+    let lote = c.lote_reciclado(1);
+    c.criar_credito(1);
+    c.add_lotes(1, &[lote]).unwrap();
+
+    let prazo = c.credito(1).prazo_formacao;
+    assert_eq!(prazo, T0 + 180 * 24 * 3600);
+    c.amb.set_tempo(prazo);
+    assert_erro_credito(c.liberar_lotes(1, &[lote]), C::PrazoNaoExpirado);
+    c.amb.set_tempo(prazo + 1);
+    c.liberar_lotes(1, &[lote]).unwrap();
+    assert_eq!(c.credito(1).estado, EstadoCredito::Abandonado);
+    assert_eq!(c.amb.lote(lote).estado, EstadoLote::Reciclado);
+    // Abandonado não recebe mais lotes nem é submetido.
+    assert_erro_credito(c.add_lotes(1, &[lote]), C::TransicaoInvalida);
+    assert_erro_credito(c.submeter(1), C::TransicaoInvalida);
+}
+
+/// C1: só os lotes do próprio crédito, e nunca de crédito emitido.
+#[test]
+fn liberacao_nao_toca_lotes_de_outro_credito_nem_emitido() {
+    let mut c = Cenario::novo();
+    let (l1, l2) = (c.lote_reciclado(1), c.lote_reciclado(2));
+    c.criar_credito(1);
+    c.criar_credito(2);
+    c.add_lotes(1, &[l1]).unwrap();
+    c.add_lotes(2, &[l2]).unwrap();
+    for id in [1, 2] {
+        c.submeter(id).unwrap();
+    }
+    c.rejeitar(1).unwrap();
+    c.emitir(2, "VCS-2").unwrap();
+    // Lote do crédito 2 (emitido) passado junto com o crédito 1 (rejeitado).
+    assert_erro_credito(c.liberar_lotes(1, &[l2]), C::LoteDeOutroCredito);
+    assert_erro_credito(c.liberar_lotes(2, &[l2]), C::LiberacaoNaoPermitida);
+    assert_eq!(c.amb.lote(l2).estado, EstadoLote::Agregado);
+}
+
+/// C1: ninguém além da PDA do ecol_credito desagrega direto no ecol_lote.
+#[test]
+fn desagregacao_direta_no_ecol_lote_e_bloqueada() {
+    let mut c = Cenario::novo();
+    let lote = c.lote_reciclado(1);
+    c.criar_credito(1);
+    c.add_lotes(1, &[lote]).unwrap();
+    let intruso = Keypair::new();
+    let ix = c.amb.ix(
+        ecol_lote::instruction::CreditoMarkDesagregado {
+            credito: credito_pda(1),
+        },
+        ecol_lote::accounts::CreditoMarkAgregado {
+            credito_autoridade: intruso.pubkey(),
+            config: config_pda(),
+            lote,
+            event_authority: event_authority(),
+            program: ecol_lote::id(),
+        },
+    );
+    assert_erro(
+        c.amb.enviar(ix, &[&intruso]),
+        EcolLoteError::NaoEhAutoridadeCredito,
+    );
+}
+
+/// C2: o valor da venda do crédito precisa do intermediador de pagamento.
+#[test]
+fn venda_exige_intermediador() {
+    let mut c = Cenario::novo();
+    let lote = c.lote_reciclado(1);
+    c.criar_credito(1);
+    c.add_lotes(1, &[lote]).unwrap();
+    c.submeter(1).unwrap();
+    c.emitir(1, "VCS-1").unwrap();
+    let comprador = c.comprador.insecure_clone();
+    assert_erro_credito(
+        c.vender_atestado(&comprador, &Keypair::new(), 1, 5_000),
+        C::NaoEhIntermediador,
+    );
+    c.vender(1).unwrap();
+    assert_eq!(c.credito(1).pagamento_ref_hash, h("pix-venda-credito"));
 }

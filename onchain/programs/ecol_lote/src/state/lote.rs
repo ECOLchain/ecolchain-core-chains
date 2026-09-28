@@ -62,7 +62,7 @@ pub enum EstadoLote {
     Recebido,
     /// Escrow liberado à cooperativa; operação física encerrada.
     Reciclado,
-    /// Incluído num crédito de carbono (terminal).
+    /// Incluído num crédito de carbono. Só volta a `Reciclado` se o crédito for rejeitado ou abandonado.
     Agregado,
     EmDisputa {
         motivo: MotivoDisputa,
@@ -179,6 +179,14 @@ impl EstadoLote {
     pub fn resolver_reembolso(self) -> Result<Self> {
         match self {
             EstadoLote::EmDisputa { .. } => Ok(EstadoLote::Reembolsado),
+            _ => err!(EcolLoteError::TransicaoInvalida),
+        }
+    }
+
+    /// Crédito rejeitado ou abandonado: o lote volta a poder integrar outro crédito.
+    pub fn desagregar(self) -> Result<Self> {
+        match self {
+            EstadoLote::Agregado => Ok(EstadoLote::Reciclado),
             _ => err!(EcolLoteError::TransicaoInvalida),
         }
     }
@@ -324,6 +332,7 @@ mod testes {
             ("resolver_liberacao", |e| e.resolver_liberacao()),
             ("cancelar_anuncio", |e| e.cancelar_anuncio()),
             ("agregar", |e| e.agregar()),
+            ("desagregar", |e| e.desagregar()),
         ]
     }
 
@@ -344,6 +353,7 @@ mod testes {
                 | (EmTransporte, "receber" | "abrir_disputa" | "expirar_prazo")
                 | (Recebido, "liberar_escrow" | "abrir_disputa")
                 | (Reciclado, "agregar")
+                | (Agregado, "desagregar")
                 | (
                     EmDisputa { .. },
                     "resolver_prosseguir" | "resolver_reembolso"
@@ -374,9 +384,16 @@ mod testes {
 
     #[test]
     fn terminais_nao_saem() {
-        for terminal in [EstadoLote::Agregado, EstadoLote::Reembolsado] {
-            assert!(transicoes().iter().all(|(_, f)| f(terminal).is_err()));
-        }
+        assert!(transicoes()
+            .iter()
+            .all(|(_, f)| f(EstadoLote::Reembolsado).is_err()));
+        // Agregado só sai por desagregação (crédito rejeitado/abandonado).
+        let saidas: Vec<_> = transicoes()
+            .iter()
+            .filter(|(_, f)| f(EstadoLote::Agregado).is_ok())
+            .map(|(n, _)| *n)
+            .collect();
+        assert_eq!(saidas, vec!["desagregar"]);
     }
 
     #[test]

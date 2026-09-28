@@ -26,6 +26,32 @@ pub struct CreditoMarkAgregado<'info> {
     pub lote: Account<'info, Lote>,
 }
 
+/// Desfaz a agregação quando o crédito é rejeitado ou abandonado (decidido no `ecol_credito`).
+/// Mesmas contas e mesma autoridade da agregação.
+pub fn handle_credito_mark_desagregado(
+    ctx: Context<CreditoMarkAgregado>,
+    credito: Pubkey,
+) -> Result<()> {
+    ctx.accounts.config.exigir_disputas_liberadas()?;
+    let agora = Clock::get()?.unix_timestamp;
+    let lote_key = ctx.accounts.lote.key();
+    let ator = ctx.accounts.credito_autoridade.key();
+    let lote = &mut ctx.accounts.lote;
+    require_keys_eq!(lote.credito, credito, EcolLoteError::LoteDeOutroCredito);
+    let para = lote.estado.desagregar()?;
+    lote.credito = Pubkey::default();
+    let (de, seq) = lote.transicionar(para, agora)?;
+    emit_cpi!(LoteTransicionado {
+        lote: lote_key,
+        seq,
+        de,
+        para,
+        ator,
+        ts: agora
+    });
+    Ok(())
+}
+
 pub fn handle_credito_mark_agregado(
     ctx: Context<CreditoMarkAgregado>,
     credito: Pubkey,

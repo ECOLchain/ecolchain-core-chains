@@ -13,8 +13,9 @@ pub enum PadraoRegistro {
 ///
 /// ```text
 /// EmFormacao → EmValidacao → Emitido → Vendido → Aposentado
-///                          ↘ Rejeitado
+///     ↘ Abandonado          ↘ Rejeitado
 /// ```
+/// Em `Rejeitado` e `Abandonado` os lotes podem ser liberados (voltam a `Reciclado`).
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
 pub enum EstadoCredito {
     /// Recebendo lotes reciclados.
@@ -29,6 +30,8 @@ pub enum EstadoCredito {
     Aposentado,
     /// Não validado (terminal): sem emissão e sem repartição.
     Rejeitado,
+    /// Passou do prazo em formação sem ser submetido (terminal).
+    Abandonado,
 }
 
 impl EstadoCredito {
@@ -38,6 +41,21 @@ impl EstadoCredito {
             EcolCreditoError::TransicaoInvalida
         );
         Ok(())
+    }
+
+    pub fn abandonar(self, agora: i64, prazo_formacao: i64) -> Result<Self> {
+        match self {
+            EstadoCredito::EmFormacao => {
+                require!(agora > prazo_formacao, EcolCreditoError::PrazoNaoExpirado);
+                Ok(EstadoCredito::Abandonado)
+            }
+            _ => err!(EcolCreditoError::TransicaoInvalida),
+        }
+    }
+
+    /// Estados em que os lotes agregados podem voltar a `Reciclado`.
+    pub fn permite_liberar_lotes(self) -> bool {
+        matches!(self, EstadoCredito::Rejeitado | EstadoCredito::Abandonado)
     }
 
     pub fn submeter(self) -> Result<Self> {
@@ -89,6 +107,8 @@ pub struct Credito {
     /// Hash do documento de metodologia/projeto submetido ao validador.
     pub metodologia_hash: [u8; 32],
     pub qtd_lotes: u32,
+    /// Lotes já devolvidos a `Reciclado` após rejeição/abandono.
+    pub qtd_lotes_liberados: u32,
     pub peso_total_g: u64,
     /// Hash encadeado dos lotes: `h = sha256(h || lote || peso_g)`, na ordem de agregação.
     /// Qualquer auditor reconstrói a partir dos eventos `LoteAgregado`.
@@ -97,6 +117,10 @@ pub struct Credito {
     pub tco2e_milli: u64,
     pub comprador: Pubkey,
     pub valor_venda_centavos: u64,
+    /// Hash da referência do pagamento no intermediador.
+    pub pagamento_ref_hash: [u8; 32],
+    /// Limite para sair de `EmFormacao`.
+    pub prazo_formacao: i64,
     /// Hash da prova de aposentadoria no registro (certificado / link).
     pub prova_aposentadoria_hash: [u8; 32],
     pub estado: EstadoCredito,
@@ -136,7 +160,8 @@ mod testes {
     #[test]
     fn matriz_completa_de_transicoes() {
         type T = (&'static str, fn(EstadoCredito) -> Result<EstadoCredito>);
-        let transicoes: [T; 5] = [
+        let transicoes: [T; 6] = [
+            ("abandonar", |e| e.abandonar(2, 1)),
             ("submeter", |e| e.submeter()),
             ("emitir", |e| e.emitir()),
             ("rejeitar", |e| e.rejeitar()),
@@ -150,6 +175,7 @@ mod testes {
                     | (EmValidacao, "emitir" | "rejeitar")
                     | (Emitido, "vender")
                     | (Vendido, "aposentar")
+                    | (EmFormacao, "abandonar")
             )
         };
         for e in [
@@ -159,10 +185,19 @@ mod testes {
             Vendido,
             Aposentado,
             Rejeitado,
+            Abandonado,
         ] {
             for (nome, f) in transicoes {
                 assert_eq!(f(e).is_ok(), permitida(e, nome), "{e:?} --{nome}-->");
             }
         }
+    }
+
+    #[test]
+    fn abandono_so_depois_do_prazo() {
+        assert!(EmFormacao.abandonar(100, 100).is_err());
+        assert_eq!(EmFormacao.abandonar(101, 100).unwrap(), Abandonado);
+        assert!(Rejeitado.permite_liberar_lotes() && Abandonado.permite_liberar_lotes());
+        assert!(!EmFormacao.permite_liberar_lotes() && !Aposentado.permite_liberar_lotes());
     }
 }

@@ -166,4 +166,11 @@ pub mod ecol_lote {
     pub fn credito_mark_agregado(ctx: Context<CreditoMarkAgregado>, credito: Pubkey) -> Result<()> {
         instructions::credito::handle_credito_mark_agregado(ctx, credito)
     }
+
+    pub fn credito_mark_desagregado(
+        ctx: Context<CreditoMarkAgregado>,
+        credito: Pubkey,
+    ) -> Result<()> {
+        instructions::credito::handle_credito_mark_desagregado(ctx, credito)
+    }
 }

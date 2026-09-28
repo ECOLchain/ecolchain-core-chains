@@ -128,14 +128,21 @@ pub fn handle_registrador_record_rejeicao(
     Ok(())
 }
 
-/// Venda registrada com a assinatura do comprador (carteira embutida) e do operador.
-/// O valor é a base da repartição (`ecol_reparticao`), por isso não fica só com a EcolChain.
+/// Venda registrada com as assinaturas do operador, do comprador (carteira embutida) e do
+/// intermediador, que atesta o recebimento do valor. O valor é a base da repartição
+/// (`ecol_reparticao`), por isso não fica só com a EcolChain.
 #[event_cpi]
 #[derive(Accounts)]
 pub struct OperadorRecordVenda<'info> {
     pub operador: Signer<'info>,
     pub comprador: Signer<'info>,
-    #[account(seeds = [SEED_CONFIG], bump = config.bump, has_one = operador @ EcolCreditoError::NaoEhOperador)]
+    pub intermediador: Signer<'info>,
+    #[account(
+        seeds = [SEED_CONFIG],
+        bump = config.bump,
+        has_one = operador @ EcolCreditoError::NaoEhOperador,
+        has_one = intermediador @ EcolCreditoError::NaoEhIntermediador
+    )]
     pub config: Account<'info, CreditoConfig>,
     #[account(mut, seeds = [SEED_CREDITO, &credito.credito_id.to_le_bytes()], bump = credito.bump)]
     pub credito: Account<'info, Credito>,
@@ -144,13 +151,18 @@ pub struct OperadorRecordVenda<'info> {
 pub fn handle_operador_record_venda(
     ctx: Context<OperadorRecordVenda>,
     valor_centavos: u64,
+    pagamento_ref_hash: [u8; 32],
 ) -> Result<()> {
     let config = &ctx.accounts.config;
     config.exigir_ativo()?;
     require!(valor_centavos > 0, EcolCreditoError::ParametroInvalido);
+    require!(
+        pagamento_ref_hash != [0; 32],
+        EcolCreditoError::ReferenciaVazia
+    );
     let comprador = ctx.accounts.comprador.key();
     require!(
-        comprador != config.admin && comprador != config.registrador,
+        !config.eh_chave_de_papel(&comprador),
         EcolCreditoError::ChavesDeConfigInvalidas
     );
     let agora = Clock::get()?.unix_timestamp;
@@ -160,6 +172,7 @@ pub fn handle_operador_record_venda(
     let para = credito.estado.vender()?;
     credito.comprador = comprador;
     credito.valor_venda_centavos = valor_centavos;
+    credito.pagamento_ref_hash = pagamento_ref_hash;
     let (de, seq) = credito.transicionar(para, agora)?;
     let seq_venda = credito.proximo_seq()?;
     emit_cpi!(CreditoTransicionado {
@@ -174,7 +187,8 @@ pub fn handle_operador_record_venda(
         credito: credito_key,
         seq: seq_venda,
         comprador,
-        valor_centavos
+        valor_centavos,
+        pagamento_ref_hash,
     });
     Ok(())
 }

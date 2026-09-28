@@ -47,19 +47,19 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 | F0 Setup (workspace, ADRs) | ✅ (CI pendente: repositório sem remoto) |
 | F1 `ecol_lote` núcleo | ✅ |
 | F2 Balança Ed25519, Core asset, atestações | ✅ + auditoria (solana-ai-kit) com 10 achados corrigidos — `docs/security-audit-2026-09-28.md` |
-| F3 `ecol_credito` | ✅ 12 instruções, 13 testes (CPI real com o `ecol_lote`); achado 14 resolvido |
-| F4 `ecol_reparticao` | ⏳ próximo — decidir antes C1 e C2 (abaixo) |
+| F3 `ecol_credito` | ✅ 13 instruções, 19 testes (CPI real com o `ecol_lote`); achado 14, C1 e C2 resolvidos |
+| F4 `ecol_reparticao` | ⏳ próximo |
 | F5 Codama, devnet, Squads, segurança | — |
 
 **Estado atual do `ecol_lote`:** 21 instruções; 46 testes (5 unitários + 41 LiteSVM: fluxo, autorização, pesagem/asset, regressões da auditoria, compute units); clippy estrito limpo. Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
 
 **Boas práticas:** seguir o [solana-ai-kit](https://github.com/solanabr/solana-ai-kit) (pedido do usuário em 2026-09-28): checklists `/audit-solana`, `safe-solana-builder`, Trail of Bits; aritmética checada, sem `unwrap` em produção, `init_if_needed` proibido, auditoria antes de fechar cada fase.
 
-**`ecol_credito` (F3):** `Credito` = PDA `["credito", credito_id]` (o serial só existe após a emissão; unicidade via PDA `["serial", padrão, sha256(serial)]`). Estados `EmFormacao → EmValidacao → Emitido → Vendido → Aposentado`, ou `Rejeitado`. Agregação por CPI assinada pela PDA `["autoridade_credito"]` (é a `credito_autoridade` do `ecol_lote`), até 10 lotes/tx, mesmo material; `lotes_hash` encadeado (`sha256(h ‖ lote ‖ peso)`) em vez de raiz Merkle off-chain. Papel novo: **registrador** (atesta emissão, rejeição e aposentadoria no registro). Venda assinada por operador + comprador.
+**`ecol_credito` (F3):** `Credito` = PDA `["credito", credito_id]` (o serial só existe após a emissão; unicidade via PDA `["serial", padrão, sha256(serial)]`). Estados `EmFormacao → EmValidacao → Emitido → Vendido → Aposentado`, ou `Rejeitado`. Agregação por CPI assinada pela PDA `["autoridade_credito"]` (é a `credito_autoridade` do `ecol_lote`), até 10 lotes/tx, mesmo material; `lotes_hash` encadeado (`sha256(h ‖ lote ‖ peso)`) em vez de raiz Merkle off-chain. Papel novo: **registrador** (atesta emissão, rejeição e aposentadoria no registro). Venda assinada por operador + comprador + intermediador.
 
-**Decisões pendentes antes da F4:**
-- C1: lotes de crédito rejeitado/abandonado ficam presos em `Agregado` — criar desagregação com prazo?
-- C2: valor da venda do crédito (base da repartição) atestado só por operador + comprador — exigir intermediador?
+**Decisões C1 e C2 (usuário, 2026-09-28):**
+- C1: desagregar com prazo — crédito em formação por mais de 180 dias vira `Abandonado`; em `Rejeitado`/`Abandonado`, o crank público `public_release_lotes` devolve os lotes a `Reciclado` (`ecol_lote::credito_mark_desagregado`).
+- C2: o intermediador de pagamento co-assina a venda do crédito (`pagamento_ref_hash`); é papel no `CreditoConfig`.
 
 **Ajustes em relação ao plano (F2):**
 - Seeds da balança = `["balanca", dispositivo]` (um equipamento, um dono).
@@ -196,7 +196,7 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 - Explicado o conceito de escrow e as opções A/B.
 - Diagrama alterado: nova linha em "❓ PREMISSAS EM ABERTO" (`t_1014`), retângulo `r_1013` +16 px de altura.
 - Criado este `CONTINUATION.md`.
-- Sessão 5: F3 concluída (`ecol_credito`, 13 testes; total do workspace 61). Duas decisões de negócio abertas (C1, C2).
+- Sessão 5: F3 concluída (`ecol_credito`); decisões C1 (desagregar com prazo) e C2 (intermediador atesta venda) implementadas; workspace com 67 testes.
 - Sessão 4: F2 concluída (balança Ed25519, Core asset); auditoria com checklists do solana-ai-kit, 10 achados corrigidos com testes de regressão; custo real medido.
 - Sessão 3: plano dos programs aprovado; F0 (workspace `onchain/`, ADRs, git init) e F1 (`ecol_lote` com máquina de estados, 18 testes) concluídas.
 - Sessão 2: gerado `docs/Proposta_04.excalidraw` (novo quadro ✅ Decisões, premissas em aberto revisadas, tokens → R$, Core asset, coletor R$ na entrega, Zupy resgata direitos, multisig, custos revisados).

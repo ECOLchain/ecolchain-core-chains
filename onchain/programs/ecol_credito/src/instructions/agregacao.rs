@@ -3,9 +3,9 @@ use ecol_lote::{program::EcolLote, EstadoLote, GlobalConfig, Lote, Material};
 use solana_sha256_hasher::hashv;
 
 use crate::{
-    constants::{MAX_LOTES_POR_TX, SEED_AUTORIDADE, SEED_CONFIG, SEED_CREDITO},
+    constants::{MAX_LOTES_POR_TX, PRAZO_FORMACAO_S, SEED_AUTORIDADE, SEED_CONFIG, SEED_CREDITO},
     error::EcolCreditoError,
-    events::{CreditoCriado, CreditoTransicionado, LoteAgregado},
+    events::{CreditoCriado, CreditoTransicionado, LoteAgregado, LoteLiberado},
     state::{Credito, CreditoConfig, EstadoCredito, PadraoRegistro},
 };
 
@@ -54,6 +54,9 @@ pub fn handle_operador_create_credito(
     credito.estado = EstadoCredito::EmFormacao;
     credito.criado_em = agora;
     credito.atualizado_em = agora;
+    credito.prazo_formacao = agora
+        .checked_add(PRAZO_FORMACAO_S)
+        .ok_or(EcolCreditoError::Overflow)?;
     credito.bump = ctx.bumps.credito;
     let seq = credito.proximo_seq()?;
     emit_cpi!(CreditoCriado {
@@ -200,5 +203,101 @@ pub fn handle_operador_submit_credito(ctx: Context<OperadorSubmitCredito>) -> Re
         ator,
         ts: agora
     });
+    Ok(())
+}
+
+/// Crank permissionless: devolve lotes de um crédito rejeitado ou abandonado a `Reciclado`,
+/// para que possam integrar outro crédito. Se o crédito ainda está `EmFormacao` e passou do
+/// prazo, é declarado `Abandonado` na mesma instrução. Qualquer um pode chamar (ex.: a própria
+/// cooperativa), então a EcolChain não consegue prender lotes indefinidamente.
+#[event_cpi]
+#[derive(Accounts)]
+pub struct PublicReleaseLotes<'info> {
+    pub cranker: Signer<'info>,
+    #[account(seeds = [SEED_CONFIG], bump = config.bump)]
+    pub config: Account<'info, CreditoConfig>,
+    #[account(mut, seeds = [SEED_CREDITO, &credito.credito_id.to_le_bytes()], bump = credito.bump)]
+    pub credito: Account<'info, Credito>,
+    /// CHECK: PDA sem dados; só assina a CPI. Endereço fixado pelas seeds.
+    #[account(seeds = [SEED_AUTORIDADE], bump)]
+    pub autoridade: UncheckedAccount<'info>,
+    pub lote_config: Account<'info, GlobalConfig>,
+    /// CHECK: event authority do `ecol_lote`; o próprio `ecol_lote` valida as seeds na CPI.
+    pub lote_event_authority: UncheckedAccount<'info>,
+    pub ecol_lote_program: Program<'info, EcolLote>,
+}
+
+pub fn handle_public_release_lotes<'info>(
+    ctx: Context<'info, PublicReleaseLotes<'info>>,
+) -> Result<()> {
+    ctx.accounts.config.exigir_ativo()?;
+    let lotes = ctx.remaining_accounts;
+    require!(
+        !lotes.is_empty() && lotes.len() <= MAX_LOTES_POR_TX,
+        EcolCreditoError::QuantidadeDeLotesInvalida
+    );
+    let agora = Clock::get()?.unix_timestamp;
+    let credito_key = ctx.accounts.credito.key();
+    let ator = ctx.accounts.cranker.key();
+
+    if ctx.accounts.credito.estado == EstadoCredito::EmFormacao {
+        let credito = &mut ctx.accounts.credito;
+        let para = credito.estado.abandonar(agora, credito.prazo_formacao)?;
+        let (de, seq) = credito.transicionar(para, agora)?;
+        emit_cpi!(CreditoTransicionado {
+            credito: credito_key,
+            seq,
+            de,
+            para,
+            ator,
+            ts: agora
+        });
+    }
+    require!(
+        ctx.accounts.credito.estado.permite_liberar_lotes(),
+        EcolCreditoError::LiberacaoNaoPermitida
+    );
+
+    let seeds: &[&[u8]] = &[SEED_AUTORIDADE, &[ctx.bumps.autoridade]];
+    for conta in lotes {
+        let antes = ler_lote(conta)?;
+        require_keys_eq!(
+            antes.credito,
+            credito_key,
+            EcolCreditoError::LoteDeOutroCredito
+        );
+
+        ecol_lote::cpi::credito_mark_desagregado(
+            CpiContext::new_with_signer(
+                ecol_lote::ID,
+                ecol_lote::cpi::accounts::CreditoMarkAgregado {
+                    credito_autoridade: ctx.accounts.autoridade.to_account_info(),
+                    config: ctx.accounts.lote_config.to_account_info(),
+                    lote: conta.clone(),
+                    event_authority: ctx.accounts.lote_event_authority.to_account_info(),
+                    program: ctx.accounts.ecol_lote_program.to_account_info(),
+                },
+                &[seeds],
+            ),
+            credito_key,
+        )?;
+
+        let depois = ler_lote(conta)?;
+        require!(
+            depois.estado == EstadoLote::Reciclado && depois.credito == Pubkey::default(),
+            EcolCreditoError::AgregacaoNaoConfirmada
+        );
+        let credito = &mut ctx.accounts.credito;
+        credito.qtd_lotes_liberados = credito
+            .qtd_lotes_liberados
+            .checked_add(1)
+            .ok_or(EcolCreditoError::Overflow)?;
+        let seq = credito.proximo_seq()?;
+        emit_cpi!(LoteLiberado {
+            credito: credito_key,
+            seq,
+            lote: conta.key()
+        });
+    }
     Ok(())
 }

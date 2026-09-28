@@ -68,12 +68,12 @@ seeds da PDA nunca repassadas a outro programa, `remaining_accounts` com owner +
 estado relido após a CPI, aritmética checada, init restrito à upgrade authority, admin em dois passos,
 serial único por PDA `["serial", padrão, sha256(serial)]`.
 
-**Decisões de negócio em aberto (risco residual):**
+**Decisões de negócio (resolvidas em 2026-09-28):**
 
 | # | Sev. | Tema | Situação |
 |---|---|---|---|
-| C1 | Média | O operador sozinho pode agregar lotes a um crédito que nunca é submetido ou que é rejeitado: os lotes ficam `Agregado` para sempre e a cooperativa perde o direito ao crédito | Opções: prazo máximo em `EmFormacao` + instrução de desagregação no `ecol_lote` (CPI da mesma PDA) na rejeição/abandono; ou consentimento da cooperativa por lote |
-| C2 | Média | O valor da venda do crédito (base da repartição) é declarado por operador + comprador | Opção: exigir atestação do intermediador de pagamento, como no escrow do lote. Decidir antes da F4 |
+| C1 | Média | O operador sozinho pode agregar lotes a um crédito que nunca é submetido ou que é rejeitado: os lotes ficariam `Agregado` para sempre | **Corrigido** (decisão do usuário): prazo de 180 dias em `EmFormacao`; crank público `public_release_lotes` declara `Abandonado` e, em `Rejeitado`/`Abandonado`, devolve os lotes a `Reciclado` via `credito_mark_desagregado` (mesma PDA, só para o crédito ao qual o lote está vinculado) |
+| C2 | Média | O valor da venda do crédito (base da repartição) era declarado por operador + comprador | **Corrigido** (decisão do usuário): o intermediador de pagamento co-assina a venda com `pagamento_ref_hash` |
 
 ## Veredito
 

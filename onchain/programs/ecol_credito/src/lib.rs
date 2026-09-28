@@ -27,16 +27,24 @@ pub mod ecol_credito {
         admin: Pubkey,
         operador: Pubkey,
         registrador: Pubkey,
+        intermediador: Pubkey,
     ) -> Result<()> {
-        instructions::admin::handle_admin_init_config(ctx, admin, operador, registrador)
+        instructions::admin::handle_admin_init_config(
+            ctx,
+            admin,
+            operador,
+            registrador,
+            intermediador,
+        )
     }
 
     pub fn admin_update_config(
         ctx: Context<AdminUpdateConfig>,
         operador: Pubkey,
         registrador: Pubkey,
+        intermediador: Pubkey,
     ) -> Result<()> {
-        instructions::admin::handle_admin_update_config(ctx, operador, registrador)
+        instructions::admin::handle_admin_update_config(ctx, operador, registrador, intermediador)
     }
 
     pub fn admin_set_pausado(ctx: Context<AdminUpdateConfig>, pausado: bool) -> Result<()> {
@@ -101,8 +109,15 @@ pub mod ecol_credito {
     pub fn operador_record_venda(
         ctx: Context<OperadorRecordVenda>,
         valor_centavos: u64,
+        pagamento_ref_hash: [u8; 32],
     ) -> Result<()> {
-        instructions::ciclo::handle_operador_record_venda(ctx, valor_centavos)
+        instructions::ciclo::handle_operador_record_venda(ctx, valor_centavos, pagamento_ref_hash)
+    }
+
+    pub fn public_release_lotes<'info>(
+        ctx: Context<'info, PublicReleaseLotes<'info>>,
+    ) -> Result<()> {
+        instructions::agregacao::handle_public_release_lotes(ctx)
     }
 
     pub fn registrador_record_aposentadoria(
