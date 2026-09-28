@@ -192,7 +192,8 @@ async function registrarEVincular(lotePda: Address, entregaId: bigint, pesoG: bi
             eventAuthority: ev.lote,
             program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
             entregaId,
-            coletorRef: h(`coletor:${k.coletor.address}:salt`),
+            origem: lote.OrigemEntrega.Coletor,
+            origemRef: h(`coletor:${k.coletor.address}:salt`),
             material: PLASTICO,
             pesoG,
             tsPesagem: ts,
@@ -211,31 +212,48 @@ async function registrarEVincular(lotePda: Address, entregaId: bigint, pesoG: bi
     );
 }
 
-/** Leva o lote `loteId` de `Criado` até `Reciclado`, com pesagens atestadas na origem e no recebimento. */
-async function loteAteReciclado(loteId: bigint, pesoG: bigint): Promise<Address> {
+/** Lote de venda `loteId`: abre, vincula uma origem de coletor e fecha com a pesagem do consolidado. */
+async function montarEFechar(loteId: bigint, pesoG: bigint): Promise<Address> {
     const lotePda = await pdas.lote.lote(k.cooperativa.address, loteId);
-    const asset = await pdas.lote.asset(lotePda);
-    let ts = await agora();
     await enviar(
-        await instrucaoPesagem(k.balancaCoop, TipoPesagem.Origem, lotePda, pesoG, ts),
         await lote.getCooperativaCreateLoteInstructionAsync({
             payer: client.payer,
             cooperativa: k.cooperativa,
-            balanca: await pdas.lote.balanca(k.balancaCoop.address),
             materialCadastro: await pdas.lote.material(PLASTICO),
             lote: lotePda,
             eventAuthority: ev.lote,
             program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
             loteId,
             material: PLASTICO,
-            pesoG,
-            tsPesagem: ts,
             evidenciasHash: h(`fotos:${loteId}`),
-            uri: `https://arweave.net/ecolchain/lote-${loteId}.json`,
         }),
     );
     // Montagem: a entrega do coletor, pesada e assinada pela balança, vinculada ao lote.
     await registrarEVincular(lotePda, loteId, pesoG);
+    const ts = await agora();
+    await enviar(
+        await instrucaoPesagem(k.balancaCoop, TipoPesagem.Origem, lotePda, pesoG, ts),
+        await lote.getCooperativaFecharLoteInstructionAsync({
+            payer: client.payer,
+            cooperativa: k.cooperativa,
+            balanca: await pdas.lote.balanca(k.balancaCoop.address),
+            lote: lotePda,
+            eventAuthority: ev.lote,
+            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            pesoG,
+            tsPesagem: ts,
+            uri: `https://arweave.net/ecolchain/lote-${loteId}.json`,
+        }),
+    );
+    return lotePda;
+}
+
+/** Leva o lote `loteId` de `Criado` até `Reciclado`, com pesagens atestadas na origem e no recebimento. */
+async function loteAteReciclado(loteId: bigint, pesoG: bigint): Promise<Address> {
+    const lotePda = await pdas.lote.lote(k.cooperativa.address, loteId);
+    const asset = await pdas.lote.asset(lotePda);
+    await montarEFechar(loteId, pesoG);
+    let ts = await agora();
     await enviar(
         await lote.getCooperativaListLoteInstructionAsync({
             cooperativa: k.cooperativa,
@@ -443,26 +461,8 @@ test('ciclo completo: lote → crédito vendido → direitos → resgates', asyn
 
 test('prazo de entrega vencido: time travel no surfnet + crank público', async () => {
     const lotePda = await pdas.lote.lote(k.cooperativa.address, 99n);
+    await montarEFechar(99n, 1_000n);
     const ts = await agora();
-    await enviar(
-        await instrucaoPesagem(k.balancaCoop, TipoPesagem.Origem, lotePda, 1_000n, ts),
-        await lote.getCooperativaCreateLoteInstructionAsync({
-            payer: client.payer,
-            cooperativa: k.cooperativa,
-            balanca: await pdas.lote.balanca(k.balancaCoop.address),
-            materialCadastro: await pdas.lote.material(PLASTICO),
-            lote: lotePda,
-            eventAuthority: ev.lote,
-            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-            loteId: 99n,
-            material: PLASTICO,
-            pesoG: 1_000n,
-            tsPesagem: ts,
-            evidenciasHash: h('e'),
-            uri: 'https://arweave.net/x.json',
-        }),
-    );
-    await registrarEVincular(lotePda, 99n, 1_000n);
     await enviar(
         await lote.getCooperativaListLoteInstructionAsync({
             cooperativa: k.cooperativa,

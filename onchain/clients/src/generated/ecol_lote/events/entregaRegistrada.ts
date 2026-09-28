@@ -33,6 +33,12 @@ import {
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
 } from "@solana/kit";
+import {
+  getOrigemEntregaDecoder,
+  getOrigemEntregaEncoder,
+  type OrigemEntrega,
+  type OrigemEntregaArgs,
+} from "../types";
 
 export const ENTREGA_REGISTRADA_EVENT_DISCRIMINATOR: ReadonlyUint8Array =
   new Uint8Array([47, 160, 89, 212, 25, 146, 231, 230]);
@@ -47,7 +53,8 @@ export type EntregaRegistradaEvent = {
   entrega: Address;
   cooperativa: Address;
   entregaId: bigint;
-  coletorRef: ReadonlyUint8Array;
+  origem: OrigemEntrega;
+  origemRef: ReadonlyUint8Array;
   material: number;
   pesoG: bigint;
   balanca: Address;
@@ -58,7 +65,8 @@ export type EntregaRegistradaEventArgs = {
   entrega: Address;
   cooperativa: Address;
   entregaId: number | bigint;
-  coletorRef: ReadonlyUint8Array;
+  origem: OrigemEntregaArgs;
+  origemRef: ReadonlyUint8Array;
   material: number;
   pesoG: number | bigint;
   balanca: Address;
@@ -72,7 +80,8 @@ export function getEntregaRegistradaEventEncoder(): FixedSizeEncoder<EntregaRegi
       ["entrega", getAddressEncoder()],
       ["cooperativa", getAddressEncoder()],
       ["entregaId", getU64Encoder()],
-      ["coletorRef", fixEncoderSize(getBytesEncoder(), 32)],
+      ["origem", getOrigemEntregaEncoder()],
+      ["origemRef", fixEncoderSize(getBytesEncoder(), 32)],
       ["material", getU16Encoder()],
       ["pesoG", getU64Encoder()],
       ["balanca", getAddressEncoder()],
@@ -89,7 +98,8 @@ export function getEntregaRegistradaEventDecoder(): FixedSizeDecoder<EntregaRegi
       ["entrega", getAddressDecoder()],
       ["cooperativa", getAddressDecoder()],
       ["entregaId", getU64Decoder()],
-      ["coletorRef", fixDecoderSize(getBytesDecoder(), 32)],
+      ["origem", getOrigemEntregaDecoder()],
+      ["origemRef", fixDecoderSize(getBytesDecoder(), 32)],
       ["material", getU16Decoder()],
       ["pesoG", getU64Decoder()],
       ["balanca", getAddressDecoder()],

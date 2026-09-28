@@ -108,6 +108,10 @@ export const ECOL_LOTE_ERROR__LOTE_SEM_ENTREGAS = 0x179c; // 6044
 export const ECOL_LOTE_ERROR__QUANTIDADE_DE_ENTREGAS_INVALIDA = 0x179d; // 6045
 /** EntregaInvalida: Conta informada não é uma entrega válida */
 export const ECOL_LOTE_ERROR__ENTREGA_INVALIDA = 0x179e; // 6046
+/** PesoConsolidadoForaDaFaixa: Peso do lote consolidado fora da faixa aceita sobre a soma dos lotes de origem */
+export const ECOL_LOTE_ERROR__PESO_CONSOLIDADO_FORA_DA_FAIXA = 0x179f; // 6047
+/** EntregaDeOutroLote: O lote de origem não pertence a este lote de venda */
+export const ECOL_LOTE_ERROR__ENTREGA_DE_OUTRO_LOTE = 0x17a0; // 6048
 
 export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__ASSET_INCORRETO
@@ -121,6 +125,7 @@ export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__DISPUTA_JA_JULGADA
   | typeof ECOL_LOTE_ERROR__EM_CARENCIA
   | typeof ECOL_LOTE_ERROR__ENTREGA_DE_OUTRA_COOPERATIVA
+  | typeof ECOL_LOTE_ERROR__ENTREGA_DE_OUTRO_LOTE
   | typeof ECOL_LOTE_ERROR__ENTREGA_INVALIDA
   | typeof ECOL_LOTE_ERROR__ENTREGA_JA_VINCULADA
   | typeof ECOL_LOTE_ERROR__GUARDIAO_SO_RESTRINGE
@@ -146,6 +151,7 @@ export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__PARTICIPANTE_INATIVO
   | typeof ECOL_LOTE_ERROR__PESAGEM_DIVERGENTE
   | typeof ECOL_LOTE_ERROR__PESAGEM_EXPIRADA
+  | typeof ECOL_LOTE_ERROR__PESO_CONSOLIDADO_FORA_DA_FAIXA
   | typeof ECOL_LOTE_ERROR__PESO_INVALIDO
   | typeof ECOL_LOTE_ERROR__PRAZO_INVALIDO
   | typeof ECOL_LOTE_ERROR__PRAZO_NAO_EXPIRADO
@@ -172,6 +178,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_LOTE_ERROR__DISPUTA_JA_JULGADA]: `Esta etapa já teve disputa julgada; só o árbitro pode reabri-la`,
     [ECOL_LOTE_ERROR__EM_CARENCIA]: `Crank de prazo em carência após retomada do programa`,
     [ECOL_LOTE_ERROR__ENTREGA_DE_OUTRA_COOPERATIVA]: `Entrega de outra cooperativa`,
+    [ECOL_LOTE_ERROR__ENTREGA_DE_OUTRO_LOTE]: `O lote de origem não pertence a este lote de venda`,
     [ECOL_LOTE_ERROR__ENTREGA_INVALIDA]: `Conta informada não é uma entrega válida`,
     [ECOL_LOTE_ERROR__ENTREGA_JA_VINCULADA]: `Entrega já vinculada a um lote`,
     [ECOL_LOTE_ERROR__GUARDIAO_SO_RESTRINGE]: `O guardião só pode deixar o modo mais restritivo`,
@@ -197,6 +204,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_LOTE_ERROR__PARTICIPANTE_INATIVO]: `Participante inativo`,
     [ECOL_LOTE_ERROR__PESAGEM_DIVERGENTE]: `Mensagem assinada pela balança não corresponde ao lote, peso ou horário`,
     [ECOL_LOTE_ERROR__PESAGEM_EXPIRADA]: `Pesagem fora da janela de tempo aceita`,
+    [ECOL_LOTE_ERROR__PESO_CONSOLIDADO_FORA_DA_FAIXA]: `Peso do lote consolidado fora da faixa aceita sobre a soma dos lotes de origem`,
     [ECOL_LOTE_ERROR__PESO_INVALIDO]: `Peso deve ser maior que zero`,
     [ECOL_LOTE_ERROR__PRAZO_INVALIDO]: `Prazo inválido`,
     [ECOL_LOTE_ERROR__PRAZO_NAO_EXPIRADO]: `Prazo de entrega ainda não expirou`,

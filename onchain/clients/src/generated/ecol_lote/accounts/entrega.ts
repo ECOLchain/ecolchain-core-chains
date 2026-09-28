@@ -42,6 +42,12 @@ import {
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
 } from "@solana/kit";
+import {
+  getOrigemEntregaDecoder,
+  getOrigemEntregaEncoder,
+  type OrigemEntrega,
+  type OrigemEntregaArgs,
+} from "../types";
 
 export const ENTREGA_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   232, 207, 55, 163, 172, 42, 86, 184,
@@ -55,36 +61,46 @@ export type Entrega = {
   discriminator: ReadonlyUint8Array;
   cooperativa: Address;
   entregaId: bigint;
-  /** Referência ao coletor como hash com salt (LGPD): identifica sem expor a carteira. */
-  coletorRef: ReadonlyUint8Array;
+  /**
+   * Referência da origem como hash (LGPD): o coletor (`sha256("ECOLCHAIN:COLETOR:v1" ‖ carteira)`)
+   * ou o documento da doação / compra / triagem (nota, recibo, CNPJ, ticket). Nunca o texto.
+   */
+  origemRef: ReadonlyUint8Array;
   /** Código do material cadastrado. */
   material: number;
   pesoG: bigint;
   /** Balança (PDA) que atestou a pesagem. */
   balanca: Address;
   tsPesagem: bigint;
-  /** Lote que recebeu a entrega; `Pubkey::default()` enquanto disponível. */
+  /** Lote de venda que recebeu a entrega; `Pubkey::default()` enquanto disponível. */
   lote: Address;
   criadoEm: bigint;
   bump: number;
+  /** Ocupa o primeiro byte do antigo espaço reservado (layout inalterado). */
+  origem: OrigemEntrega;
   reserved: ReadonlyUint8Array;
 };
 
 export type EntregaArgs = {
   cooperativa: Address;
   entregaId: number | bigint;
-  /** Referência ao coletor como hash com salt (LGPD): identifica sem expor a carteira. */
-  coletorRef: ReadonlyUint8Array;
+  /**
+   * Referência da origem como hash (LGPD): o coletor (`sha256("ECOLCHAIN:COLETOR:v1" ‖ carteira)`)
+   * ou o documento da doação / compra / triagem (nota, recibo, CNPJ, ticket). Nunca o texto.
+   */
+  origemRef: ReadonlyUint8Array;
   /** Código do material cadastrado. */
   material: number;
   pesoG: number | bigint;
   /** Balança (PDA) que atestou a pesagem. */
   balanca: Address;
   tsPesagem: number | bigint;
-  /** Lote que recebeu a entrega; `Pubkey::default()` enquanto disponível. */
+  /** Lote de venda que recebeu a entrega; `Pubkey::default()` enquanto disponível. */
   lote: Address;
   criadoEm: number | bigint;
   bump: number;
+  /** Ocupa o primeiro byte do antigo espaço reservado (layout inalterado). */
+  origem: OrigemEntregaArgs;
   reserved: ReadonlyUint8Array;
 };
 
@@ -95,7 +111,7 @@ export function getEntregaEncoder(): FixedSizeEncoder<EntregaArgs> {
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["cooperativa", getAddressEncoder()],
       ["entregaId", getU64Encoder()],
-      ["coletorRef", fixEncoderSize(getBytesEncoder(), 32)],
+      ["origemRef", fixEncoderSize(getBytesEncoder(), 32)],
       ["material", getU16Encoder()],
       ["pesoG", getU64Encoder()],
       ["balanca", getAddressEncoder()],
@@ -103,7 +119,8 @@ export function getEntregaEncoder(): FixedSizeEncoder<EntregaArgs> {
       ["lote", getAddressEncoder()],
       ["criadoEm", getI64Encoder()],
       ["bump", getU8Encoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 32)],
+      ["origem", getOrigemEntregaEncoder()],
+      ["reserved", fixEncoderSize(getBytesEncoder(), 31)],
     ]),
     (value) => ({ ...value, discriminator: ENTREGA_DISCRIMINATOR }),
   );
@@ -115,7 +132,7 @@ export function getEntregaDecoder(): FixedSizeDecoder<Entrega> {
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["cooperativa", getAddressDecoder()],
     ["entregaId", getU64Decoder()],
-    ["coletorRef", fixDecoderSize(getBytesDecoder(), 32)],
+    ["origemRef", fixDecoderSize(getBytesDecoder(), 32)],
     ["material", getU16Decoder()],
     ["pesoG", getU64Decoder()],
     ["balanca", getAddressDecoder()],
@@ -123,7 +140,8 @@ export function getEntregaDecoder(): FixedSizeDecoder<Entrega> {
     ["lote", getAddressDecoder()],
     ["criadoEm", getI64Decoder()],
     ["bump", getU8Decoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 32)],
+    ["origem", getOrigemEntregaDecoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 31)],
   ]);
 }
 

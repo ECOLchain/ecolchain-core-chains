@@ -1,6 +1,6 @@
 # ADR 0010 — Lote de origem (com ou sem coletor) e lote de venda
 
-- **Status:** aceita (implementação pendente)
+- **Status:** aceita e implementada (2026-09-28)
 - **Data:** 2026-09-28
 
 ## Contexto

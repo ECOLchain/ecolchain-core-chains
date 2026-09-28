@@ -18,7 +18,10 @@ export interface BpsFixos {
     transportador: number;
 }
 
-/** Entrega de um coletor vinculada ao lote, com a carteira resolvida off-chain (a entrega guarda só `coletor_ref`). */
+/**
+ * Lote de origem de um coletor vinculado ao lote de venda, com a carteira resolvida off-chain (a entrega
+ * guarda só `origem_ref`). Origens sem coletor (triagem, doação, compra, avulso) não entram aqui.
+ */
 export interface EntregaDoLote {
     coletor: Address;
     pesoG: bigint;
@@ -46,10 +49,25 @@ const sha256 = (...partes: Uint8Array[]) => {
     return new Uint8Array(h.digest());
 };
 
-/** Mesma conta do programa: floor(receita × bps / 10.000) por papel; EcolChain fica com o resto. */
-export function calcularTotais(receitaCentavos: bigint, bps: BpsFixos, bpsIndustria: number) {
+/**
+ * Mesma conta do programa: floor(receita × bps / 10.000) por papel; EcolChain fica com o resto.
+ * Os coletores recebem só sobre o peso com coletor (`Credito.peso_total_g` e `peso_sem_coletor_g`):
+ * floor(receita × bps × (total − sem) / (10.000 × total)). Sem pesos, tudo é de coletores.
+ */
+export function calcularTotais(
+    receitaCentavos: bigint,
+    bps: BpsFixos,
+    bpsIndustria: number,
+    pesos: { totalG: bigint; semColetorG: bigint } = { totalG: 0n, semColetorG: 0n },
+) {
     const parcela = (b: number) => (receitaCentavos * BigInt(b)) / 10_000n;
-    const totais = [parcela(bps.coletor), parcela(bps.cooperativa), parcela(bps.transportador), parcela(bpsIndustria)];
+    const { totalG, semColetorG } = pesos;
+    const coletores =
+        totalG === 0n
+            ? parcela(bps.coletor)
+            : (receitaCentavos * BigInt(bps.coletor) * (totalG - (semColetorG > totalG ? totalG : semColetorG))) /
+              (10_000n * totalG);
+    const totais = [coletores, parcela(bps.cooperativa), parcela(bps.transportador), parcela(bpsIndustria)];
     const ecolchain = receitaCentavos - totais.reduce((a, b) => a + b, 0n);
     return { totais, ecolchain };
 }

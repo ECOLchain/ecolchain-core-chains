@@ -56,6 +56,9 @@ export type ConfigAtualizadaEvent = {
   toleranciaPesoBps: number;
   modo: ModoOperacao;
   guardiao: Address;
+  /** Faixa vigente da pesagem do lote consolidado (já com os padrões aplicados). */
+  perdaMontagemBps: number;
+  excessoMontagemBps: number;
 };
 
 export type ConfigAtualizadaEventArgs = {
@@ -69,6 +72,9 @@ export type ConfigAtualizadaEventArgs = {
   toleranciaPesoBps: number;
   modo: ModoOperacaoArgs;
   guardiao: Address;
+  /** Faixa vigente da pesagem do lote consolidado (já com os padrões aplicados). */
+  perdaMontagemBps: number;
+  excessoMontagemBps: number;
 };
 
 /** Gets the encoder for {@link ConfigAtualizadaEventArgs} event data. */
@@ -85,6 +91,8 @@ export function getConfigAtualizadaEventEncoder(): FixedSizeEncoder<ConfigAtuali
       ["toleranciaPesoBps", getU16Encoder()],
       ["modo", getModoOperacaoEncoder()],
       ["guardiao", getAddressEncoder()],
+      ["perdaMontagemBps", getU16Encoder()],
+      ["excessoMontagemBps", getU16Encoder()],
     ]),
     [getConstantEncoder(CONFIG_ATUALIZADA_EVENT_DISCRIMINATOR)],
   );
@@ -104,6 +112,8 @@ export function getConfigAtualizadaEventDecoder(): FixedSizeDecoder<ConfigAtuali
       ["toleranciaPesoBps", getU16Decoder()],
       ["modo", getModoOperacaoDecoder()],
       ["guardiao", getAddressDecoder()],
+      ["perdaMontagemBps", getU16Decoder()],
+      ["excessoMontagemBps", getU16Decoder()],
     ]),
     [getConstantDecoder(CONFIG_ATUALIZADA_EVENT_DISCRIMINATOR)],
   );

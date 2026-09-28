@@ -41,7 +41,7 @@ export type Participante = {
   /** Hash do cadastro/KYC mantido off-chain. Nenhum documento vai on-chain (LGPD). */
   kycHash: ReadonlyUint8Array;
   bump: number;
-  /** Nome de exibição em UTF-8, completado com zeros (público). Contas antigas: todo zero = sem nome. */
+  /** Nome de exibição (ver `NomeFixo`). */
   nome: ReadonlyUint8Array;
 };
 
@@ -52,7 +52,7 @@ export type ParticipanteArgs = {
   /** Hash do cadastro/KYC mantido off-chain. Nenhum documento vai on-chain (LGPD). */
   kycHash: ReadonlyUint8Array;
   bump: number;
-  /** Nome de exibição em UTF-8, completado com zeros (público). Contas antigas: todo zero = sem nome. */
+  /** Nome de exibição (ver `NomeFixo`). */
   nome: ReadonlyUint8Array;
 };
 

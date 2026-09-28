@@ -13,4 +13,5 @@ export * from "./etapaDisputavel";
 export * from "./modoOperacao";
 export * from "./motivoDisputa";
 export * from "./movimentoEscrow";
+export * from "./origemEntrega";
 export * from "./papel";

@@ -49,6 +49,12 @@ import {
 } from "@solana/program-client-core";
 import { findConfigPda, findCooperativaPartPda } from "../pdas";
 import { ECOL_LOTE_PROGRAM_ADDRESS } from "../programs";
+import {
+  getOrigemEntregaDecoder,
+  getOrigemEntregaEncoder,
+  type OrigemEntrega,
+  type OrigemEntregaArgs,
+} from "../types";
 
 export const COOPERATIVA_REGISTER_ENTREGA_DISCRIMINATOR: ReadonlyUint8Array =
   new Uint8Array([194, 194, 2, 179, 177, 240, 111, 221]);
@@ -121,7 +127,9 @@ export type CooperativaRegisterEntregaInstruction<
 export type CooperativaRegisterEntregaInstructionData = {
   discriminator: ReadonlyUint8Array;
   entregaId: bigint;
-  coletorRef: ReadonlyUint8Array;
+  origem: OrigemEntrega;
+  /** Hash da referência da origem (coletor, nota, recibo, ticket); nunca o texto. */
+  origemRef: ReadonlyUint8Array;
   material: number;
   /** Peso em gramas, exatamente como assinado pela balança. */
   pesoG: bigint;
@@ -131,7 +139,9 @@ export type CooperativaRegisterEntregaInstructionData = {
 
 export type CooperativaRegisterEntregaInstructionDataArgs = {
   entregaId: number | bigint;
-  coletorRef: ReadonlyUint8Array;
+  origem: OrigemEntregaArgs;
+  /** Hash da referência da origem (coletor, nota, recibo, ticket); nunca o texto. */
+  origemRef: ReadonlyUint8Array;
   material: number;
   /** Peso em gramas, exatamente como assinado pela balança. */
   pesoG: number | bigint;
@@ -144,7 +154,8 @@ export function getCooperativaRegisterEntregaInstructionDataEncoder(): FixedSize
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["entregaId", getU64Encoder()],
-      ["coletorRef", fixEncoderSize(getBytesEncoder(), 32)],
+      ["origem", getOrigemEntregaEncoder()],
+      ["origemRef", fixEncoderSize(getBytesEncoder(), 32)],
       ["material", getU16Encoder()],
       ["pesoG", getU64Encoder()],
       ["tsPesagem", getI64Encoder()],
@@ -160,7 +171,8 @@ export function getCooperativaRegisterEntregaInstructionDataDecoder(): FixedSize
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["entregaId", getU64Decoder()],
-    ["coletorRef", fixDecoderSize(getBytesDecoder(), 32)],
+    ["origem", getOrigemEntregaDecoder()],
+    ["origemRef", fixDecoderSize(getBytesDecoder(), 32)],
     ["material", getU16Decoder()],
     ["pesoG", getU64Decoder()],
     ["tsPesagem", getI64Decoder()],
@@ -207,7 +219,8 @@ export type CooperativaRegisterEntregaAsyncInput<
   eventAuthority: TAccountEventAuthority;
   program: TAccountProgram;
   entregaId: CooperativaRegisterEntregaInstructionDataArgs["entregaId"];
-  coletorRef: CooperativaRegisterEntregaInstructionDataArgs["coletorRef"];
+  origem: CooperativaRegisterEntregaInstructionDataArgs["origem"];
+  origemRef: CooperativaRegisterEntregaInstructionDataArgs["origemRef"];
   material: CooperativaRegisterEntregaInstructionDataArgs["material"];
   pesoG: CooperativaRegisterEntregaInstructionDataArgs["pesoG"];
   tsPesagem: CooperativaRegisterEntregaInstructionDataArgs["tsPesagem"];
@@ -475,7 +488,8 @@ export type CooperativaRegisterEntregaInput<
   eventAuthority: TAccountEventAuthority;
   program: TAccountProgram;
   entregaId: CooperativaRegisterEntregaInstructionDataArgs["entregaId"];
-  coletorRef: CooperativaRegisterEntregaInstructionDataArgs["coletorRef"];
+  origem: CooperativaRegisterEntregaInstructionDataArgs["origem"];
+  origemRef: CooperativaRegisterEntregaInstructionDataArgs["origemRef"];
   material: CooperativaRegisterEntregaInstructionDataArgs["material"];
   pesoG: CooperativaRegisterEntregaInstructionDataArgs["pesoG"];
   tsPesagem: CooperativaRegisterEntregaInstructionDataArgs["tsPesagem"];

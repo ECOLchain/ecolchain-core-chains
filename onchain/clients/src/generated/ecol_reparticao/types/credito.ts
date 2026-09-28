@@ -86,6 +86,12 @@ export type Credito = {
   criadoEm: bigint;
   atualizadoEm: bigint;
   bump: number;
+  /**
+   * Parte de `peso_total_g` vinda de lotes de origem sem coletor (ADR 0010), proporcional ao
+   * peso consolidado de cada lote. Os 5% dos coletores só incidem sobre o restante.
+   * Zero nos créditos antigos: todo o peso era de coletores.
+   */
+  pesoSemColetorG: bigint;
   reserved: ReadonlyUint8Array;
   /** Número de série no registro oficial (campo variável por último). */
   serial: string;
@@ -126,6 +132,12 @@ export type CreditoArgs = {
   criadoEm: number | bigint;
   atualizadoEm: number | bigint;
   bump: number;
+  /**
+   * Parte de `peso_total_g` vinda de lotes de origem sem coletor (ADR 0010), proporcional ao
+   * peso consolidado de cada lote. Os 5% dos coletores só incidem sobre o restante.
+   * Zero nos créditos antigos: todo o peso era de coletores.
+   */
+  pesoSemColetorG: number | bigint;
   reserved: ReadonlyUint8Array;
   /** Número de série no registro oficial (campo variável por último). */
   serial: string;
@@ -153,7 +165,8 @@ export function getCreditoEncoder(): Encoder<CreditoArgs> {
     ["criadoEm", getI64Encoder()],
     ["atualizadoEm", getI64Encoder()],
     ["bump", getU8Encoder()],
-    ["reserved", fixEncoderSize(getBytesEncoder(), 64)],
+    ["pesoSemColetorG", getU64Encoder()],
+    ["reserved", fixEncoderSize(getBytesEncoder(), 56)],
     ["serial", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
   ]);
 }
@@ -180,7 +193,8 @@ export function getCreditoDecoder(): Decoder<Credito> {
     ["criadoEm", getI64Decoder()],
     ["atualizadoEm", getI64Decoder()],
     ["bump", getU8Decoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 64)],
+    ["pesoSemColetorG", getU64Decoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 56)],
     ["serial", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
   ]);
 }

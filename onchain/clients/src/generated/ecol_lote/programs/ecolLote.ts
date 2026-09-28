@@ -60,11 +60,14 @@ import {
   getAdminProposeAdminInstructionAsync,
   getAdminSetGuardiaoInstructionAsync,
   getAdminSetModoInstructionAsync,
+  getAdminSetToleranciaMontagemInstructionAsync,
   getAdminUpdateGlobalInstructionAsync,
   getArbitroResolveDisputaInstructionAsync,
   getCooperativaAddEntregasInstructionAsync,
   getCooperativaCancelAnuncioInstructionAsync,
   getCooperativaCreateLoteInstructionAsync,
+  getCooperativaDesmontarLoteInstructionAsync,
+  getCooperativaFecharLoteInstructionAsync,
   getCooperativaListLoteInstructionAsync,
   getCooperativaRegisterEntregaInstructionAsync,
   getCreditoMarkAgregadoInstructionAsync,
@@ -90,11 +93,14 @@ import {
   parseAdminProposeAdminInstruction,
   parseAdminSetGuardiaoInstruction,
   parseAdminSetModoInstruction,
+  parseAdminSetToleranciaMontagemInstruction,
   parseAdminUpdateGlobalInstruction,
   parseArbitroResolveDisputaInstruction,
   parseCooperativaAddEntregasInstruction,
   parseCooperativaCancelAnuncioInstruction,
   parseCooperativaCreateLoteInstruction,
+  parseCooperativaDesmontarLoteInstruction,
+  parseCooperativaFecharLoteInstruction,
   parseCooperativaListLoteInstruction,
   parseCooperativaRegisterEntregaInstruction,
   parseCreditoMarkAgregadoInstruction,
@@ -120,11 +126,14 @@ import {
   type AdminProposeAdminAsyncInput,
   type AdminSetGuardiaoAsyncInput,
   type AdminSetModoAsyncInput,
+  type AdminSetToleranciaMontagemAsyncInput,
   type AdminUpdateGlobalAsyncInput,
   type ArbitroResolveDisputaAsyncInput,
   type CooperativaAddEntregasAsyncInput,
   type CooperativaCancelAnuncioAsyncInput,
   type CooperativaCreateLoteAsyncInput,
+  type CooperativaDesmontarLoteAsyncInput,
+  type CooperativaFecharLoteAsyncInput,
   type CooperativaListLoteAsyncInput,
   type CooperativaRegisterEntregaAsyncInput,
   type CreditoMarkAgregadoAsyncInput,
@@ -147,11 +156,14 @@ import {
   type ParsedAdminProposeAdminInstruction,
   type ParsedAdminSetGuardiaoInstruction,
   type ParsedAdminSetModoInstruction,
+  type ParsedAdminSetToleranciaMontagemInstruction,
   type ParsedAdminUpdateGlobalInstruction,
   type ParsedArbitroResolveDisputaInstruction,
   type ParsedCooperativaAddEntregasInstruction,
   type ParsedCooperativaCancelAnuncioInstruction,
   type ParsedCooperativaCreateLoteInstruction,
+  type ParsedCooperativaDesmontarLoteInstruction,
+  type ParsedCooperativaFecharLoteInstruction,
   type ParsedCooperativaListLoteInstruction,
   type ParsedCooperativaRegisterEntregaInstruction,
   type ParsedCreditoMarkAgregadoInstruction,
@@ -279,10 +291,12 @@ export function identifyEcolLoteAccount(
 export enum EcolLoteEvent {
   BalancaAtualizada,
   ConfigAtualizada,
+  EntregaDevolvida,
   EntregaNoLote,
   EntregaRegistrada,
   EscrowMovimentado,
   LoteCriado,
+  LoteMontagemIniciada,
   LotePesoAlterado,
   LoteTransicionado,
   LoteVendido,
@@ -316,6 +330,17 @@ export function identifyEcolLoteEvent(
     )
   ) {
     return EcolLoteEvent.ConfigAtualizada;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([236, 240, 70, 205, 207, 63, 137, 185]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteEvent.EntregaDevolvida;
   }
   if (
     containsBytes(
@@ -360,6 +385,17 @@ export function identifyEcolLoteEvent(
     )
   ) {
     return EcolLoteEvent.LoteCriado;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([227, 164, 146, 210, 232, 220, 144, 137]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteEvent.LoteMontagemIniciada;
   }
   if (
     containsBytes(
@@ -438,11 +474,14 @@ export enum EcolLoteInstruction {
   AdminProposeAdmin,
   AdminSetGuardiao,
   AdminSetModo,
+  AdminSetToleranciaMontagem,
   AdminUpdateGlobal,
   ArbitroResolveDisputa,
   CooperativaAddEntregas,
   CooperativaCancelAnuncio,
   CooperativaCreateLote,
+  CooperativaDesmontarLote,
+  CooperativaFecharLote,
   CooperativaListLote,
   CooperativaRegisterEntrega,
   CreditoMarkAgregado,
@@ -528,6 +567,17 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([166, 33, 209, 66, 250, 47, 212, 191]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.AdminSetToleranciaMontagem;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([237, 182, 67, 223, 123, 25, 244, 52]),
       ),
       0,
@@ -578,6 +628,28 @@ export function identifyEcolLoteInstruction(
     )
   ) {
     return EcolLoteInstruction.CooperativaCreateLote;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([21, 1, 43, 42, 231, 212, 19, 13]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.CooperativaDesmontarLote;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([22, 241, 114, 8, 78, 82, 176, 36]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.CooperativaFecharLote;
   }
   if (
     containsBytes(
@@ -824,6 +896,9 @@ export type ParsedEcolLoteInstruction<
       instructionType: EcolLoteInstruction.AdminSetModo;
     } & ParsedAdminSetModoInstruction<TProgram>)
   | ({
+      instructionType: EcolLoteInstruction.AdminSetToleranciaMontagem;
+    } & ParsedAdminSetToleranciaMontagemInstruction<TProgram>)
+  | ({
       instructionType: EcolLoteInstruction.AdminUpdateGlobal;
     } & ParsedAdminUpdateGlobalInstruction<TProgram>)
   | ({
@@ -838,6 +913,12 @@ export type ParsedEcolLoteInstruction<
   | ({
       instructionType: EcolLoteInstruction.CooperativaCreateLote;
     } & ParsedCooperativaCreateLoteInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.CooperativaDesmontarLote;
+    } & ParsedCooperativaDesmontarLoteInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.CooperativaFecharLote;
+    } & ParsedCooperativaFecharLoteInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.CooperativaListLote;
     } & ParsedCooperativaListLoteInstruction<TProgram>)
@@ -939,6 +1020,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseAdminSetModoInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.AdminSetToleranciaMontagem: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.AdminSetToleranciaMontagem,
+        ...parseAdminSetToleranciaMontagemInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.AdminUpdateGlobal: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -972,6 +1060,20 @@ export function parseEcolLoteInstruction<TProgram extends string>(
       return {
         instructionType: EcolLoteInstruction.CooperativaCreateLote,
         ...parseCooperativaCreateLoteInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.CooperativaDesmontarLote: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.CooperativaDesmontarLote,
+        ...parseCooperativaDesmontarLoteInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.CooperativaFecharLote: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.CooperativaFecharLote,
+        ...parseCooperativaFecharLoteInstruction(instruction),
       };
     }
     case EcolLoteInstruction.CooperativaListLote: {
@@ -1166,6 +1268,10 @@ export type EcolLotePluginInstructions = {
     input: AdminSetModoAsyncInput,
   ) => ReturnType<typeof getAdminSetModoInstructionAsync> &
     SelfPlanAndSendFunctions;
+  adminSetToleranciaMontagem: (
+    input: AdminSetToleranciaMontagemAsyncInput,
+  ) => ReturnType<typeof getAdminSetToleranciaMontagemInstructionAsync> &
+    SelfPlanAndSendFunctions;
   adminUpdateGlobal: (
     input: AdminUpdateGlobalAsyncInput,
   ) => ReturnType<typeof getAdminUpdateGlobalInstructionAsync> &
@@ -1185,6 +1291,14 @@ export type EcolLotePluginInstructions = {
   cooperativaCreateLote: (
     input: MakeOptional<CooperativaCreateLoteAsyncInput, "payer">,
   ) => ReturnType<typeof getCooperativaCreateLoteInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  cooperativaDesmontarLote: (
+    input: MakeOptional<CooperativaDesmontarLoteAsyncInput, "payer">,
+  ) => ReturnType<typeof getCooperativaDesmontarLoteInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  cooperativaFecharLote: (
+    input: MakeOptional<CooperativaFecharLoteAsyncInput, "payer">,
+  ) => ReturnType<typeof getCooperativaFecharLoteInstructionAsync> &
     SelfPlanAndSendFunctions;
   cooperativaListLote: (
     input: CooperativaListLoteAsyncInput,
@@ -1330,6 +1444,11 @@ export function ecolLoteProgram() {
               client,
               getAdminSetModoInstructionAsync(input),
             ),
+          adminSetToleranciaMontagem: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getAdminSetToleranciaMontagemInstructionAsync(input),
+            ),
           adminUpdateGlobal: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -1354,6 +1473,22 @@ export function ecolLoteProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getCooperativaCreateLoteInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              }),
+            ),
+          cooperativaDesmontarLote: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCooperativaDesmontarLoteInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              }),
+            ),
+          cooperativaFecharLote: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCooperativaFecharLoteInstructionAsync({
                 ...input,
                 payer: input.payer ?? client.payer,
               }),

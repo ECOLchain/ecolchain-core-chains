@@ -84,6 +84,10 @@ export type GlobalConfig = {
    * `Pubkey::default()` = sem guardião. Ocupa parte do antigo espaço reservado (layout inalterado).
    */
   guardiao: Address;
+  /** Perda máxima do lote de venda consolidado sobre a soma dos lotes de origem (0 = padrão). */
+  perdaMontagemBps: number;
+  /** Excesso máximo do lote de venda consolidado sobre a soma dos lotes de origem (0 = padrão). */
+  excessoMontagemBps: number;
   reserved: ReadonlyUint8Array;
 };
 
@@ -113,6 +117,10 @@ export type GlobalConfigArgs = {
    * `Pubkey::default()` = sem guardião. Ocupa parte do antigo espaço reservado (layout inalterado).
    */
   guardiao: Address;
+  /** Perda máxima do lote de venda consolidado sobre a soma dos lotes de origem (0 = padrão). */
+  perdaMontagemBps: number;
+  /** Excesso máximo do lote de venda consolidado sobre a soma dos lotes de origem (0 = padrão). */
+  excessoMontagemBps: number;
   reserved: ReadonlyUint8Array;
 };
 
@@ -133,7 +141,9 @@ export function getGlobalConfigEncoder(): FixedSizeEncoder<GlobalConfigArgs> {
       ["retomadoEm", getI64Encoder()],
       ["bump", getU8Encoder()],
       ["guardiao", getAddressEncoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 32)],
+      ["perdaMontagemBps", getU16Encoder()],
+      ["excessoMontagemBps", getU16Encoder()],
+      ["reserved", fixEncoderSize(getBytesEncoder(), 28)],
     ]),
     (value) => ({ ...value, discriminator: GLOBAL_CONFIG_DISCRIMINATOR }),
   );
@@ -155,7 +165,9 @@ export function getGlobalConfigDecoder(): FixedSizeDecoder<GlobalConfig> {
     ["retomadoEm", getI64Decoder()],
     ["bump", getU8Decoder()],
     ["guardiao", getAddressDecoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 32)],
+    ["perdaMontagemBps", getU16Decoder()],
+    ["excessoMontagemBps", getU16Decoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 28)],
   ]);
 }
 

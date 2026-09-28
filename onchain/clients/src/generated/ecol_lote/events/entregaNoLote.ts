@@ -29,6 +29,12 @@ import {
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
 } from "@solana/kit";
+import {
+  getOrigemEntregaDecoder,
+  getOrigemEntregaEncoder,
+  type OrigemEntrega,
+  type OrigemEntregaArgs,
+} from "../types";
 
 export const ENTREGA_NO_LOTE_EVENT_DISCRIMINATOR: ReadonlyUint8Array =
   new Uint8Array([19, 47, 121, 222, 77, 108, 228, 20]);
@@ -43,7 +49,8 @@ export type EntregaNoLoteEvent = {
   lote: Address;
   seq: bigint;
   entrega: Address;
-  coletorRef: ReadonlyUint8Array;
+  origem: OrigemEntrega;
+  origemRef: ReadonlyUint8Array;
   pesoG: bigint;
 };
 
@@ -51,7 +58,8 @@ export type EntregaNoLoteEventArgs = {
   lote: Address;
   seq: number | bigint;
   entrega: Address;
-  coletorRef: ReadonlyUint8Array;
+  origem: OrigemEntregaArgs;
+  origemRef: ReadonlyUint8Array;
   pesoG: number | bigint;
 };
 
@@ -62,7 +70,8 @@ export function getEntregaNoLoteEventEncoder(): FixedSizeEncoder<EntregaNoLoteEv
       ["lote", getAddressEncoder()],
       ["seq", getU64Encoder()],
       ["entrega", getAddressEncoder()],
-      ["coletorRef", fixEncoderSize(getBytesEncoder(), 32)],
+      ["origem", getOrigemEntregaEncoder()],
+      ["origemRef", fixEncoderSize(getBytesEncoder(), 32)],
       ["pesoG", getU64Encoder()],
     ]),
     [getConstantEncoder(ENTREGA_NO_LOTE_EVENT_DISCRIMINATOR)],
@@ -76,7 +85,8 @@ export function getEntregaNoLoteEventDecoder(): FixedSizeDecoder<EntregaNoLoteEv
       ["lote", getAddressDecoder()],
       ["seq", getU64Decoder()],
       ["entrega", getAddressDecoder()],
-      ["coletorRef", fixDecoderSize(getBytesDecoder(), 32)],
+      ["origem", getOrigemEntregaDecoder()],
+      ["origemRef", fixDecoderSize(getBytesDecoder(), 32)],
       ["pesoG", getU64Decoder()],
     ]),
     [getConstantDecoder(ENTREGA_NO_LOTE_EVENT_DISCRIMINATOR)],

@@ -34,13 +34,16 @@ import {
 } from ".";
 
 /**
- * Máquina de estados do lote.
+ * Máquina de estados do lote de venda.
  *
  * ```text
- * Criado → Anunciado → Vendido → EmTransporte → Recebido → Reciclado → Agregado
+ * EmMontagem → Criado → Anunciado → Vendido → EmTransporte → Recebido → Reciclado → Agregado
  * Anunciado ⇄ SemLance
  * Vendido | EmTransporte | Recebido → EmDisputa → (etapa de origem | Reembolsado)
+ * EmMontagem | Criado | SemLance → EmDesmontagem → Desfeito
  * ```
+ *
+ * Variantes novas só no fim: o índice Borsh das existentes não pode mudar (contas já gravadas).
  */
 export type EstadoLote =
   | { __kind: "Criado" }
@@ -52,7 +55,10 @@ export type EstadoLote =
   | { __kind: "Reciclado" }
   | { __kind: "Agregado" }
   | { __kind: "EmDisputa"; motivo: MotivoDisputa; origem: EtapaDisputavel }
-  | { __kind: "Reembolsado" };
+  | { __kind: "Reembolsado" }
+  | { __kind: "EmMontagem" }
+  | { __kind: "EmDesmontagem" }
+  | { __kind: "Desfeito" };
 
 export type EstadoLoteArgs =
   | { __kind: "Criado" }
@@ -68,7 +74,10 @@ export type EstadoLoteArgs =
       motivo: MotivoDisputaArgs;
       origem: EtapaDisputavelArgs;
     }
-  | { __kind: "Reembolsado" };
+  | { __kind: "Reembolsado" }
+  | { __kind: "EmMontagem" }
+  | { __kind: "EmDesmontagem" }
+  | { __kind: "Desfeito" };
 
 export function getEstadoLoteEncoder(): Encoder<EstadoLoteArgs> {
   return getDiscriminatedUnionEncoder([
@@ -88,6 +97,9 @@ export function getEstadoLoteEncoder(): Encoder<EstadoLoteArgs> {
       ]),
     ],
     ["Reembolsado", getUnitEncoder()],
+    ["EmMontagem", getUnitEncoder()],
+    ["EmDesmontagem", getUnitEncoder()],
+    ["Desfeito", getUnitEncoder()],
   ]);
 }
 
@@ -109,6 +121,9 @@ export function getEstadoLoteDecoder(): Decoder<EstadoLote> {
       ]),
     ],
     ["Reembolsado", getUnitDecoder()],
+    ["EmMontagem", getUnitDecoder()],
+    ["EmDesmontagem", getUnitDecoder()],
+    ["Desfeito", getUnitDecoder()],
   ]);
 }
 
@@ -157,6 +172,15 @@ export function estadoLote(
 export function estadoLote(
   kind: "Reembolsado",
 ): GetDiscriminatedUnionVariant<EstadoLoteArgs, "__kind", "Reembolsado">;
+export function estadoLote(
+  kind: "EmMontagem",
+): GetDiscriminatedUnionVariant<EstadoLoteArgs, "__kind", "EmMontagem">;
+export function estadoLote(
+  kind: "EmDesmontagem",
+): GetDiscriminatedUnionVariant<EstadoLoteArgs, "__kind", "EmDesmontagem">;
+export function estadoLote(
+  kind: "Desfeito",
+): GetDiscriminatedUnionVariant<EstadoLoteArgs, "__kind", "Desfeito">;
 export function estadoLote<K extends EstadoLoteArgs["__kind"], Data>(
   kind: K,
   data?: Data,

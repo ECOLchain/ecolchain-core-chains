@@ -120,6 +120,16 @@ export type Lote = {
   criadoEm: bigint;
   atualizadoEm: bigint;
   bump: number;
+  /**
+   * Soma do peso dos lotes de origem sem coletor (o restante de `peso_entregas_g` é de coletores).
+   * Zero nas contas antigas: todo o peso era de coletores.
+   */
+  pesoSemColetorG: bigint;
+  /**
+   * O Core asset tem `PermanentBurnDelegate` do programa (lotes fechados desde a ADR 0010) e pode
+   * ser queimado ao desfazer a união.
+   */
+  assetQueimavel: boolean;
   reserved: ReadonlyUint8Array;
 };
 
@@ -173,6 +183,16 @@ export type LoteArgs = {
   criadoEm: number | bigint;
   atualizadoEm: number | bigint;
   bump: number;
+  /**
+   * Soma do peso dos lotes de origem sem coletor (o restante de `peso_entregas_g` é de coletores).
+   * Zero nas contas antigas: todo o peso era de coletores.
+   */
+  pesoSemColetorG: number | bigint;
+  /**
+   * O Core asset tem `PermanentBurnDelegate` do programa (lotes fechados desde a ADR 0010) e pode
+   * ser queimado ao desfazer a união.
+   */
+  assetQueimavel: boolean;
   reserved: ReadonlyUint8Array;
 };
 
@@ -210,7 +230,9 @@ export function getLoteEncoder(): Encoder<LoteArgs> {
       ["criadoEm", getI64Encoder()],
       ["atualizadoEm", getI64Encoder()],
       ["bump", getU8Encoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 64)],
+      ["pesoSemColetorG", getU64Encoder()],
+      ["assetQueimavel", getBooleanEncoder()],
+      ["reserved", fixEncoderSize(getBytesEncoder(), 55)],
     ]),
     (value) => ({ ...value, discriminator: LOTE_DISCRIMINATOR }),
   );
@@ -249,7 +271,9 @@ export function getLoteDecoder(): Decoder<Lote> {
     ["criadoEm", getI64Decoder()],
     ["atualizadoEm", getI64Decoder()],
     ["bump", getU8Decoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 64)],
+    ["pesoSemColetorG", getU64Decoder()],
+    ["assetQueimavel", getBooleanDecoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 55)],
   ]);
 }
 

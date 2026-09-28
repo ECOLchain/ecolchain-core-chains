@@ -12,6 +12,16 @@ test('totais batem com o exemplo do diagrama (US$ 50)', () => {
     assert.equal(ecolchain, 750n);
 });
 
+test('coletores só sobre o peso com coletor (mesma conta do ecol_reparticao)', () => {
+    const metade = calcularTotais(5_000n, BPS, 6_500, { totalG: 1_000_000n, semColetorG: 500_000n });
+    assert.deepEqual(metade.totais, [125n, 500n, 250n, 3_250n]);
+    assert.equal(metade.ecolchain, 875n);
+    const nada = calcularTotais(5_000n, BPS, 6_500, { totalG: 1_000_000n, semColetorG: 1_000_000n });
+    assert.equal(nada.totais[0], 0n);
+    const antigo = calcularTotais(5_000n, BPS, 6_500, { totalG: 1_000_000n, semColetorG: 0n });
+    assert.equal(antigo.totais[0], 250n);
+});
+
 test('divisão por peso fecha o total de cada papel e é determinística', async () => {
     const [c1, c2, c3, coop, t, ind1, ind2] = await Promise.all(Array.from({ length: 7 }, novo));
     const lotes: LoteDoCredito[] = [
