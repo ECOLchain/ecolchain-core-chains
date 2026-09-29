@@ -1,2 +1,5 @@
 .claude/settings.local.json
 *:Zone.Identifier
+
+# Interface web: repositório próprio (a pasta fica no disco, fora deste repo)
+/web/
