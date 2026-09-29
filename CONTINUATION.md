@@ -4,7 +4,8 @@ Documento vivo para retomar o trabalho entre sessões. Atualizar ao fim de cada 
 (seção **Histórico** + ajustar **Pendências** e **Próximos passos**).
 
 - **Diagrama de referência:** `docs/Proposta_04.excalidraw` (v04, com as decisões de 2026-09-28; `Proposta_03` mantido como original)
-- **Última atualização:** 2026-09-28
+- **Última atualização:** 2026-09-29
+- **Repositórios:** blockchain https://github.com/ECOLchain/ecolchain-core-chains · web https://github.com/ECOLchain/ecolchain-core-web (clonado em `web/`)
 
 ---
 
@@ -51,7 +52,7 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 | F4 `ecol_reparticao` | ✅ 8 instruções, 17 testes (3 programas encadeados); riscos R1–R3 registrados |
 | F5 Codama, devnet, Squads, segurança | ✅ clientes Codama, gerador TS da árvore, E2E Surfpool, testes de propriedade; **deploy devnet verificável + Squads 3 de 5** (2026-09-28) |
 
-**Estado atual do `ecol_lote`:** 30 instruções (materiais, guardião e entregas desde a sessão 10; nomes de participante e balança na sessão 12); 64 testes (5 unitários + 41 LiteSVM: fluxo, autorização, pesagem/asset, regressões da auditoria, compute units); clippy estrito limpo. Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
+**Estado atual do `ecol_lote`:** 33 instruções (materiais, guardião e entregas desde a sessão 10; nomes de participante e balança e a ADR 0010 na sessão 12); workspace com 129 testes Rust + 6 TS + 2 E2E; clippy estrito limpo. Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
 
 **Boas práticas:** seguir o [solana-ai-kit](https://github.com/solanabr/solana-ai-kit) (pedido do usuário em 2026-09-28): checklists `/audit-solana`, `safe-solana-builder`, Trail of Bits; aritmética checada, sem `unwrap` em produção, `init_if_needed` proibido, auditoria antes de fechar cada fase.
 
@@ -205,6 +206,10 @@ Configs inicializadas nos 3 programas. Custo ≈ 7,5 SOL (14,05 → 6,57). Chave
 - [x] **Implementar a ADR 0010** (lote de origem sem coletor, lote de venda com fechar/desmontar, teto proporcional dos coletores); tolerância −10%/+2%, entregas antigas = origem Coletor, busca pela referência da doação na trilha pública
 - [ ] NF/recibo no lote de origem com coletor (upgrade do `ecol_lote`; aguardando decisão do usuário)
 - [ ] RPC próprio para a devnet/mainnet (o público limita a trilha com 429)
+- [ ] **Ensaio com Solflare real na devnet** antes da apresentação (`docs/roteiro-demonstracao-devnet.md`): venda com nonce durável e assinatura parcial, retirada, leitor de QR; importar a chave de teste do intermediador na Solflare
+- [ ] Ajustes de cadastro na devnet (roteiro 1.4): nomes com espaço duplo, "Cooperativa 02" com papel Coletor, balança sem nome com dispositivo = carteira do Coletor C02
+- [ ] Próximas telas do fluxo: **Recebimentos** (indústria, pesagem Ed25519 da balança da indústria), liberação do escrow (intermediador), disputas, créditos e repartição
+- [ ] Clientes para a web sem depender da pasta vizinha (pacote npm ou submódulo), quando for preciso publicar o site em https (câmera no celular)
 - [ ] Corrigir notação/legenda das setas e sobreposições do diagrama (ver achados gerais abaixo)
 
 ### Achados gerais do diagrama (fora do foco atual, para depois)
