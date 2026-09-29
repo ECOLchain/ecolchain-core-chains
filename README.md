@@ -364,7 +364,7 @@ Na interface web, os passos 2 a 4 ficam no menu **Administração** (Participant
 7. `cooperativa_add_entregas` vincula os lotes de origem do mesmo material (até 10 por transação). A balança pesa o consolidado e assina `(domínio, Origem, lote, peso_g, ts)`; `[Ed25519, cooperativa_fechar_lote]` fecha o lote (`Criado`) e cria o asset. Até a venda, `cooperativa_desmontar_lote` desfaz a união.
 8. `cooperativa_list_lote`. Estado: `Anunciado`.
 9. O leilão é apurado off-chain. `industria_accept_venda` com as três assinaturas. Estado: `Vendido`.
-10. `transportador_pickup_lote`. Estado: `EmTransporte`, com o asset passando para o transportador.
+10. `transportador_pickup_lote`, assinado pela cooperativa e pelo transportador. Na interface, a cooperativa assina e mostra um QR Code; o aparelho do transportador remonta a transação, confere a assinatura, assina e envia. Estado: `EmTransporte`, com o asset passando para o transportador.
 11. `industria_confirm_recebimento`, com pesagem assinada pela balança da indústria. Estado: `Recebido` (ou `EmDisputa` se o peso divergir), com o asset passando para a indústria.
 12. `intermediador_confirm_liberacao`. Estado: `Reciclado`.
 
@@ -493,6 +493,8 @@ web/                            interface web: repositório próprio (FORA DESTE
 **WSL:** o Docker Desktop precisa da integração ativada para a distro: *Settings → Resources → WSL integration*.
 
 **Carteira local:** `~/.config/solana/id.json` (crie com `solana-keygen new` se não existir). Para ver o endereço, use `solana address`.
+
+**Carteira dos participantes (interface web): use a [Solflare](https://solflare.com).** Ela assina sem alterar a transação e permite assinar sem enviar, o que a retirada do lote exige: a cooperativa e o transportador assinam a mesma transação em aparelhos diferentes. Carteiras que acrescentam instruções ao assinar invalidam a assinatura da outra parte. Detalhes no README do [repositório da web](https://github.com/ECOLchain/ecolchain-core-web).
 
 A variável `NO_DNA=1` usada nos comandos do Anchor só desliga a telemetria e as mensagens interativas do CLI.
 
