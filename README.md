@@ -363,7 +363,7 @@ Na interface web, os passos 2 a 4 ficam no menu **Administração** (Participant
 6. `cooperativa_create_lote` abre o lote de venda em `EmMontagem`.
 7. `cooperativa_add_entregas` vincula os lotes de origem do mesmo material (até 10 por transação). A balança pesa o consolidado e assina `(domínio, Origem, lote, peso_g, ts)`; `[Ed25519, cooperativa_fechar_lote]` fecha o lote (`Criado`) e cria o asset. Até a venda, `cooperativa_desmontar_lote` desfaz a união.
 8. `cooperativa_list_lote`. Estado: `Anunciado`.
-9. O leilão é apurado off-chain. `industria_accept_venda` com as três assinaturas. Estado: `Vendido`.
+9. O leilão é apurado off-chain. `industria_accept_venda` com as três assinaturas (indústria, operador e intermediador). Na interface, cada um assina no seu aparelho, e o código passa por QR ou copiar e colar; a transação usa um nonce durável do operador, então não expira enquanto circula. Estado: `Vendido`.
 10. `transportador_pickup_lote`, assinado pela cooperativa e pelo transportador. Na interface, a cooperativa assina e mostra um QR Code; o aparelho do transportador remonta a transação, confere a assinatura, assina e envia. Estado: `EmTransporte`, com o asset passando para o transportador.
 11. `industria_confirm_recebimento`, com pesagem assinada pela balança da indústria. Estado: `Recebido` (ou `EmDisputa` se o peso divergir), com o asset passando para a indústria.
 12. `intermediador_confirm_liberacao`. Estado: `Reciclado`.

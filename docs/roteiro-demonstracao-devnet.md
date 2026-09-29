@@ -1,8 +1,8 @@
 # Roteiro de demonstração na devnet
 
-Demonstração da EcolChain com carteiras reais (Solflare) na **devnet**: do material que chega à cooperativa até a trilha pública, passando pelo lote de venda e pelo leilão. Duração: **20 a 25 minutos**, mais perguntas.
+Demonstração da EcolChain com carteiras reais (Solflare) na **devnet**: do material que chega à cooperativa até a retirada pelo transportador, passando pelo lote de venda, pelo leilão e pela venda, com a trilha pública no fim. Duração: **25 a 30 minutos**, mais perguntas.
 
-Estado da devnet levantado em 2026-09-28. Antes da apresentação, confira de novo (seção 1.5).
+Estado da devnet levantado em 2026-09-28; telas de venda e retirada a partir de 2026-09-29. Antes da apresentação, confira de novo (seção 1.5).
 
 ---
 
@@ -18,13 +18,22 @@ Todas na **Solflare**, com a rede da carteira em **Devnet**. As contas abaixo j�
 | Cooperativa | Cooperativa  01 | `kv3D…Jg3` | 0,39 SOL | **sim**: lotes de origem, lote de venda, anúncio, retirada |
 | Coletor | Coletor  C01 | `AmpF…8Tv` | 0,01 SOL | não (só mostra o QR) |
 | Transportador | Transportador T01 | `G1Un…kAHn` | 0,02 SOL | não (a cooperativa paga a retirada) |
-| Indústria | Industria 01 | `6Kmc…Nw1fN` | 0,04 SOL | só na venda (ainda sem tela, ver 2.8) |
+| Indústria | Industria 01 | `6Kmc…Nw1fN` | 0,04 SOL | não (a administração paga a venda) |
+| Intermediador de pagamento | — | `39J3…82Ez` | — | não (chave de teste: importe na Solflare, 1.2) |
 
-Custos de referência: cada lote de origem ≈ 0,002 SOL; cada lote de venda fechado, com o recibo digital, ≈ 0,0084 SOL. O saldo da cooperativa dá para dezenas de lotes. Faucet: https://faucet.solana.com.
+Custos de referência: cada lote de origem ≈ 0,002 SOL; cada lote de venda fechado, com o recibo digital, ≈ 0,0084 SOL. O saldo da cooperativa dá para dezenas de lotes. A **primeira venda** cria a conta de assinatura das vendas da administração (≈ 0,0015 SOL, uma vez só). Faucet: https://faucet.solana.com.
 
 ### 1.2 Um perfil de navegador por papel
 
-Troque de conta criando **um perfil do Chrome para cada papel** (Administração, Cooperativa, Coletor, Transportador), cada um com a Solflare importada na conta daquele papel. É mais confiável que trocar de conta dentro da mesma Solflare no meio da apresentação, e permite deixar duas janelas lado a lado, por exemplo cooperativa e transportador.
+Troque de conta criando **um perfil do Chrome para cada papel** (Administração, Cooperativa, Coletor, Transportador, Indústria e Intermediador), cada um com a Solflare importada na conta daquele papel.
+
+**Intermediador:** na devnet ele é uma chave de teste, guardada em `onchain/.devnet/intermediador.json` (fora do git). Para importá-la na Solflare (Importar carteira → chave privada), gere a chave em base58 com:
+
+```bash
+cd onchain/clients && node -e "const {getBase58Decoder}=require('@solana/kit');console.log(getBase58Decoder().decode(Uint8Array.from(require('../.devnet/intermediador.json'))))"
+```
+
+Trate essa saída como senha: só serve na devnet, mas quem a tiver assina como intermediador. É mais confiável que trocar de conta dentro da mesma Solflare no meio da apresentação, e permite deixar duas janelas lado a lado, por exemplo cooperativa e transportador.
 
 O **selo "Operando como"** no header, com a cor de cada papel, mostra ao público quem está na tela: verde para a cooperativa, âmbar para o coletor, azul para o transportador, roxo para a indústria e cinza-azulado para a administração.
 
@@ -103,29 +112,35 @@ Cada ato traz o perfil (carteira), o que fazer e o que falar.
 ### 2.6 Coletor: Meus lotes (1 min)
 **Perfil:** Coletor.
 
-- **Meus lotes:** o lote de origem de 12,5 kg aparece **no lote de venda**, com a situação "Anunciado".
+- **Meus lotes:** o lote de origem de 12,5 kg aparece **no lote de venda**, com a situação "Anunciado". (Volte a esta tela depois da retirada: a situação acompanha o lote.)
 - **Fala:** "O coletor acompanha o próprio material até a indústria, sem depender de ninguém."
 
-### 2.7 Trilha pública (3 min)
+### 2.7 Venda (4 min)
+**Perfis:** Administração → Intermediador → Indústria. Num computador só, o código passa por **Copiar código** e **Ou cole o código copiado**; em aparelhos diferentes, pela câmera.
+
+1. **Administração → Leilões:** selecione o lote anunciado no ato 2.5 → **Registrar venda**. Indústria vencedora **Industria 01**, valor **1.250,00** (acima do preço mínimo), depósito **"PIX E2E 123"**, ata **"Ata 2026-10"** → **Assinar e gerar código**. Na primeira venda, a Solflare pede uma assinatura a mais: a criação da conta de assinatura das vendas.
+2. **Intermediador → Escrow dos lotes → Assinar venda:** leia ou cole o código. A tela mostra lote, indústria, valor, referências e quem já assinou → **Assinar e confirmar depósito** → copie o novo código.
+3. **Indústria → Compras → Aceitar compra:** leia ou cole o código → **Assinar e confirmar compra**. A venda vai para a blockchain; a tela da administração mostra "Venda do lote #… registrada" sozinha.
+4. **Fala:** "Três partes assinam a mesma operação: a administração atesta o resultado do leilão, o intermediador atesta que o dinheiro está retido e a indústria aceita a compra. O dinheiro fica fora da blockchain, em R$; na blockchain fica a prova de quem assinou o quê. O código não expira com o tempo: cada um assina quando puder."
+
+### 2.8 Retirada (3 min)
+**Perfis:** Cooperativa e Transportador, lado a lado.
+
+1. **Cooperativa → Retiradas:** o lote vendido aparece como **Aguardando retirada** → **Registrar retirada**. Identifique o transportador pelo QR da tela **Minha carteira** dele (webcam) ou pela lista → **Assinar e gerar código**.
+2. **Transportador → Retiradas → Assinar retirada:** leia ou cole o código em até **1 minuto** → confira o lote → **Assinar e confirmar retirada**.
+3. As duas telas mostram o lote **Em transporte**. Na trilha pública, o lote aparece com o transportador.
+4. **Fala:** "A passagem de custódia é assinada pelas duas partes, e o recibo digital do lote passa para a carteira do transportador. Daqui em diante, a indústria confirma o recebimento com a balança dela."
+
+### 2.9 Trilha pública (3 min)
 **Janela anônima, sem carteira.**
 
-1. **Trilha pública**, busque **"Recibo 2026-001"**: aparece a doação → lote de venda → anúncio.
+1. **Trilha pública**, busque **"Recibo 2026-001"**: aparece a doação → lote de venda → venda à indústria → transportador.
 2. Busque **"NF 1001"**: o lote de venda com as duas origens.
 3. Busque **"Coletor C01"**: os lotes de origem dele, inclusive os antigos.
 4. Clique em **Ver na blockchain** num dos cartões: o registro no Solana Explorer.
 5. **Fala:** "Qualquer pessoa confere a origem do material, sem login. O texto do recibo não está na blockchain: a página recalcula o código a partir do que foi digitado."
 
-### 2.8 Venda e retirada (3 min)
-
-**A venda ainda não tem tela.** Ela exige três assinaturas: indústria, administração (que atesta o vencedor do leilão) e intermediador de pagamento (que atesta o depósito). Sem venda, nenhum lote chega a "Aguardando retirada" na devnet. Até a tela ficar pronta:
-
-- **Perfil Transportador:** mostre **Minha carteira** e **Retiradas**, que estará vazia.
-- **Fala** (com a tela de Retiradas aberta): "Na retirada, a cooperativa lê o QR do transportador, assina, e mostra um código na tela. O transportador lê esse código no celular dele e completa a assinatura. As duas partes assinam a passagem de custódia, e o recibo digital passa para a carteira do transportador."
-- Se quiser mostrar a retirada funcionando, grave antes um vídeo curto do fluxo na rede local (`onchain/clients/scripts/rede-local.ts`, que já cria um lote vendido).
-
-Quando a tela de venda existir, este ato vira: **Indústria** aceita o lance → **Cooperativa**, em **Retiradas**, lê o QR do **Transportador** e gera o código → **Transportador** lê o código em **Assinar retirada** → as duas telas mostram "Em transporte".
-
-### 2.9 Fechamento: por que blockchain (2 min)
+### 2.10 Fechamento: por que blockchain (2 min)
 
 - Em **Lotes de venda**, clique em **Ver transação** de qualquer ação: o registro público, com quem assinou e quando.
 - **Fala:**
@@ -143,7 +158,10 @@ Quando a tela de venda existir, este ato vira: **Indústria** aceita o lance →
 | "A balança precisa estar cadastrada e ativa" | perfil errado do navegador (1.3) |
 | "Não foi possível consultar a blockchain agora" na trilha | limite do RPC público: espere alguns segundos e busque de novo, ou use RPC dedicado (1.5) |
 | "Fora da faixa aceita" ao montar o lote | use um peso entre −10% e +2% da soma; a própria mensagem mostra os limites em kg |
-| A câmera não abre | a página precisa estar em `localhost` ou https; permita a câmera no navegador. Plano B: escolha o coletor na lista |
+| A câmera não abre | a página precisa estar em `localhost` ou https; permita a câmera no navegador. Plano B: escolha na lista ou use Copiar/colar código |
+| "O código venceu" (venda) | outra venda foi registrada depois dele; registre a venda de novo em Leilões |
+| "O código expirou" (retirada) | a retirada vale ~1 minuto: gere um novo código e cole logo em seguida |
+| "A carteira conectada não é a deste papel" | a Solflare está na conta errada para este passo; confira o selo |
 | "Assinatura cancelada na carteira" | a assinatura foi recusada na Solflare, ou ela está em outra conta; confira o selo e repita |
 | Transação demora | a devnet oscila; espere até 30 s antes de repetir, para não registrar duas vezes |
 

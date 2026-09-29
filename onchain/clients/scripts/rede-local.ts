@@ -1,6 +1,7 @@
 // Rede local de demonstração (Surfpool embarcado): os três programas + Metaplex Core, configs,
 // uma cooperativa, dois coletores, um transportador, uma indústria, materiais e a balança de teste da cooperativa já
-// cadastrados, e um lote de venda (#1, 250 kg de plástico) vendido à indústria, esperando a retirada.
+// cadastrados; o lote de venda #1 (250 kg de plástico) vendido à indústria, esperando a retirada, e o #2 (180 kg de
+// papel) em leilão. O JSON de saída traz as sementes de todos os papéis usados na interface.
 // Fica rodando até Ctrl+C. Útil para testar a interface web sem depender da devnet.
 //
 // Uso: npx tsx scripts/rede-local.ts [arquivo-de-saída.json]
@@ -38,15 +39,24 @@ const client = await createClient().use(surfpool({ transactionConfig: { version:
 const enviar = (...ixs: Instruction[]) => client.sendTransaction(ixs);
 const semente = () => crypto.getRandomValues(new Uint8Array(32));
 
-const [upgrade, admin, arbitro, operador, intermediador, registrador, zupy] = await Promise.all(
-    Array.from({ length: 7 }, () => generateKeyPairSigner()),
-);
-const sementes = { cooperativa: semente(), balanca: semente(), coletor1: semente(), coletor2: semente(), transportador: semente() };
+const [upgrade, admin, arbitro, registrador, zupy] = await Promise.all(Array.from({ length: 5 }, () => generateKeyPairSigner()));
+const sementes = {
+    cooperativa: semente(),
+    balanca: semente(),
+    coletor1: semente(),
+    coletor2: semente(),
+    transportador: semente(),
+    industria: semente(),
+    operador: semente(),
+    intermediador: semente(),
+};
+const operador = await createKeyPairSignerFromPrivateKeyBytes(sementes.operador);
+const intermediador = await createKeyPairSignerFromPrivateKeyBytes(sementes.intermediador);
 const cooperativa = await createKeyPairSignerFromPrivateKeyBytes(sementes.cooperativa);
 const balanca = await createKeyPairSignerFromPrivateKeyBytes(sementes.balanca);
 const coletores = await Promise.all([sementes.coletor1, sementes.coletor2].map((s) => createKeyPairSignerFromPrivateKeyBytes(s)));
 const transportador = await createKeyPairSignerFromPrivateKeyBytes(sementes.transportador);
-const industria = await generateKeyPairSigner();
+const industria = await createKeyPairSignerFromPrivateKeyBytes(sementes.industria);
 
 client.surfnet.deploy({ programId: MPL_CORE, soPath: join(raiz, 'tests', 'fixtures', 'mpl_core.so') });
 for (const [programa, arquivo] of [
@@ -58,6 +68,7 @@ for (const [programa, arquivo] of [
     await client.cheatcodes.setProgramAuthority(programa, upgrade.address).send();
 }
 client.surfnet.fundSol(cooperativa.address, 10_000_000_000);
+client.surfnet.fundSol(operador.address, 10_000_000_000);
 
 const programData = async (programa: string) =>
     (await getProgramDerivedAddress({ programAddress: LOADER, seeds: [getAddressEncoder().encode(address(programa))] }))[0];
@@ -245,6 +256,74 @@ await enviar(
     }),
 );
 
+// Lote de venda #2 (180 kg de papel) em leilão, para a tela Leilões registrar a venda.
+const entrega2 = await pLote.entrega(cooperativa.address, 2n);
+const lote2 = await pLote.lote(cooperativa.address, 2n);
+const PESO2_G = 180_000n;
+ts = await agora();
+await enviar(
+    await instrucaoPesagem(balanca, TipoPesagem.Entrega, entrega2, PESO2_G, ts),
+    await lote.getCooperativaRegisterEntregaInstructionAsync({
+        payer: client.payer,
+        cooperativa,
+        balanca: balancaPda,
+        materialCadastro: await pLote.material(2),
+        entrega: entrega2,
+        eventAuthority: ev,
+        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+        entregaId: 2n,
+        origem: lote.OrigemEntrega.Coletor,
+        origemRef: await coletorRef(coletores[1].address),
+        material: 2,
+        pesoG: PESO2_G,
+        tsPesagem: ts,
+    }),
+);
+await enviar(
+    await lote.getCooperativaCreateLoteInstructionAsync({
+        payer: client.payer,
+        cooperativa,
+        materialCadastro: await pLote.material(2),
+        lote: lote2,
+        eventAuthority: ev,
+        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+        loteId: 2n,
+        material: 2,
+        evidenciasHash: h('lote-demo:2'),
+    }),
+);
+await enviar(
+    comContasGravaveis(
+        await lote.getCooperativaAddEntregasInstructionAsync({ cooperativa, lote: lote2, eventAuthority: ev, program: lote.ECOL_LOTE_PROGRAM_ADDRESS }),
+        [entrega2],
+    ),
+);
+ts = await agora();
+await enviar(
+    await instrucaoPesagem(balanca, TipoPesagem.Origem, lote2, PESO2_G, ts),
+    await lote.getCooperativaFecharLoteInstructionAsync({
+        payer: client.payer,
+        cooperativa,
+        balanca: balancaPda,
+        lote: lote2,
+        eventAuthority: ev,
+        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+        pesoG: PESO2_G,
+        tsPesagem: ts,
+        uri: 'https://arweave.net/ecolchain/lote-demo-2.json',
+    }),
+);
+await enviar(
+    await lote.getCooperativaListLoteInstructionAsync({
+        cooperativa,
+        lote: lote2,
+        eventAuthority: ev,
+        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+        prazoLeilao: (await agora()) + 7n * 24n * 3600n,
+        precoMinimoCentavos: 90_000n,
+    }),
+);
+
 const hex = (b: Uint8Array) => Buffer.from(b).toString('hex');
 writeFileSync(
     saida,
@@ -258,6 +337,9 @@ writeFileSync(
             // Para entrar na interface como coletor (tela Meus lotes).
             coletor: { endereco: coletores[0].address, semente: hex(sementes.coletor1) },
             transportador: { endereco: transportador.address, semente: hex(sementes.transportador) },
+            industria: { endereco: industria.address, semente: hex(sementes.industria) },
+            operador: { endereco: operador.address, semente: hex(sementes.operador) },
+            intermediador: { endereco: intermediador.address, semente: hex(sementes.intermediador) },
         },
         null,
         2,
