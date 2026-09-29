@@ -1,7 +1,8 @@
 // Rede local de demonstração (Surfpool embarcado): os três programas + Metaplex Core, configs,
 // uma cooperativa, dois coletores, um transportador, uma indústria, materiais e a balança de teste da cooperativa já
-// cadastrados (com a balança da indústria), e três lotes de venda: #1 vendido (esperando a retirada), #2 em leilão e
-// #3 em transporte (esperando o recebimento). O JSON de saída traz as sementes de todos os papéis usados na interface.
+// cadastrados (com a balança da indústria), e quatro lotes de venda: #1 vendido (esperando a retirada), #2 em leilão,
+// #3 em transporte (esperando o recebimento) e #4 recebido (esperando a liberação do escrow). O JSON de saída
+// traz as sementes de todos os papéis usados na interface.
 // Fica rodando até Ctrl+C. Útil para testar a interface web sem depender da devnet.
 //
 // Uso: npx tsx scripts/rede-local.ts [arquivo-de-saída.json]
@@ -73,6 +74,8 @@ client.surfnet.fundSol(cooperativa.address, 10_000_000_000);
 client.surfnet.fundSol(operador.address, 10_000_000_000);
 // A indústria paga a taxa do recebimento.
 client.surfnet.fundSol(industria.address, 1_000_000_000);
+// O intermediador paga a taxa da liberação do escrow.
+client.surfnet.fundSol(intermediador.address, 1_000_000_000);
 
 const programData = async (programa: string) =>
     (await getProgramDerivedAddress({ programAddress: LOADER, seeds: [getAddressEncoder().encode(address(programa))] }))[0];
@@ -172,7 +175,8 @@ for (const [codigo, nome] of [
 }
 
 // Lotes de demonstração, cada um parado numa etapa, para as telas terem o que mostrar:
-// #1 vendido (Retiradas), #2 em leilão (Leilões) e #3 em transporte (Recebimentos da indústria).
+// #1 vendido (Retiradas), #2 em leilão (Leilões), #3 em transporte (Recebimentos da indústria) e #4 recebido
+// (liberação do escrow pelo intermediador).
 const agora = async () => (await fetchSysvarClock(client.rpc)).unixTimestamp;
 const balancaPda = await pLote.balanca(balanca.address);
 
@@ -191,7 +195,7 @@ await enviar(
     }),
 );
 
-type Etapa = 'anunciado' | 'vendido' | 'emTransporte';
+type Etapa = 'anunciado' | 'vendido' | 'emTransporte' | 'recebido';
 async function loteDemo(id: bigint, material: number, pesoG: bigint, coletor: Address, ate: Etapa) {
     const entrega = await pLote.entrega(cooperativa.address, id);
     const lotePda = await pLote.lote(cooperativa.address, id);
@@ -285,10 +289,27 @@ async function loteDemo(id: bigint, material: number, pesoG: bigint, coletor: Ad
             program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
         }),
     );
+    if (ate === 'emTransporte') return;
+    ts = await agora();
+    await enviar(
+        await instrucaoPesagem(balancaIndustria, TipoPesagem.Recebimento, lotePda, pesoG, ts),
+        await lote.getIndustriaConfirmRecebimentoInstructionAsync({
+            industria,
+            balanca: await pLote.balanca(balancaIndustria.address),
+            lote: lotePda,
+            payer: client.payer,
+            asset: await pLote.asset(lotePda),
+            eventAuthority: ev,
+            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            pesoRecebidoG: pesoG,
+            tsPesagem: ts,
+        }),
+    );
 }
 await loteDemo(1n, 1, 250_000n, coletores[0].address, 'vendido');
 await loteDemo(2n, 2, 180_000n, coletores[1].address, 'anunciado');
 await loteDemo(3n, 1, 120_000n, coletores[0].address, 'emTransporte');
+await loteDemo(4n, 2, 300_000n, coletores[1].address, 'recebido');
 
 const hex = (b: Uint8Array) => Buffer.from(b).toString('hex');
 writeFileSync(

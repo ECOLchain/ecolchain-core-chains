@@ -1,6 +1,6 @@
 # Roteiro de demonstração na devnet
 
-Demonstração da EcolChain com carteiras reais (Solflare) na **devnet**: do material que chega à cooperativa até a retirada pelo transportador, passando pelo lote de venda, pelo leilão e pela venda, com a trilha pública no fim. Duração: **30 minutos**, mais perguntas.
+Demonstração da EcolChain com carteiras reais (Solflare) na **devnet**: do material que chega à cooperativa até a retirada pelo transportador, passando pelo lote de venda, pelo leilão e pela venda, com a trilha pública no fim. Duração: **30 a 35 minutos**, mais perguntas.
 
 Estado da devnet levantado em 2026-09-28; telas de venda e retirada a partir de 2026-09-29. Antes da apresentação, confira de novo (seção 1.5).
 
@@ -19,7 +19,7 @@ Todas na **Solflare**, com a rede da carteira em **Devnet**. As contas abaixo j�
 | Coletor | Coletor  C01 | `AmpF…8Tv` | 0,01 SOL | não (só mostra o QR) |
 | Transportador | Transportador T01 | `G1Un…kAHn` | 0,02 SOL | não (a cooperativa paga a retirada) |
 | Indústria | Industria 01 | `6Kmc…Nw1fN` | 0,04 SOL | sim, só a taxa do recebimento (centésimos de centavo) |
-| Intermediador de pagamento | — | `39J3…82Ez` | — | não (chave de teste: importe na Solflare, 1.2) |
+| Intermediador de pagamento | — | `39J3…82Ez` | **0 SOL** | sim, só a taxa da liberação: envie **0,01 SOL** antes (chave de teste: importe na Solflare, 1.2) |
 
 Custos de referência: cada lote de origem ≈ 0,002 SOL; cada lote de venda fechado, com o recibo digital, ≈ 0,0084 SOL. O saldo da cooperativa dá para dezenas de lotes. A **primeira venda** cria a conta de assinatura das vendas da administração (≈ 0,0015 SOL, uma vez só). Faucet: https://faucet.solana.com.
 
@@ -140,6 +140,14 @@ Cada ato traz o perfil (carteira), o que fazer e o que falar.
 2. A tela mostra o peso de saída e a faixa aceita sem disputa (±2%, fixada na venda). Digite primeiro um peso bem menor (ex.: 10% abaixo) para mostrar o aviso de disputa. Depois digite um peso dentro da faixa, com **Pesagem atestada pela balança da indústria** marcada, e assine.
 3. O lote vai para **Recebido**, com ✓ de peso atestado, e o recibo digital passa para a carteira da indústria.
 4. **Fala:** "A indústria pesa na chegada com a balança dela, que também assina. Se o peso não bater, o lote vai sozinho para disputa, e o árbitro decide. Ninguém pode 'ajustar' o peso depois."
+
+### 2.8c Liberação do pagamento (2 min)
+**Perfil:** Intermediador.
+
+1. **Escrow dos lotes:** o filtro abre em **Aguardando liberação**, com o lote que a indústria acabou de receber.
+2. **Liberar pagamento:** a tela mostra quem recebe (a cooperativa), quem pagou, o valor e os pesos de saída e de chegada. Informe a referência do repasse, por exemplo **"PIX E2E 456"**, e assine.
+3. O lote passa a **Reciclado**; no filtro **Liberados**, aparece "Liberado à cooperativa".
+4. **Fala:** "O dinheiro da venda ficou retido com o intermediador desde a compra e só vai para a cooperativa depois que a indústria confirma o recebimento. Com isso, o lote está pronto para entrar num crédito de carbono."
 
 ### 2.9 Trilha pública (3 min)
 **Janela anônima, sem carteira.**
