@@ -1,9 +1,9 @@
 // Rede local de demonstração (Surfpool embarcado): os três programas + Metaplex Core, configs,
-// uma cooperativa, dois coletores, materiais e a balança de teste da cooperativa já cadastrados.
+// uma cooperativa, dois coletores, um transportador, materiais e a balança de teste da cooperativa já cadastrados.
 // Fica rodando até Ctrl+C. Útil para testar a interface web sem depender da devnet.
 //
 // Uso: npx tsx scripts/rede-local.ts [arquivo-de-saída.json]
-//   Grava no arquivo: rpcUrl, wsUrl, e as chaves de teste (cooperativa, balança e coletores; semente do coletor 1).
+//   Grava no arquivo: rpcUrl, wsUrl, e as chaves de teste (cooperativa, balança, coletores e transportador; semente do coletor 1).
 //   Na interface: VITE_RPC_LOCALNET=<rpcUrl> VITE_WS_LOCALNET=<wsUrl> npm run dev, rede "Localnet".
 import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
@@ -37,10 +37,11 @@ const semente = () => crypto.getRandomValues(new Uint8Array(32));
 const [upgrade, admin, arbitro, operador, intermediador, registrador, zupy] = await Promise.all(
     Array.from({ length: 7 }, () => generateKeyPairSigner()),
 );
-const sementes = { cooperativa: semente(), balanca: semente(), coletor1: semente(), coletor2: semente() };
+const sementes = { cooperativa: semente(), balanca: semente(), coletor1: semente(), coletor2: semente(), transportador: semente() };
 const cooperativa = await createKeyPairSignerFromPrivateKeyBytes(sementes.cooperativa);
 const balanca = await createKeyPairSignerFromPrivateKeyBytes(sementes.balanca);
 const coletores = await Promise.all([sementes.coletor1, sementes.coletor2].map((s) => createKeyPairSignerFromPrivateKeyBytes(s)));
+const transportador = await createKeyPairSignerFromPrivateKeyBytes(sementes.transportador);
 
 client.surfnet.deploy({ programId: MPL_CORE, soPath: join(raiz, 'tests', 'fixtures', 'mpl_core.so') });
 for (const [programa, arquivo] of [
@@ -104,6 +105,7 @@ await enviar(
 for (const [carteira, papel, nome] of [
     [cooperativa.address, lote.Papel.Cooperativa, 'Cooperativa Demo'],
     ...coletores.map((c, i) => [c.address, lote.Papel.Coletor, `Coletor ${i + 1}`] as const),
+    [transportador.address, lote.Papel.Transportador, 'Transportador Demo'],
 ] as const) {
     await enviar(
         await lote.getOperadorRegisterParticipanteInstructionAsync({
@@ -160,6 +162,7 @@ writeFileSync(
             coletores: coletores.map((c) => c.address),
             // Para entrar na interface como coletor (tela Meus lotes).
             coletor: { endereco: coletores[0].address, semente: hex(sementes.coletor1) },
+            transportador: { endereco: transportador.address, semente: hex(sementes.transportador) },
         },
         null,
         2,
