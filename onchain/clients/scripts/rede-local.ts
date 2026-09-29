@@ -3,7 +3,7 @@
 // Fica rodando até Ctrl+C. Útil para testar a interface web sem depender da devnet.
 //
 // Uso: npx tsx scripts/rede-local.ts [arquivo-de-saída.json]
-//   Grava no arquivo: rpcUrl, wsUrl, e as chaves de teste (cooperativa, balança e coletores).
+//   Grava no arquivo: rpcUrl, wsUrl, e as chaves de teste (cooperativa, balança e coletores; semente do coletor 1).
 //   Na interface: VITE_RPC_LOCALNET=<rpcUrl> VITE_WS_LOCALNET=<wsUrl> npm run dev, rede "Localnet".
 import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
@@ -158,6 +158,8 @@ writeFileSync(
             cooperativa: { endereco: cooperativa.address, semente: hex(sementes.cooperativa) },
             balanca: { endereco: balanca.address, semente: hex(sementes.balanca) },
             coletores: coletores.map((c) => c.address),
+            // Para entrar na interface como coletor (tela Meus lotes).
+            coletor: { endereco: coletores[0].address, semente: hex(sementes.coletor1) },
         },
         null,
         2,
