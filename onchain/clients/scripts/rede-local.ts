@@ -1,7 +1,7 @@
 // Rede local de demonstração (Surfpool embarcado): os três programas + Metaplex Core, configs,
 // uma cooperativa, dois coletores, um transportador, uma indústria, materiais e a balança de teste da cooperativa já
-// cadastrados; o lote de venda #1 (250 kg de plástico) vendido à indústria, esperando a retirada, e o #2 (180 kg de
-// papel) em leilão. O JSON de saída traz as sementes de todos os papéis usados na interface.
+// cadastrados (com a balança da indústria), e três lotes de venda: #1 vendido (esperando a retirada), #2 em leilão e
+// #3 em transporte (esperando o recebimento). O JSON de saída traz as sementes de todos os papéis usados na interface.
 // Fica rodando até Ctrl+C. Útil para testar a interface web sem depender da devnet.
 //
 // Uso: npx tsx scripts/rede-local.ts [arquivo-de-saída.json]
@@ -12,6 +12,7 @@ import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+    type Address,
     address,
     createClient,
     createKeyPairSignerFromPrivateKeyBytes,
@@ -48,6 +49,7 @@ const sementes = {
     transportador: semente(),
     industria: semente(),
     operador: semente(),
+    balancaIndustria: semente(),
     intermediador: semente(),
 };
 const operador = await createKeyPairSignerFromPrivateKeyBytes(sementes.operador);
@@ -69,6 +71,8 @@ for (const [programa, arquivo] of [
 }
 client.surfnet.fundSol(cooperativa.address, 10_000_000_000);
 client.surfnet.fundSol(operador.address, 10_000_000_000);
+// A indústria paga a taxa do recebimento.
+client.surfnet.fundSol(industria.address, 1_000_000_000);
 
 const programData = async (programa: string) =>
     (await getProgramDerivedAddress({ programAddress: LOADER, seeds: [getAddressEncoder().encode(address(programa))] }))[0];
@@ -167,162 +171,124 @@ for (const [codigo, nome] of [
     );
 }
 
-// Um lote de venda já vendido à Indústria Demo, esperando a retirada (tela Retiradas).
+// Lotes de demonstração, cada um parado numa etapa, para as telas terem o que mostrar:
+// #1 vendido (Retiradas), #2 em leilão (Leilões) e #3 em transporte (Recebimentos da indústria).
 const agora = async () => (await fetchSysvarClock(client.rpc)).unixTimestamp;
 const balancaPda = await pLote.balanca(balanca.address);
-const entregaPda = await pLote.entrega(cooperativa.address, 1n);
-const lotePda = await pLote.lote(cooperativa.address, 1n);
-const PESO_G = 250_000n;
-let ts = await agora();
+
+// Balança de teste da indústria, já cadastrada; a semente vai no JSON para o navegador da indústria.
+const balancaIndustria = await createKeyPairSignerFromPrivateKeyBytes(sementes.balancaIndustria);
 await enviar(
-    await instrucaoPesagem(balanca, TipoPesagem.Entrega, entregaPda, PESO_G, ts),
-    await lote.getCooperativaRegisterEntregaInstructionAsync({
+    await lote.getOperadorRegisterBalancaInstructionAsync({
         payer: client.payer,
-        cooperativa,
-        balanca: balancaPda,
-        materialCadastro: await pLote.material(1),
-        entrega: entregaPda,
+        operador,
+        donoPart: await pLote.participante(industria.address),
+        balanca: await pLote.balanca(balancaIndustria.address),
         eventAuthority: ev,
         program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-        entregaId: 1n,
-        origem: lote.OrigemEntrega.Coletor,
-        origemRef: await coletorRef(coletores[0].address),
-        material: 1,
-        pesoG: PESO_G,
-        tsPesagem: ts,
+        dispositivo: balancaIndustria.address,
+        nome: 'Balança da indústria',
     }),
 );
-await enviar(
-    await lote.getCooperativaCreateLoteInstructionAsync({
-        payer: client.payer,
-        cooperativa,
-        materialCadastro: await pLote.material(1),
-        lote: lotePda,
-        eventAuthority: ev,
-        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-        loteId: 1n,
-        material: 1,
-        evidenciasHash: h('lote-demo:1'),
-    }),
-);
-await enviar(
-    comContasGravaveis(
-        await lote.getCooperativaAddEntregasInstructionAsync({
+
+type Etapa = 'anunciado' | 'vendido' | 'emTransporte';
+async function loteDemo(id: bigint, material: number, pesoG: bigint, coletor: Address, ate: Etapa) {
+    const entrega = await pLote.entrega(cooperativa.address, id);
+    const lotePda = await pLote.lote(cooperativa.address, id);
+    let ts = await agora();
+    await enviar(
+        await instrucaoPesagem(balanca, TipoPesagem.Entrega, entrega, pesoG, ts),
+        await lote.getCooperativaRegisterEntregaInstructionAsync({
+            payer: client.payer,
+            cooperativa,
+            balanca: balancaPda,
+            materialCadastro: await pLote.material(material),
+            entrega,
+            eventAuthority: ev,
+            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            entregaId: id,
+            origem: lote.OrigemEntrega.Coletor,
+            origemRef: await coletorRef(coletor),
+            material,
+            pesoG,
+            tsPesagem: ts,
+        }),
+    );
+    await enviar(
+        await lote.getCooperativaCreateLoteInstructionAsync({
+            payer: client.payer,
+            cooperativa,
+            materialCadastro: await pLote.material(material),
+            lote: lotePda,
+            eventAuthority: ev,
+            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            loteId: id,
+            material,
+            evidenciasHash: h(`lote-demo:${id}`),
+        }),
+    );
+    await enviar(
+        comContasGravaveis(
+            await lote.getCooperativaAddEntregasInstructionAsync({ cooperativa, lote: lotePda, eventAuthority: ev, program: lote.ECOL_LOTE_PROGRAM_ADDRESS }),
+            [entrega],
+        ),
+    );
+    ts = await agora();
+    await enviar(
+        await instrucaoPesagem(balanca, TipoPesagem.Origem, lotePda, pesoG, ts),
+        await lote.getCooperativaFecharLoteInstructionAsync({
+            payer: client.payer,
+            cooperativa,
+            balanca: balancaPda,
+            lote: lotePda,
+            eventAuthority: ev,
+            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            pesoG,
+            tsPesagem: ts,
+            uri: `https://arweave.net/ecolchain/lote-demo-${id}.json`,
+        }),
+    );
+    await enviar(
+        await lote.getCooperativaListLoteInstructionAsync({
             cooperativa,
             lote: lotePda,
             eventAuthority: ev,
             program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            prazoLeilao: (await agora()) + 7n * 24n * 3600n,
+            precoMinimoCentavos: 90_000n,
         }),
-        [entregaPda],
-    ),
-);
-ts = await agora();
-await enviar(
-    await instrucaoPesagem(balanca, TipoPesagem.Origem, lotePda, PESO_G, ts),
-    await lote.getCooperativaFecharLoteInstructionAsync({
-        payer: client.payer,
-        cooperativa,
-        balanca: balancaPda,
-        lote: lotePda,
-        eventAuthority: ev,
-        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-        pesoG: PESO_G,
-        tsPesagem: ts,
-        uri: 'https://arweave.net/ecolchain/lote-demo-1.json',
-    }),
-);
-await enviar(
-    await lote.getCooperativaListLoteInstructionAsync({
-        cooperativa,
-        lote: lotePda,
-        eventAuthority: ev,
-        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-        prazoLeilao: (await agora()) + 3600n,
-        precoMinimoCentavos: 100_000n,
-    }),
-);
-await enviar(
-    await lote.getIndustriaAcceptVendaInstructionAsync({
-        industria,
-        cooperativaPart: await pLote.participante(cooperativa.address),
-        operador,
-        intermediador,
-        lote: lotePda,
-        eventAuthority: ev,
-        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-        valorCentavos: 125_000n,
-        escrowRefHash: h('escrow-demo:1'),
-        lancesRoot: h('lances-demo:1'),
-    }),
-);
-
-// Lote de venda #2 (180 kg de papel) em leilão, para a tela Leilões registrar a venda.
-const entrega2 = await pLote.entrega(cooperativa.address, 2n);
-const lote2 = await pLote.lote(cooperativa.address, 2n);
-const PESO2_G = 180_000n;
-ts = await agora();
-await enviar(
-    await instrucaoPesagem(balanca, TipoPesagem.Entrega, entrega2, PESO2_G, ts),
-    await lote.getCooperativaRegisterEntregaInstructionAsync({
-        payer: client.payer,
-        cooperativa,
-        balanca: balancaPda,
-        materialCadastro: await pLote.material(2),
-        entrega: entrega2,
-        eventAuthority: ev,
-        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-        entregaId: 2n,
-        origem: lote.OrigemEntrega.Coletor,
-        origemRef: await coletorRef(coletores[1].address),
-        material: 2,
-        pesoG: PESO2_G,
-        tsPesagem: ts,
-    }),
-);
-await enviar(
-    await lote.getCooperativaCreateLoteInstructionAsync({
-        payer: client.payer,
-        cooperativa,
-        materialCadastro: await pLote.material(2),
-        lote: lote2,
-        eventAuthority: ev,
-        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-        loteId: 2n,
-        material: 2,
-        evidenciasHash: h('lote-demo:2'),
-    }),
-);
-await enviar(
-    comContasGravaveis(
-        await lote.getCooperativaAddEntregasInstructionAsync({ cooperativa, lote: lote2, eventAuthority: ev, program: lote.ECOL_LOTE_PROGRAM_ADDRESS }),
-        [entrega2],
-    ),
-);
-ts = await agora();
-await enviar(
-    await instrucaoPesagem(balanca, TipoPesagem.Origem, lote2, PESO2_G, ts),
-    await lote.getCooperativaFecharLoteInstructionAsync({
-        payer: client.payer,
-        cooperativa,
-        balanca: balancaPda,
-        lote: lote2,
-        eventAuthority: ev,
-        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-        pesoG: PESO2_G,
-        tsPesagem: ts,
-        uri: 'https://arweave.net/ecolchain/lote-demo-2.json',
-    }),
-);
-await enviar(
-    await lote.getCooperativaListLoteInstructionAsync({
-        cooperativa,
-        lote: lote2,
-        eventAuthority: ev,
-        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-        prazoLeilao: (await agora()) + 7n * 24n * 3600n,
-        precoMinimoCentavos: 90_000n,
-    }),
-);
+    );
+    if (ate === 'anunciado') return;
+    await enviar(
+        await lote.getIndustriaAcceptVendaInstructionAsync({
+            industria,
+            cooperativaPart: await pLote.participante(cooperativa.address),
+            operador,
+            intermediador,
+            lote: lotePda,
+            eventAuthority: ev,
+            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            valorCentavos: 125_000n,
+            escrowRefHash: h(`escrow-demo:${id}`),
+            lancesRoot: h(`lances-demo:${id}`),
+        }),
+    );
+    if (ate === 'vendido') return;
+    await enviar(
+        await lote.getTransportadorPickupLoteInstructionAsync({
+            transportador,
+            cooperativa,
+            lote: lotePda,
+            payer: client.payer,
+            asset: await pLote.asset(lotePda),
+            eventAuthority: ev,
+            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+        }),
+    );
+}
+await loteDemo(1n, 1, 250_000n, coletores[0].address, 'vendido');
+await loteDemo(2n, 2, 180_000n, coletores[1].address, 'anunciado');
+await loteDemo(3n, 1, 120_000n, coletores[0].address, 'emTransporte');
 
 const hex = (b: Uint8Array) => Buffer.from(b).toString('hex');
 writeFileSync(
@@ -338,6 +304,7 @@ writeFileSync(
             coletor: { endereco: coletores[0].address, semente: hex(sementes.coletor1) },
             transportador: { endereco: transportador.address, semente: hex(sementes.transportador) },
             industria: { endereco: industria.address, semente: hex(sementes.industria) },
+            balancaIndustria: { endereco: balancaIndustria.address, semente: hex(sementes.balancaIndustria) },
             operador: { endereco: operador.address, semente: hex(sementes.operador) },
             intermediador: { endereco: intermediador.address, semente: hex(sementes.intermediador) },
         },

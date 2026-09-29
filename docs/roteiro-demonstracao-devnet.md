@@ -1,6 +1,6 @@
 # Roteiro de demonstração na devnet
 
-Demonstração da EcolChain com carteiras reais (Solflare) na **devnet**: do material que chega à cooperativa até a retirada pelo transportador, passando pelo lote de venda, pelo leilão e pela venda, com a trilha pública no fim. Duração: **25 a 30 minutos**, mais perguntas.
+Demonstração da EcolChain com carteiras reais (Solflare) na **devnet**: do material que chega à cooperativa até a retirada pelo transportador, passando pelo lote de venda, pelo leilão e pela venda, com a trilha pública no fim. Duração: **30 minutos**, mais perguntas.
 
 Estado da devnet levantado em 2026-09-28; telas de venda e retirada a partir de 2026-09-29. Antes da apresentação, confira de novo (seção 1.5).
 
@@ -18,7 +18,7 @@ Todas na **Solflare**, com a rede da carteira em **Devnet**. As contas abaixo j�
 | Cooperativa | Cooperativa  01 | `kv3D…Jg3` | 0,39 SOL | **sim**: lotes de origem, lote de venda, anúncio, retirada |
 | Coletor | Coletor  C01 | `AmpF…8Tv` | 0,01 SOL | não (só mostra o QR) |
 | Transportador | Transportador T01 | `G1Un…kAHn` | 0,02 SOL | não (a cooperativa paga a retirada) |
-| Indústria | Industria 01 | `6Kmc…Nw1fN` | 0,04 SOL | não (a administração paga a venda) |
+| Indústria | Industria 01 | `6Kmc…Nw1fN` | 0,04 SOL | sim, só a taxa do recebimento (centésimos de centavo) |
 | Intermediador de pagamento | — | `39J3…82Ez` | — | não (chave de teste: importe na Solflare, 1.2) |
 
 Custos de referência: cada lote de origem ≈ 0,002 SOL; cada lote de venda fechado, com o recibo digital, ≈ 0,0084 SOL. O saldo da cooperativa dá para dezenas de lotes. A **primeira venda** cria a conta de assinatura das vendas da administração (≈ 0,0015 SOL, uma vez só). Faucet: https://faucet.solana.com.
@@ -43,6 +43,8 @@ A pesagem é assinada pela chave da balança. Na devnet, essa chave é a "Balan�
 
 - **Use o mesmo navegador e o mesmo perfil** em que ela foi gerada. Em outro perfil ou computador, a tela Lotes de origem mostra a balança como não cadastrada.
 - Se precisar trocar de computador: no perfil novo, em **Lotes de origem → Balança**, gere a balança de teste e peça à Administração que a cadastre em **Balanças**, com a Cooperativa 01 como proprietária. Leva 2 minutos, mas faça antes da apresentação.
+
+**Balança da indústria:** o recebimento também é pesado. No perfil da Indústria, em **Recebimentos → Balança**, gere a balança de teste e peça à Administração que a cadastre em **Balanças**, com a Industria 01 como proprietária. Sem ela, o recebimento funciona, mas o peso fica "informado", sem atestação.
 
 ### 1.4 Ajustes de cadastro recomendados
 
@@ -131,11 +133,19 @@ Cada ato traz o perfil (carteira), o que fazer e o que falar.
 3. As duas telas mostram o lote **Em transporte**. Na trilha pública, o lote aparece com o transportador.
 4. **Fala:** "A passagem de custódia é assinada pelas duas partes, e o recibo digital do lote passa para a carteira do transportador. Daqui em diante, a indústria confirma o recebimento com a balança dela."
 
+### 2.8b Recebimento na indústria (2 min)
+**Perfil:** Indústria.
+
+1. **Recebimentos:** o lote retirado aparece **Em transporte**, com o prazo de entrega → **Registrar recebimento**.
+2. A tela mostra o peso de saída e a faixa aceita sem disputa (±2%, fixada na venda). Digite primeiro um peso bem menor (ex.: 10% abaixo) para mostrar o aviso de disputa. Depois digite um peso dentro da faixa, com **Pesagem atestada pela balança da indústria** marcada, e assine.
+3. O lote vai para **Recebido**, com ✓ de peso atestado, e o recibo digital passa para a carteira da indústria.
+4. **Fala:** "A indústria pesa na chegada com a balança dela, que também assina. Se o peso não bater, o lote vai sozinho para disputa, e o árbitro decide. Ninguém pode 'ajustar' o peso depois."
+
 ### 2.9 Trilha pública (3 min)
 **Janela anônima, sem carteira.**
 
 1. **Trilha pública**, busque **"Recibo 2026-001"**: aparece a doação → lote de venda → venda à indústria → transportador.
-2. Busque **"NF 1001"**: o lote de venda com as duas origens.
+2. Busque **"NF 1001"**: o lote de venda com as duas origens, já recebido pela indústria.
 3. Busque **"Coletor C01"**: os lotes de origem dele, inclusive os antigos.
 4. Clique em **Ver na blockchain** num dos cartões: o registro no Solana Explorer.
 5. **Fala:** "Qualquer pessoa confere a origem do material, sem login. O texto do recibo não está na blockchain: a página recalcula o código a partir do que foi digitado."
