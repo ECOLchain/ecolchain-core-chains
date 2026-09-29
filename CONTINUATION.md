@@ -44,7 +44,7 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 
 | Fase | Status |
 |---|---|
-| F0 Setup (workspace, ADRs) | ✅ (CI pendente: repositório sem remoto) |
+| F0 Setup (workspace, ADRs) | ✅ (repositório no GitHub; CI pendente) |
 | F1 `ecol_lote` núcleo | ✅ |
 | F2 Balança Ed25519, Core asset, atestações | ✅ + auditoria (solana-ai-kit) com 10 achados corrigidos — `docs/security-audit-2026-09-28.md` |
 | F3 `ecol_credito` | ✅ 13 instruções, 19 testes (CPI real com o `ecol_lote`); achado 14, C1 e C2 resolvidos |
@@ -223,6 +223,7 @@ Configs inicializadas nos 3 programas. Custo ≈ 7,5 SOL (14,05 → 6,57). Chave
 - Explicado o conceito de escrow e as opções A/B.
 - Diagrama alterado: nova linha em "❓ PREMISSAS EM ABERTO" (`t_1014`), retângulo `r_1013` +16 px de altura.
 - Criado este `CONTINUATION.md`.
+- Sessão 12 (cont.): **Repositórios no GitHub.** Blockchain: https://github.com/ECOLchain/ecolchain-core-chains (`main`; programas, clientes, docs). Web: https://github.com/ECOLchain/ecolchain-core-web (`main`), clonado em `web/` (no `.gitignore` daqui), com o histórico da interface extraído por `git subtree split` (10 commits). Os dois juntaram o commit inicial criado pelo GitHub. A web depende de `../onchain/clients/src` (alias `@clientes`); pacote npm ou submódulo fica para quando alguém precisar clonar só a web. Credenciais pelo Git Credential Manager do Windows (configurado por repositório). README da blockchain atualizado com a arquitetura em camadas e a ADR 0010.
 - Sessão 12 (cont.): **Minha carteira também para o transportador** — a tela passou para `web/src/paginas/MinhaCarteira.tsx` (comum), primeiro item dos menus Coletor e Transportador, com o texto de uso conforme o papel (coletor: entrega; transportador: retirada do lote, que ele assina junto com a cooperativa). `SoPapel` aceita lista de papéis. `rede-local.ts` cadastra o "Transportador Demo" e grava a semente dele. O leitor de QR na tela de Retiradas fica para quando ela for implementada.
 - Sessão 12 (cont.): **Leitor de QR na cooperativa** — botão "Ler QR" ao lado do coletor em "Novo lote de origem": `web/src/componentes/LeitorQr.tsx` (câmera traseira via `getUserMedia`, `jsqr` 1.4.0 a cada 150 ms, quadros reduzidos a 640 px, desliga a câmera ao ler). Seleciona o coletor ativo; mensagens para QR que não é carteira, carteira sem cadastro, de outro papel ou coletor inativo; sem câmera, orienta a escolher na lista. A câmera exige contexto seguro: localhost ou **https** (no celular pela rede local, `http://IP` não abre a câmera). Testado com câmera falsa do Chromium (`--use-file-for-fake-video-capture` com um Y4M do QR da tela Minha carteira).
 - Sessão 12 (cont.): **Minha carteira (coletor)** — `web/src/paginas/coletor/MinhaCarteira.tsx`, rota `/minha-carteira`, primeiro item do menu Coletor: nome do participante, QR Code (`qrcode.react` 4.2.0, fundo branco também no tema escuro) com só o endereço da carteira, endereço em grupos de 4 e botão copiar.
