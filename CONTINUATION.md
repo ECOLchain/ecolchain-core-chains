@@ -54,6 +54,20 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 
 **Estado atual do `ecol_lote`:** 33 instruções (materiais, guardião e entregas desde a sessão 10; nomes de participante e balança e a ADR 0010 na sessão 12); workspace com 129 testes Rust + 6 TS + 2 E2E; clippy estrito limpo. Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
 
+**Interface web (estado em 2026-09-29, repositório `ecolchain-core-web`):** o fluxo do lote está completo, da origem até `Reciclado`.
+
+| Papel | Telas funcionais |
+|---|---|
+| Todos | selo "Operando como" no header, Trilha pública (sem carteira) |
+| Administração | Participantes, Balanças, Materiais, Leilões (registrar venda, encerrar sem lance) |
+| Cooperativa | Lotes de origem (leitor de QR do coletor), Lotes de venda (montar, fechar, anunciar, desfazer), Retiradas |
+| Coletor | Minha carteira (QR), Meus lotes |
+| Transportador | Minha carteira (QR), Retiradas (assinar) |
+| Indústria | Compras (aceitar compra), Recebimentos (balança da indústria) |
+| Intermediador | Escrow dos lotes (assinar venda, liberar pagamento) |
+
+Ainda provisórias: Painel, Marketplace, Entregas em curso, Disputas, Meus direitos, Créditos de carbono, Distribuições, Vendas de crédito, Repasses, Créditos em validação, Aposentadorias, Resgates de cupons, Arbitragem.
+
 **Boas práticas:** seguir o [solana-ai-kit](https://github.com/solanabr/solana-ai-kit) (pedido do usuário em 2026-09-28): checklists `/audit-solana`, `safe-solana-builder`, Trail of Bits; aritmética checada, sem `unwrap` em produção, `init_if_needed` proibido, auditoria antes de fechar cada fase.
 
 **`ecol_credito` (F3):** `Credito` = PDA `["credito", credito_id]` (o serial só existe após a emissão; unicidade via PDA `["serial", padrão, sha256(serial)]`). Estados `EmFormacao → EmValidacao → Emitido → Vendido → Aposentado`, ou `Rejeitado`. Agregação por CPI assinada pela PDA `["autoridade_credito"]` (é a `credito_autoridade` do `ecol_lote`), até 10 lotes/tx, mesmo material; `lotes_hash` encadeado (`sha256(h ‖ lote ‖ peso)`) em vez de raiz Merkle off-chain. Papel novo: **registrador** (atesta emissão, rejeição e aposentadoria no registro). Venda assinada por operador + comprador + intermediador.
