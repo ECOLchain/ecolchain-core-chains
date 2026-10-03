@@ -223,7 +223,7 @@ Configs inicializadas nos 3 programas. Custo ≈ 7,5 SOL (14,05 → 6,57). Chave
 - [ ] **Ensaio com Solflare real na devnet** antes da apresentação (`docs/roteiro-demonstracao-devnet.md`): venda com nonce durável e assinatura parcial, retirada, leitor de QR; importar a chave de teste do intermediador na Solflare; gerar a balança de teste da Industria 01 no navegador dela e cadastrá-la em Balanças
 - [ ] Ajustes de cadastro na devnet (roteiro 1.4): nomes com espaço duplo, "Cooperativa 02" com papel Coletor, balança sem nome com dispositivo = carteira do Coletor C02
 - [ ] Próximas telas do fluxo: disputas (partes e árbitro), créditos de carbono (operador e registrador) e repartição
-- [ ] Enviar ~0,01 SOL ao intermediador da devnet (`39J3…82Ez`, hoje 0 SOL) para a liberação ao vivo
+- [x] Enviar ~0,01 SOL ao intermediador da devnet (`39J3…82Ez`) — recebeu 0,02 SOL em 2026-10-03
 - [ ] Clientes para a web sem depender da pasta vizinha (pacote npm ou submódulo), quando for preciso publicar o site em https (câmera no celular)
 - [ ] Corrigir notação/legenda das setas e sobreposições do diagrama (ver achados gerais abaixo)
 
