@@ -3,8 +3,8 @@ use anchor_lang::prelude::*;
 use crate::{
     constants::{DURACAO_LEILAO_MAX_S, SEED_CARTEIRA, SEED_GLOBAL, SEED_LOTE, SEED_PARTICIPANTE},
     error::EcolLoteError,
-    events::{LoteTransicionado, LoteVendido},
-    state::{exigir_assinatura, Carteira, GlobalConfig, Lote, Papel, Participante},
+    events::{EscrowMovimentado, LoteTransicionado, LoteVendido, MovimentoEscrow},
+    state::{exigir_assinatura, Carteira, GlobalConfig, Lote, ModoRetirada, Papel, Participante},
 };
 
 /// Anuncia o lote (a partir de `Criado`) ou o reanuncia (a partir de `SemLance`) com novo preço mínimo.
@@ -58,6 +58,7 @@ pub fn handle_cooperativa_list_lote(
     let lote = &mut ctx.accounts.lote;
     let para = lote.estado.anunciar(agora, prazo_leilao)?;
     lote.preco_minimo_centavos = preco_minimo_centavos;
+    lote.venda_direta = false;
     let (de, seq) = lote.transicionar(para, agora)?;
     emit_cpi!(LoteTransicionado {
         lote: lote_key,
@@ -79,6 +80,7 @@ pub fn handle_cooperativa_cancel_anuncio(ctx: Context<CooperativaListLote>) -> R
     let ator = ctx.accounts.cooperativa.key();
     let lote = &mut ctx.accounts.lote;
     let para = lote.estado.cancelar_anuncio()?;
+    lote.venda_direta = false;
     let (de, seq) = lote.transicionar(para, agora)?;
     emit_cpi!(LoteTransicionado {
         lote: lote_key,
@@ -87,6 +89,110 @@ pub fn handle_cooperativa_cancel_anuncio(ctx: Context<CooperativaListLote>) -> R
         para,
         ator,
         ts: agora
+    });
+    Ok(())
+}
+
+/// Põe o lote à venda por preço fixo, sem leilão nem prazo (ADR 0012): a primeira indústria que pagar
+/// o preço (ou mais) leva. Para mudar o preço: `cooperativa_cancel_anuncio` + esta, na mesma transação.
+pub fn handle_cooperativa_anunciar_venda(
+    ctx: Context<CooperativaListLote>,
+    preco_centavos: u64,
+) -> Result<()> {
+    ctx.accounts.config.exigir_modo_normal()?;
+    ctx.accounts.exigir_assinatura()?;
+    ctx.accounts.cooperativa_part.exigir_recebedor()?;
+    require!(preco_centavos > 0, EcolLoteError::ParametroInvalido);
+    require!(
+        ctx.accounts.lote.qtd_entregas > 0,
+        EcolLoteError::LoteSemEntregas
+    );
+    let agora = Clock::get()?.unix_timestamp;
+    let lote_key = ctx.accounts.lote.key();
+    let ator = ctx.accounts.cooperativa.key();
+    let lote = &mut ctx.accounts.lote;
+    // Sem prazo: o operador não encerra a venda direta como "sem lance".
+    let para = lote.estado.anunciar(agora, i64::MAX)?;
+    lote.preco_minimo_centavos = preco_centavos;
+    lote.venda_direta = true;
+    lote.modo_retirada = ModoRetirada::Indefinido;
+    let (de, seq) = lote.transicionar(para, agora)?;
+    emit_cpi!(LoteTransicionado {
+        lote: lote_key,
+        seq,
+        de,
+        para,
+        ator,
+        ts: agora
+    });
+    Ok(())
+}
+
+/// Marca o lote como vendido fora da plataforma (sem valor nem comprador), ou desfaz a marcação.
+pub fn handle_cooperativa_set_vendido_fora(
+    ctx: Context<CooperativaListLote>,
+    vendido: bool,
+) -> Result<()> {
+    ctx.accounts.config.exigir_modo_normal()?;
+    ctx.accounts.exigir_assinatura()?;
+    let agora = Clock::get()?.unix_timestamp;
+    let lote_key = ctx.accounts.lote.key();
+    let ator = ctx.accounts.cooperativa.key();
+    let lote = &mut ctx.accounts.lote;
+    let para = if vendido {
+        lote.estado.marcar_vendido_fora()?
+    } else {
+        lote.estado.desmarcar_vendido_fora()?
+    };
+    lote.venda_direta = false;
+    let (de, seq) = lote.transicionar(para, agora)?;
+    emit_cpi!(LoteTransicionado {
+        lote: lote_key,
+        seq,
+        de,
+        para,
+        ator,
+        ts: agora
+    });
+    Ok(())
+}
+
+/// Venda direta: depois do recebimento, a cooperativa confirma que recebeu o pagamento (fora da
+/// blockchain, comprovante por hash). Faz o papel da liberação do escrow: o lote vai a `Reciclado`.
+pub fn handle_cooperativa_confirmar_pagamento(
+    ctx: Context<CooperativaListLote>,
+    comprovante_hash: [u8; 32],
+) -> Result<()> {
+    ctx.accounts.config.exigir_disputas_liberadas()?;
+    ctx.accounts.exigir_assinatura()?;
+    require!(comprovante_hash != [0; 32], EcolLoteError::ReferenciaVazia);
+    require!(
+        ctx.accounts.lote.venda_direta,
+        EcolLoteError::LoteNaoEhVendaDireta
+    );
+    let agora = Clock::get()?.unix_timestamp;
+    let lote_key = ctx.accounts.lote.key();
+    let ator = ctx.accounts.cooperativa.key();
+    let lote = &mut ctx.accounts.lote;
+    let para = lote.estado.liberar_escrow()?;
+    let valor_centavos = lote.valor_centavos;
+    lote.valor_liberado_centavos = valor_centavos;
+    let (de, seq) = lote.transicionar(para, agora)?;
+    let seq_pagamento = lote.proximo_seq()?;
+    emit_cpi!(LoteTransicionado {
+        lote: lote_key,
+        seq,
+        de,
+        para,
+        ator,
+        ts: agora
+    });
+    emit_cpi!(EscrowMovimentado {
+        lote: lote_key,
+        seq: seq_pagamento,
+        movimento: MovimentoEscrow::Liberacao,
+        ref_hash: comprovante_hash,
+        valor_centavos,
     });
     Ok(())
 }
@@ -200,6 +306,8 @@ pub fn handle_industria_accept_venda(
     let lote_key = ctx.accounts.lote.key();
     let industria = ctx.accounts.industria.key();
     let lote = &mut ctx.accounts.lote;
+    // A venda direta é comprada pela própria indústria (`industria_comprar_lote`), sem apuração.
+    require!(!lote.venda_direta, EcolLoteError::LoteEmVendaDireta);
     require!(
         valor_centavos >= lote.preco_minimo_centavos,
         EcolLoteError::ValorAbaixoDoMinimo
@@ -229,6 +337,98 @@ pub fn handle_industria_accept_venda(
         valor_centavos,
         escrow_ref_hash,
         lances_root,
+    });
+    Ok(())
+}
+
+/// Compra direta (ADR 0012): a indústria compra sozinha um lote à venda por preço fixo, pagando o preço
+/// pedido ou mais, e escolhe quem retira. O pagamento é combinado fora da blockchain.
+#[event_cpi]
+#[derive(Accounts)]
+pub struct IndustriaComprarLote<'info> {
+    /// CHECK: carteira titular da indústria; conferida pelo cadastro e pela assinatura.
+    pub industria: UncheckedAccount<'info>,
+    pub industria_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, industria_assinante.key().as_ref()],
+        bump = industria_carteira.bump
+    )]
+    pub industria_carteira: Option<Box<Account<'info, Carteira>>>,
+    #[account(seeds = [SEED_PARTICIPANTE, industria.key().as_ref()], bump = industria_part.bump)]
+    pub industria_part: Box<Account<'info, Participante>>,
+    #[account(seeds = [SEED_PARTICIPANTE, lote.cooperativa.as_ref()], bump = cooperativa_part.bump)]
+    pub cooperativa_part: Box<Account<'info, Participante>>,
+    #[account(seeds = [SEED_GLOBAL], bump = config.bump)]
+    pub config: Box<Account<'info, GlobalConfig>>,
+    #[account(
+        mut,
+        seeds = [SEED_LOTE, lote.cooperativa.as_ref(), &lote.lote_id.to_le_bytes()],
+        bump = lote.bump
+    )]
+    pub lote: Box<Account<'info, Lote>>,
+}
+
+pub fn handle_industria_comprar_lote(
+    ctx: Context<IndustriaComprarLote>,
+    valor_centavos: u64,
+    modo_retirada: ModoRetirada,
+) -> Result<()> {
+    let config = &ctx.accounts.config;
+    config.exigir_modo_normal()?;
+    exigir_assinatura(
+        &ctx.accounts.industria.key(),
+        &ctx.accounts.industria_assinante.key(),
+        ctx.accounts.industria_carteira.as_deref().map(|c| &**c),
+    )?;
+    ctx.accounts.industria_part.exigir(Papel::Industria)?;
+    ctx.accounts.cooperativa_part.exigir_recebedor()?;
+    require!(
+        !config.eh_chave_de_papel(&ctx.accounts.industria.key()),
+        EcolLoteError::CarteiraReservada
+    );
+    require!(
+        modo_retirada != ModoRetirada::Indefinido,
+        EcolLoteError::ModoRetiradaInvalido
+    );
+
+    let agora = Clock::get()?.unix_timestamp;
+    let prazo_entrega = agora
+        .checked_add(config.prazo_entrega_s)
+        .ok_or(EcolLoteError::Overflow)?;
+    let tolerancia_peso_bps = config.tolerancia_peso_bps;
+    let lote_key = ctx.accounts.lote.key();
+    let industria = ctx.accounts.industria.key();
+    let lote = &mut ctx.accounts.lote;
+    require!(lote.venda_direta, EcolLoteError::LoteNaoEhVendaDireta);
+    require!(
+        valor_centavos >= lote.preco_minimo_centavos,
+        EcolLoteError::ValorAbaixoDoMinimo
+    );
+    let para = lote.estado.vender()?;
+    lote.industria = industria;
+    lote.valor_centavos = valor_centavos;
+    lote.modo_retirada = modo_retirada;
+    lote.prazo_entrega = prazo_entrega;
+    lote.tolerancia_peso_bps = tolerancia_peso_bps;
+    let (de, seq) = lote.transicionar(para, agora)?;
+    let seq_venda = lote.proximo_seq()?;
+
+    emit_cpi!(LoteTransicionado {
+        lote: lote_key,
+        seq,
+        de,
+        para,
+        ator: industria,
+        ts: agora
+    });
+    // Sem escrow nem leilão: as referências ficam zeradas.
+    emit_cpi!(LoteVendido {
+        lote: lote_key,
+        seq: seq_venda,
+        industria,
+        valor_centavos,
+        escrow_ref_hash: [0; 32],
+        lances_root: [0; 32],
     });
     Ok(())
 }

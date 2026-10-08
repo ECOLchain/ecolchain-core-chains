@@ -401,7 +401,7 @@ pub fn handle_importador_informar_reciclagem(
     require!(
         matches!(
             ctx.accounts.lote.estado,
-            EstadoLote::Reciclado | EstadoLote::Agregado
+            EstadoLote::Reciclado | EstadoLote::Agregado | EstadoLote::VendidoFora
         ),
         EcolLoteError::LoteNaoReciclado
     );

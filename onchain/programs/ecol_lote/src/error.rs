@@ -130,4 +130,12 @@ pub enum EcolLoteError {
     GarrafasInvalidas,
     #[msg("Data inválida: vazia ou no futuro")]
     DataInvalida,
+    #[msg("Lote não está em venda direta")]
+    LoteNaoEhVendaDireta,
+    #[msg("Lote em venda direta: a indústria compra sem leilão")]
+    LoteEmVendaDireta,
+    #[msg("Modo de retirada inválido")]
+    ModoRetiradaInvalido,
+    #[msg("Retirada não confere com o modo escolhido na compra")]
+    RetiradaDeOutroModo,
 }

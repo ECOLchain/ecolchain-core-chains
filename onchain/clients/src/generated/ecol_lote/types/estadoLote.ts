@@ -58,7 +58,8 @@ export type EstadoLote =
   | { __kind: "Reembolsado" }
   | { __kind: "EmMontagem" }
   | { __kind: "EmDesmontagem" }
-  | { __kind: "Desfeito" };
+  | { __kind: "Desfeito" }
+  | { __kind: "VendidoFora" };
 
 export type EstadoLoteArgs =
   | { __kind: "Criado" }
@@ -77,7 +78,8 @@ export type EstadoLoteArgs =
   | { __kind: "Reembolsado" }
   | { __kind: "EmMontagem" }
   | { __kind: "EmDesmontagem" }
-  | { __kind: "Desfeito" };
+  | { __kind: "Desfeito" }
+  | { __kind: "VendidoFora" };
 
 export function getEstadoLoteEncoder(): Encoder<EstadoLoteArgs> {
   return getDiscriminatedUnionEncoder([
@@ -100,6 +102,7 @@ export function getEstadoLoteEncoder(): Encoder<EstadoLoteArgs> {
     ["EmMontagem", getUnitEncoder()],
     ["EmDesmontagem", getUnitEncoder()],
     ["Desfeito", getUnitEncoder()],
+    ["VendidoFora", getUnitEncoder()],
   ]);
 }
 
@@ -124,6 +127,7 @@ export function getEstadoLoteDecoder(): Decoder<EstadoLote> {
     ["EmMontagem", getUnitDecoder()],
     ["EmDesmontagem", getUnitDecoder()],
     ["Desfeito", getUnitDecoder()],
+    ["VendidoFora", getUnitDecoder()],
   ]);
 }
 
@@ -181,6 +185,9 @@ export function estadoLote(
 export function estadoLote(
   kind: "Desfeito",
 ): GetDiscriminatedUnionVariant<EstadoLoteArgs, "__kind", "Desfeito">;
+export function estadoLote(
+  kind: "VendidoFora",
+): GetDiscriminatedUnionVariant<EstadoLoteArgs, "__kind", "VendidoFora">;
 export function estadoLote<K extends EstadoLoteArgs["__kind"], Data>(
   kind: K,
   data?: Data,

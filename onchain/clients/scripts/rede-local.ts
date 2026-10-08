@@ -2,6 +2,7 @@
 // uma cooperativa, dois coletores, um transportador, uma indústria, materiais e a balança de teste da cooperativa já
 // cadastrados (com a balança da indústria), e quatro lotes de venda: #1 vendido (esperando a retirada), #2 em leilão,
 // #3 em transporte (esperando o recebimento) e #4 recebido (esperando a liberação do escrow).
+// ADR 0012: lotes #5 e #6 à venda por preço fixo, #7 e #8 comprados direto e #9 vendido fora da plataforma.
 // ADR 0011: vidro com três cores e garrafas, um importador com duas carteiras (seis meses de distribuições e
 // coletas em todas as etapas) e uma Clean Tech com balança e um lote de vidro verde já reciclado.
 // O JSON de saída traz as sementes de todos os papéis usados na interface.
@@ -210,8 +211,16 @@ await enviar(
     }),
 );
 
-type Etapa = 'anunciado' | 'vendido' | 'emTransporte' | 'recebido';
-async function loteDemo(id: bigint, material: number, pesoG: bigint, coletor: Address, ate: Etapa) {
+type Etapa = 'anunciado' | 'vendido' | 'emTransporte' | 'recebido' | 'vendidoFora';
+/** `direta`: venda por preço fixo (ADR 0012), comprada pela indústria com esse modo de retirada; sem ela, leilão. */
+async function loteDemo(
+    id: bigint,
+    material: number,
+    pesoG: bigint,
+    coletor: Address,
+    ate: Etapa,
+    direta?: { preco: bigint; modo: lote.ModoRetirada },
+) {
     const entrega = await pLote.entrega(cooperativa.address, id);
     const lotePda = await pLote.lote(cooperativa.address, id);
     let ts = await agora();
@@ -273,38 +282,64 @@ async function loteDemo(id: bigint, material: number, pesoG: bigint, coletor: Ad
             uri: `https://arweave.net/ecolchain/lote-demo-${id}.json`,
         }),
     );
-    await enviar(
-        await lote.getCooperativaListLoteInstructionAsync({
-            cooperativa: cooperativa.address,
-            cooperativaAssinante: cooperativa,
-            lote: lotePda,
-            eventAuthority: ev,
-            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-            prazoLeilao: (await agora()) + 7n * 24n * 3600n,
-            precoMinimoCentavos: 90_000n,
-        }),
-    );
-    if (ate === 'anunciado') return;
-    await enviar(
-        await lote.getIndustriaAcceptVendaInstructionAsync({
-            industria: industria.address,
-            industriaAssinante: industria,
-            cooperativaPart: await pLote.participante(cooperativa.address),
-            operador,
-            intermediador,
-            lote: lotePda,
-            eventAuthority: ev,
-            program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
-            valorCentavos: 125_000n,
-            escrowRefHash: h(`escrow-demo:${id}`),
-            lancesRoot: h(`lances-demo:${id}`),
-        }),
-    );
+    const contasCoop = {
+        cooperativa: cooperativa.address,
+        cooperativaAssinante: cooperativa,
+        lote: lotePda,
+        eventAuthority: ev,
+        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+    };
+    if (ate === 'vendidoFora') {
+        await enviar(await lote.getCooperativaSetVendidoForaInstructionAsync({ ...contasCoop, vendido: true }));
+        return;
+    }
+    if (direta) {
+        await enviar(await lote.getCooperativaAnunciarVendaInstructionAsync({ ...contasCoop, precoCentavos: direta.preco }));
+        if (ate === 'anunciado') return;
+        await enviar(
+            await lote.getIndustriaComprarLoteInstructionAsync({
+                industria: industria.address,
+                industriaAssinante: industria,
+                cooperativaPart: await pLote.participante(cooperativa.address),
+                lote: lotePda,
+                eventAuthority: ev,
+                program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+                valorCentavos: direta.preco,
+                modoRetirada: direta.modo,
+            }),
+        );
+    } else {
+        await enviar(
+            await lote.getCooperativaListLoteInstructionAsync({
+                ...contasCoop,
+                prazoLeilao: (await agora()) + 7n * 24n * 3600n,
+                precoMinimoCentavos: 90_000n,
+            }),
+        );
+        if (ate === 'anunciado') return;
+        await enviar(
+            await lote.getIndustriaAcceptVendaInstructionAsync({
+                industria: industria.address,
+                industriaAssinante: industria,
+                cooperativaPart: await pLote.participante(cooperativa.address),
+                operador,
+                intermediador,
+                lote: lotePda,
+                eventAuthority: ev,
+                program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+                valorCentavos: 125_000n,
+                escrowRefHash: h(`escrow-demo:${id}`),
+                lancesRoot: h(`lances-demo:${id}`),
+            }),
+        );
+    }
     if (ate === 'vendido') return;
+    // Retirada própria: a indústria assina no lugar do transportador.
+    const quemRetira = direta?.modo === lote.ModoRetirada.Propria ? industria : transportador;
     await enviar(
         await lote.getTransportadorPickupLoteInstructionAsync({
-            transportador: transportador.address,
-            transportadorAssinante: transportador,
+            transportador: quemRetira.address,
+            transportadorAssinante: quemRetira,
             cooperativa: cooperativa.address,
             cooperativaAssinante: cooperativa,
             lote: lotePda,
@@ -336,6 +371,13 @@ await loteDemo(1n, 1, 250_000n, coletores[0].address, 'vendido');
 await loteDemo(2n, 2, 180_000n, coletores[1].address, 'anunciado');
 await loteDemo(3n, 1, 120_000n, coletores[0].address, 'emTransporte');
 await loteDemo(4n, 2, 300_000n, coletores[1].address, 'recebido');
+// ADR 0012: venda direta. #5 e #6 à venda (Disputa), #7 comprado com retirada própria (Retiradas da indústria),
+// #8 comprado com transportador e recebido (Vendas: confirmar pagamento) e #9 vendido fora da plataforma.
+await loteDemo(5n, 1, 210_000n, coletores[0].address, 'anunciado', { preco: 168_000n, modo: lote.ModoRetirada.Terceiro });
+await loteDemo(6n, 2, 95_000n, coletores[1].address, 'anunciado', { preco: 61_750n, modo: lote.ModoRetirada.Terceiro });
+await loteDemo(7n, 1, 160_000n, coletores[0].address, 'vendido', { preco: 128_000n, modo: lote.ModoRetirada.Propria });
+await loteDemo(8n, 2, 140_000n, coletores[1].address, 'recebido', { preco: 91_000n, modo: lote.ModoRetirada.Terceiro });
+await loteDemo(9n, 1, 75_000n, coletores[0].address, 'vendidoFora');
 
 // ---- ADR 0011: vidro com cores e garrafas, importador com duas carteiras e Clean Tech ----
 const VIDRO = 3;

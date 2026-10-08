@@ -12,6 +12,7 @@ export * from "./estadoColeta";
 export * from "./estadoLote";
 export * from "./etapaDisputavel";
 export * from "./modoOperacao";
+export * from "./modoRetirada";
 export * from "./motivoDisputa";
 export * from "./movimentoEscrow";
 export * from "./origemEntrega";

@@ -9,7 +9,9 @@ use crate::{
     error::EcolLoteError,
     events::{EscrowMovimentado, LoteTransicionado, MovimentoEscrow, PesagemAtestada},
     pesagem::{self, TipoPesagem},
-    state::{exigir_assinatura, Balanca, Carteira, GlobalConfig, Lote, Papel, Participante},
+    state::{
+        exigir_assinatura, Balanca, Carteira, GlobalConfig, Lote, ModoRetirada, Papel, Participante,
+    },
 };
 
 /// Contas para mover o Core asset do lote junto com a custódia.
@@ -96,9 +98,19 @@ pub fn handle_transportador_pickup_lote(ctx: Context<TransportadorPickupLote>) -
         &ctx.accounts.cooperativa_assinante.key(),
         ctx.accounts.cooperativa_carteira.as_deref().map(|c| &**c),
     )?;
-    ctx.accounts
-        .transportador_part
-        .exigir(Papel::Transportador)?;
+    // Retirada própria (venda direta, ADR 0012): quem retira é a indústria compradora.
+    if ctx.accounts.lote.modo_retirada == ModoRetirada::Propria {
+        require_keys_eq!(
+            ctx.accounts.transportador.key(),
+            ctx.accounts.lote.industria,
+            EcolLoteError::RetiradaDeOutroModo
+        );
+        ctx.accounts.transportador_part.exigir(Papel::Industria)?;
+    } else {
+        ctx.accounts
+            .transportador_part
+            .exigir(Papel::Transportador)?;
+    }
     ctx.accounts.cooperativa_part.exigir_recebedor()?;
     let agora = Clock::get()?.unix_timestamp;
     let lote_key = ctx.accounts.lote.key();

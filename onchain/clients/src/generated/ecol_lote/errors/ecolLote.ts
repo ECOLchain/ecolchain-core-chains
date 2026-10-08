@@ -142,6 +142,14 @@ export const ECOL_LOTE_ERROR__LOTE_NAO_RECICLADO = 0x17ad; // 6061
 export const ECOL_LOTE_ERROR__GARRAFAS_INVALIDAS = 0x17ae; // 6062
 /** DataInvalida: Data inválida: vazia ou no futuro */
 export const ECOL_LOTE_ERROR__DATA_INVALIDA = 0x17af; // 6063
+/** LoteNaoEhVendaDireta: Lote não está em venda direta */
+export const ECOL_LOTE_ERROR__LOTE_NAO_EH_VENDA_DIRETA = 0x17b0; // 6064
+/** LoteEmVendaDireta: Lote em venda direta: a indústria compra sem leilão */
+export const ECOL_LOTE_ERROR__LOTE_EM_VENDA_DIRETA = 0x17b1; // 6065
+/** ModoRetiradaInvalido: Modo de retirada inválido */
+export const ECOL_LOTE_ERROR__MODO_RETIRADA_INVALIDO = 0x17b2; // 6066
+/** RetiradaDeOutroModo: Retirada não confere com o modo escolhido na compra */
+export const ECOL_LOTE_ERROR__RETIRADA_DE_OUTRO_MODO = 0x17b3; // 6067
 
 export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__ASSET_INCORRETO
@@ -170,11 +178,14 @@ export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__LEILAO_EM_ANDAMENTO
   | typeof ECOL_LOTE_ERROR__LIMITE_DE_VARIACOES
   | typeof ECOL_LOTE_ERROR__LOTE_DE_OUTRO_CREDITO
+  | typeof ECOL_LOTE_ERROR__LOTE_EM_VENDA_DIRETA
+  | typeof ECOL_LOTE_ERROR__LOTE_NAO_EH_VENDA_DIRETA
   | typeof ECOL_LOTE_ERROR__LOTE_NAO_RECICLADO
   | typeof ECOL_LOTE_ERROR__LOTE_SEM_ENTREGAS
   | typeof ECOL_LOTE_ERROR__MATERIAL_DIFERENTE
   | typeof ECOL_LOTE_ERROR__MATERIAL_INATIVO
   | typeof ECOL_LOTE_ERROR__MATERIAL_SEM_GARRAFAS
+  | typeof ECOL_LOTE_ERROR__MODO_RETIRADA_INVALIDO
   | typeof ECOL_LOTE_ERROR__NAO_EH_ADMIN
   | typeof ECOL_LOTE_ERROR__NAO_EH_ARBITRO
   | typeof ECOL_LOTE_ERROR__NAO_EH_AUTORIDADE_CREDITO
@@ -199,6 +210,7 @@ export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__PROGRAMA_PAUSADO
   | typeof ECOL_LOTE_ERROR__QUANTIDADE_DE_ENTREGAS_INVALIDA
   | typeof ECOL_LOTE_ERROR__REFERENCIA_VAZIA
+  | typeof ECOL_LOTE_ERROR__RETIRADA_DE_OUTRO_MODO
   | typeof ECOL_LOTE_ERROR__SEM_ADMIN_PENDENTE
   | typeof ECOL_LOTE_ERROR__TRANSICAO_INVALIDA
   | typeof ECOL_LOTE_ERROR__URI_INVALIDA
@@ -238,11 +250,14 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_LOTE_ERROR__LEILAO_EM_ANDAMENTO]: `Leilão ainda em andamento`,
     [ECOL_LOTE_ERROR__LIMITE_DE_VARIACOES]: `Limite de variações do material atingido`,
     [ECOL_LOTE_ERROR__LOTE_DE_OUTRO_CREDITO]: `Lote não está agregado a este crédito`,
+    [ECOL_LOTE_ERROR__LOTE_EM_VENDA_DIRETA]: `Lote em venda direta: a indústria compra sem leilão`,
+    [ECOL_LOTE_ERROR__LOTE_NAO_EH_VENDA_DIRETA]: `Lote não está em venda direta`,
     [ECOL_LOTE_ERROR__LOTE_NAO_RECICLADO]: `O lote da coleta ainda não foi reciclado`,
     [ECOL_LOTE_ERROR__LOTE_SEM_ENTREGAS]: `Lote sem entregas vinculadas`,
     [ECOL_LOTE_ERROR__MATERIAL_DIFERENTE]: `Material da entrega difere do material do lote`,
     [ECOL_LOTE_ERROR__MATERIAL_INATIVO]: `Material inativo`,
     [ECOL_LOTE_ERROR__MATERIAL_SEM_GARRAFAS]: `Este material não conta garrafas`,
+    [ECOL_LOTE_ERROR__MODO_RETIRADA_INVALIDO]: `Modo de retirada inválido`,
     [ECOL_LOTE_ERROR__NAO_EH_ADMIN]: `Assinante não é o admin`,
     [ECOL_LOTE_ERROR__NAO_EH_ARBITRO]: `Assinante não é o árbitro`,
     [ECOL_LOTE_ERROR__NAO_EH_AUTORIDADE_CREDITO]: `Assinante não é a autoridade do programa de créditos`,
@@ -267,6 +282,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_LOTE_ERROR__PROGRAMA_PAUSADO]: `Programa pausado para esta operação`,
     [ECOL_LOTE_ERROR__QUANTIDADE_DE_ENTREGAS_INVALIDA]: `Quantidade de entregas inválida nesta transação`,
     [ECOL_LOTE_ERROR__REFERENCIA_VAZIA]: `Referência (hash) obrigatória não informada`,
+    [ECOL_LOTE_ERROR__RETIRADA_DE_OUTRO_MODO]: `Retirada não confere com o modo escolhido na compra`,
     [ECOL_LOTE_ERROR__SEM_ADMIN_PENDENTE]: `Nenhuma troca de admin pendente para este assinante`,
     [ECOL_LOTE_ERROR__TRANSICAO_INVALIDA]: `Transição de estado inválida para o estado atual do lote`,
     [ECOL_LOTE_ERROR__URI_INVALIDA]: `URI de metadados vazia ou longa demais`,

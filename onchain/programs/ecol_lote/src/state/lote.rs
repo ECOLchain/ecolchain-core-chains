@@ -29,6 +29,16 @@ impl EtapaDisputavel {
     }
 }
 
+/// Como o comprador retira o lote vendido direto (ADR 0012). `Indefinido` nos lotes de leilão e nos antigos.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+pub enum ModoRetirada {
+    Indefinido,
+    /// Um transportador cadastrado retira na cooperativa.
+    Terceiro,
+    /// A própria indústria retira (ela assina a retirada no lugar do transportador).
+    Propria,
+}
+
 /// Máquina de estados do lote de venda.
 ///
 /// ```text
@@ -69,6 +79,8 @@ pub enum EstadoLote {
     EmDesmontagem,
     /// União desfeita: todos os lotes de origem voltaram a ficar disponíveis (terminal).
     Desfeito,
+    /// Vendido fora da plataforma: sem comprador, valor nem logística registrados (ADR 0012).
+    VendidoFora,
 }
 
 impl EstadoLote {
@@ -215,6 +227,22 @@ impl EstadoLote {
         }
     }
 
+    /// A cooperativa marca o lote como vendido fora da plataforma.
+    pub fn marcar_vendido_fora(self) -> Result<Self> {
+        match self {
+            EstadoLote::Criado | EstadoLote::SemLance => Ok(EstadoLote::VendidoFora),
+            _ => err!(EcolLoteError::TransicaoInvalida),
+        }
+    }
+
+    /// Marcação desfeita: o lote volta a poder ser posto à venda (ou desfeito).
+    pub fn desmarcar_vendido_fora(self) -> Result<Self> {
+        match self {
+            EstadoLote::VendidoFora => Ok(EstadoLote::SemLance),
+            _ => err!(EcolLoteError::TransicaoInvalida),
+        }
+    }
+
     pub fn agregar(self) -> Result<Self> {
         match self {
             EstadoLote::Reciclado => Ok(EstadoLote::Agregado),
@@ -286,7 +314,11 @@ pub struct Lote {
     pub variacao: u8,
     /// Soma das garrafas aproximadas dos lotes de origem.
     pub qtd_garrafas: u32,
-    pub _reserved: [u8; 50],
+    /// À venda por preço fixo, comprável pela indústria sem leilão (ADR 0012).
+    pub venda_direta: bool,
+    /// Como a indústria retira o lote comprado direto.
+    pub modo_retirada: ModoRetirada,
+    pub _reserved: [u8; 48],
 }
 
 impl Lote {
@@ -353,6 +385,7 @@ mod testes {
             EstadoLote::EmMontagem,
             EstadoLote::EmDesmontagem,
             EstadoLote::Desfeito,
+            EstadoLote::VendidoFora,
         ]
     }
 
@@ -378,6 +411,8 @@ mod testes {
             ("fechar", |e| e.fechar()),
             ("iniciar_desmontagem", |e| e.iniciar_desmontagem()),
             ("concluir_desmontagem", |e| e.concluir_desmontagem()),
+            ("marcar_vendido_fora", |e| e.marcar_vendido_fora()),
+            ("desmarcar_vendido_fora", |e| e.desmarcar_vendido_fora()),
         ]
     }
 
@@ -386,7 +421,8 @@ mod testes {
         use EstadoLote::*;
         matches!(
             (estado, transicao),
-            (Criado | SemLance, "anunciar")
+            (Criado | SemLance, "anunciar" | "marcar_vendido_fora")
+                | (VendidoFora, "desmarcar_vendido_fora")
                 | (
                     Anunciado { .. },
                     "encerrar_sem_lance" | "vender" | "cancelar_anuncio"
@@ -495,7 +531,9 @@ mod testes {
             asset_queimavel: false,
             variacao: 0,
             qtd_garrafas: 0,
-            _reserved: [0; 50],
+            venda_direta: false,
+            modo_retirada: ModoRetirada::Indefinido,
+            _reserved: [0; 48],
         };
         // Tolerância de 2% = 20 kg: exatamente no limite não diverge; 1 g além diverge (para mais ou para menos).
         assert!(!lote.peso_diverge(980_000, 200).unwrap());
@@ -513,7 +551,7 @@ mod propriedades {
     use proptest::prelude::*;
 
     fn aplicar(e: EstadoLote, op: u8, agora: i64) -> Result<EstadoLote> {
-        match op % 16 {
+        match op % 18 {
             0 => e.anunciar(agora, agora + 10),
             1 => e.encerrar_sem_lance(agora),
             2 => e.vender(),
@@ -529,6 +567,8 @@ mod propriedades {
             12 => e.cancelar_anuncio(),
             13 => e.fechar(),
             14 => e.iniciar_desmontagem(),
+            15 => e.marcar_vendido_fora(),
+            16 => e.desmarcar_vendido_fora(),
             _ => e.concluir_desmontagem(),
         }
     }
@@ -568,7 +608,9 @@ mod propriedades {
             asset_queimavel: false,
             variacao: 0,
             qtd_garrafas: 0,
-            _reserved: [0; 50],
+            venda_direta: false,
+            modo_retirada: ModoRetirada::Indefinido,
+            _reserved: [0; 48],
         }
     }
 

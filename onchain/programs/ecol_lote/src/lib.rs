@@ -217,6 +217,35 @@ pub mod ecol_lote {
         instructions::marketplace::handle_cooperativa_cancel_anuncio(ctx)
     }
 
+    pub fn cooperativa_anunciar_venda(
+        ctx: Context<CooperativaListLote>,
+        preco_centavos: u64,
+    ) -> Result<()> {
+        instructions::marketplace::handle_cooperativa_anunciar_venda(ctx, preco_centavos)
+    }
+
+    pub fn cooperativa_set_vendido_fora(
+        ctx: Context<CooperativaListLote>,
+        vendido: bool,
+    ) -> Result<()> {
+        instructions::marketplace::handle_cooperativa_set_vendido_fora(ctx, vendido)
+    }
+
+    pub fn cooperativa_confirmar_pagamento(
+        ctx: Context<CooperativaListLote>,
+        comprovante_hash: [u8; 32],
+    ) -> Result<()> {
+        instructions::marketplace::handle_cooperativa_confirmar_pagamento(ctx, comprovante_hash)
+    }
+
+    pub fn industria_comprar_lote(
+        ctx: Context<IndustriaComprarLote>,
+        valor_centavos: u64,
+        modo_retirada: ModoRetirada,
+    ) -> Result<()> {
+        instructions::marketplace::handle_industria_comprar_lote(ctx, valor_centavos, modo_retirada)
+    }
+
     pub fn operador_close_leilao_sem_lance(
         ctx: Context<OperadorCloseLeilaoSemLance>,
     ) -> Result<()> {

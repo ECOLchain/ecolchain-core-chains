@@ -15,10 +15,10 @@ use {
         pesagem::{mensagem, TipoPesagem},
         Carteira, Coleta, ConfigParams, DadosColeta, DadosDistribuicao, DadosEntrega,
         DadosFechamento, DadosLote, DecisaoDisputa, Distribuicao, Entrega, EstadoLote,
-        GlobalConfig, Lote, Material, MaterialVariacao, ModoOperacao, MotivoDisputa, OrigemEntrega,
-        Papel, Participante, SEED_ASSET, SEED_AUTORIDADE_ASSET, SEED_BALANCA, SEED_CARTEIRA,
-        SEED_COLETA, SEED_DISTRIBUICAO, SEED_ENTREGA, SEED_GLOBAL, SEED_LOTE, SEED_MATERIAL,
-        SEED_PARTICIPANTE, SEED_VARIACAO,
+        GlobalConfig, Lote, Material, MaterialVariacao, ModoOperacao, ModoRetirada, MotivoDisputa,
+        OrigemEntrega, Papel, Participante, SEED_ASSET, SEED_AUTORIDADE_ASSET, SEED_BALANCA,
+        SEED_CARTEIRA, SEED_COLETA, SEED_DISTRIBUICAO, SEED_ENTREGA, SEED_GLOBAL, SEED_LOTE,
+        SEED_MATERIAL, SEED_PARTICIPANTE, SEED_VARIACAO,
     },
     litesvm::{types::TransactionMetadata, LiteSVM},
     solana_keypair::Keypair,
@@ -1183,6 +1183,120 @@ impl Ambiente {
         self.receber(lote, PESO_G).unwrap();
         assert_eq!(self.lote(lote).estado, EstadoLote::Recebido);
         lote
+    }
+
+    // ---- ADR 0012: venda direta e lote vendido fora da plataforma ----
+
+    /// Instrução da cooperativa sobre o lote (contas de `CooperativaListLote`), assinada pelo titular.
+    pub fn ix_coop_lote(
+        &self,
+        cooperativa: &Pubkey,
+        lote: Pubkey,
+        data: impl InstructionData,
+    ) -> Instruction {
+        self.ix(
+            data,
+            ctas::CooperativaListLote {
+                cooperativa: *cooperativa,
+                cooperativa_assinante: *cooperativa,
+                cooperativa_carteira: None,
+                cooperativa_part: participante_pda(cooperativa),
+                config: config_pda(),
+                lote,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        )
+    }
+
+    pub fn anunciar_venda_por(
+        &mut self,
+        cooperativa: &Keypair,
+        lote: Pubkey,
+        preco_centavos: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix_coop_lote(
+            &cooperativa.pubkey(),
+            lote,
+            ixs::CooperativaAnunciarVenda { preco_centavos },
+        );
+        self.enviar(ix, &[cooperativa])
+    }
+
+    pub fn anunciar_venda(
+        &mut self,
+        lote: Pubkey,
+        preco_centavos: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let coop = self.cooperativa.insecure_clone();
+        self.anunciar_venda_por(&coop, lote, preco_centavos)
+    }
+
+    pub fn set_vendido_fora(
+        &mut self,
+        lote: Pubkey,
+        vendido: bool,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let coop = self.cooperativa.insecure_clone();
+        let ix = self.ix_coop_lote(
+            &coop.pubkey(),
+            lote,
+            ixs::CooperativaSetVendidoFora { vendido },
+        );
+        self.enviar(ix, &[&coop])
+    }
+
+    pub fn confirmar_pagamento_por(
+        &mut self,
+        cooperativa: &Keypair,
+        lote: Pubkey,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix_coop_lote(
+            &cooperativa.pubkey(),
+            lote,
+            ixs::CooperativaConfirmarPagamento {
+                comprovante_hash: h("pix-da-industria"),
+            },
+        );
+        self.enviar(ix, &[cooperativa])
+    }
+
+    pub fn comprar_por(
+        &mut self,
+        industria: &Keypair,
+        lote: Pubkey,
+        valor_centavos: u64,
+        modo_retirada: ModoRetirada,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let cooperativa = self.lote(lote).cooperativa;
+        let ix = self.ix(
+            ixs::IndustriaComprarLote {
+                valor_centavos,
+                modo_retirada,
+            },
+            ctas::IndustriaComprarLote {
+                industria: industria.pubkey(),
+                industria_assinante: industria.pubkey(),
+                industria_carteira: None,
+                industria_part: participante_pda(&industria.pubkey()),
+                cooperativa_part: participante_pda(&cooperativa),
+                config: config_pda(),
+                lote,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[industria])
+    }
+
+    pub fn comprar(
+        &mut self,
+        lote: Pubkey,
+        valor_centavos: u64,
+        modo_retirada: ModoRetirada,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ind = self.industria.insecure_clone();
+        self.comprar_por(&ind, lote, valor_centavos, modo_retirada)
     }
 
     // ---- ADR 0011: variações, carteiras vinculadas e importador ----

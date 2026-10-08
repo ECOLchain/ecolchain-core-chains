@@ -76,12 +76,15 @@ import {
   getAdminUpdateGlobalInstructionAsync,
   getArbitroResolveDisputaInstructionAsync,
   getCooperativaAddEntregasInstructionAsync,
+  getCooperativaAnunciarVendaInstructionAsync,
   getCooperativaCancelAnuncioInstructionAsync,
+  getCooperativaConfirmarPagamentoInstructionAsync,
   getCooperativaCreateLoteInstructionAsync,
   getCooperativaDesmontarLoteInstructionAsync,
   getCooperativaFecharLoteInstructionAsync,
   getCooperativaListLoteInstructionAsync,
   getCooperativaRegisterEntregaInstructionAsync,
+  getCooperativaSetVendidoForaInstructionAsync,
   getCreditoMarkAgregadoInstructionAsync,
   getCreditoMarkDesagregadoInstructionAsync,
   getGuardiaoPausarInstructionAsync,
@@ -91,6 +94,7 @@ import {
   getImportadorInformarReciclagemInstructionAsync,
   getImportadorRegisterColetaInstructionAsync,
   getIndustriaAcceptVendaInstructionAsync,
+  getIndustriaComprarLoteInstructionAsync,
   getIndustriaConfirmRecebimentoInstructionAsync,
   getIntermediadorConfirmLiberacaoInstructionAsync,
   getOperadorCloseLeilaoSemLanceInstructionAsync,
@@ -119,12 +123,15 @@ import {
   parseAdminUpdateGlobalInstruction,
   parseArbitroResolveDisputaInstruction,
   parseCooperativaAddEntregasInstruction,
+  parseCooperativaAnunciarVendaInstruction,
   parseCooperativaCancelAnuncioInstruction,
+  parseCooperativaConfirmarPagamentoInstruction,
   parseCooperativaCreateLoteInstruction,
   parseCooperativaDesmontarLoteInstruction,
   parseCooperativaFecharLoteInstruction,
   parseCooperativaListLoteInstruction,
   parseCooperativaRegisterEntregaInstruction,
+  parseCooperativaSetVendidoForaInstruction,
   parseCreditoMarkAgregadoInstruction,
   parseCreditoMarkDesagregadoInstruction,
   parseGuardiaoPausarInstruction,
@@ -134,6 +141,7 @@ import {
   parseImportadorInformarReciclagemInstruction,
   parseImportadorRegisterColetaInstruction,
   parseIndustriaAcceptVendaInstruction,
+  parseIndustriaComprarLoteInstruction,
   parseIndustriaConfirmRecebimentoInstruction,
   parseIntermediadorConfirmLiberacaoInstruction,
   parseOperadorCloseLeilaoSemLanceInstruction,
@@ -162,12 +170,15 @@ import {
   type AdminUpdateGlobalAsyncInput,
   type ArbitroResolveDisputaAsyncInput,
   type CooperativaAddEntregasAsyncInput,
+  type CooperativaAnunciarVendaAsyncInput,
   type CooperativaCancelAnuncioAsyncInput,
+  type CooperativaConfirmarPagamentoAsyncInput,
   type CooperativaCreateLoteAsyncInput,
   type CooperativaDesmontarLoteAsyncInput,
   type CooperativaFecharLoteAsyncInput,
   type CooperativaListLoteAsyncInput,
   type CooperativaRegisterEntregaAsyncInput,
+  type CooperativaSetVendidoForaAsyncInput,
   type CreditoMarkAgregadoAsyncInput,
   type CreditoMarkDesagregadoAsyncInput,
   type GuardiaoPausarAsyncInput,
@@ -177,6 +188,7 @@ import {
   type ImportadorInformarReciclagemAsyncInput,
   type ImportadorRegisterColetaAsyncInput,
   type IndustriaAcceptVendaAsyncInput,
+  type IndustriaComprarLoteAsyncInput,
   type IndustriaConfirmRecebimentoAsyncInput,
   type IntermediadorConfirmLiberacaoAsyncInput,
   type OperadorCloseLeilaoSemLanceAsyncInput,
@@ -200,12 +212,15 @@ import {
   type ParsedAdminUpdateGlobalInstruction,
   type ParsedArbitroResolveDisputaInstruction,
   type ParsedCooperativaAddEntregasInstruction,
+  type ParsedCooperativaAnunciarVendaInstruction,
   type ParsedCooperativaCancelAnuncioInstruction,
+  type ParsedCooperativaConfirmarPagamentoInstruction,
   type ParsedCooperativaCreateLoteInstruction,
   type ParsedCooperativaDesmontarLoteInstruction,
   type ParsedCooperativaFecharLoteInstruction,
   type ParsedCooperativaListLoteInstruction,
   type ParsedCooperativaRegisterEntregaInstruction,
+  type ParsedCooperativaSetVendidoForaInstruction,
   type ParsedCreditoMarkAgregadoInstruction,
   type ParsedCreditoMarkDesagregadoInstruction,
   type ParsedGuardiaoPausarInstruction,
@@ -215,6 +230,7 @@ import {
   type ParsedImportadorInformarReciclagemInstruction,
   type ParsedImportadorRegisterColetaInstruction,
   type ParsedIndustriaAcceptVendaInstruction,
+  type ParsedIndustriaComprarLoteInstruction,
   type ParsedIndustriaConfirmRecebimentoInstruction,
   type ParsedIntermediadorConfirmLiberacaoInstruction,
   type ParsedOperadorCloseLeilaoSemLanceInstruction,
@@ -647,12 +663,15 @@ export enum EcolLoteInstruction {
   AdminUpdateGlobal,
   ArbitroResolveDisputa,
   CooperativaAddEntregas,
+  CooperativaAnunciarVenda,
   CooperativaCancelAnuncio,
+  CooperativaConfirmarPagamento,
   CooperativaCreateLote,
   CooperativaDesmontarLote,
   CooperativaFecharLote,
   CooperativaListLote,
   CooperativaRegisterEntrega,
+  CooperativaSetVendidoFora,
   CreditoMarkAgregado,
   CreditoMarkDesagregado,
   GuardiaoPausar,
@@ -662,6 +681,7 @@ export enum EcolLoteInstruction {
   ImportadorInformarReciclagem,
   ImportadorRegisterColeta,
   IndustriaAcceptVenda,
+  IndustriaComprarLote,
   IndustriaConfirmRecebimento,
   IntermediadorConfirmLiberacao,
   OperadorCloseLeilaoSemLance,
@@ -790,12 +810,34 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([84, 127, 190, 54, 197, 76, 150, 215]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.CooperativaAnunciarVenda;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([203, 24, 44, 18, 9, 93, 214, 140]),
       ),
       0,
     )
   ) {
     return EcolLoteInstruction.CooperativaCancelAnuncio;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([240, 170, 215, 231, 238, 245, 129, 145]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.CooperativaConfirmarPagamento;
   }
   if (
     containsBytes(
@@ -851,6 +893,17 @@ export function identifyEcolLoteInstruction(
     )
   ) {
     return EcolLoteInstruction.CooperativaRegisterEntrega;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([119, 45, 242, 53, 216, 87, 65, 102]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.CooperativaSetVendidoFora;
   }
   if (
     containsBytes(
@@ -950,6 +1003,17 @@ export function identifyEcolLoteInstruction(
     )
   ) {
     return EcolLoteInstruction.IndustriaAcceptVenda;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([13, 22, 192, 67, 235, 93, 62, 75]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.IndustriaComprarLote;
   }
   if (
     containsBytes(
@@ -1197,8 +1261,14 @@ export type ParsedEcolLoteInstruction<
       instructionType: EcolLoteInstruction.CooperativaAddEntregas;
     } & ParsedCooperativaAddEntregasInstruction<TProgram>)
   | ({
+      instructionType: EcolLoteInstruction.CooperativaAnunciarVenda;
+    } & ParsedCooperativaAnunciarVendaInstruction<TProgram>)
+  | ({
       instructionType: EcolLoteInstruction.CooperativaCancelAnuncio;
     } & ParsedCooperativaCancelAnuncioInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.CooperativaConfirmarPagamento;
+    } & ParsedCooperativaConfirmarPagamentoInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.CooperativaCreateLote;
     } & ParsedCooperativaCreateLoteInstruction<TProgram>)
@@ -1214,6 +1284,9 @@ export type ParsedEcolLoteInstruction<
   | ({
       instructionType: EcolLoteInstruction.CooperativaRegisterEntrega;
     } & ParsedCooperativaRegisterEntregaInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.CooperativaSetVendidoFora;
+    } & ParsedCooperativaSetVendidoForaInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.CreditoMarkAgregado;
     } & ParsedCreditoMarkAgregadoInstruction<TProgram>)
@@ -1241,6 +1314,9 @@ export type ParsedEcolLoteInstruction<
   | ({
       instructionType: EcolLoteInstruction.IndustriaAcceptVenda;
     } & ParsedIndustriaAcceptVendaInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.IndustriaComprarLote;
+    } & ParsedIndustriaComprarLoteInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.IndustriaConfirmRecebimento;
     } & ParsedIndustriaConfirmRecebimentoInstruction<TProgram>)
@@ -1367,11 +1443,25 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseCooperativaAddEntregasInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.CooperativaAnunciarVenda: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.CooperativaAnunciarVenda,
+        ...parseCooperativaAnunciarVendaInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.CooperativaCancelAnuncio: {
       assertIsInstructionWithAccounts(instruction);
       return {
         instructionType: EcolLoteInstruction.CooperativaCancelAnuncio,
         ...parseCooperativaCancelAnuncioInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.CooperativaConfirmarPagamento: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.CooperativaConfirmarPagamento,
+        ...parseCooperativaConfirmarPagamentoInstruction(instruction),
       };
     }
     case EcolLoteInstruction.CooperativaCreateLote: {
@@ -1407,6 +1497,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
       return {
         instructionType: EcolLoteInstruction.CooperativaRegisterEntrega,
         ...parseCooperativaRegisterEntregaInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.CooperativaSetVendidoFora: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.CooperativaSetVendidoFora,
+        ...parseCooperativaSetVendidoForaInstruction(instruction),
       };
     }
     case EcolLoteInstruction.CreditoMarkAgregado: {
@@ -1470,6 +1567,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
       return {
         instructionType: EcolLoteInstruction.IndustriaAcceptVenda,
         ...parseIndustriaAcceptVendaInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.IndustriaComprarLote: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.IndustriaComprarLote,
+        ...parseIndustriaComprarLoteInstruction(instruction),
       };
     }
     case EcolLoteInstruction.IndustriaConfirmRecebimento: {
@@ -1681,9 +1785,17 @@ export type EcolLotePluginInstructions = {
     input: CooperativaAddEntregasAsyncInput,
   ) => ReturnType<typeof getCooperativaAddEntregasInstructionAsync> &
     SelfPlanAndSendFunctions;
+  cooperativaAnunciarVenda: (
+    input: CooperativaAnunciarVendaAsyncInput,
+  ) => ReturnType<typeof getCooperativaAnunciarVendaInstructionAsync> &
+    SelfPlanAndSendFunctions;
   cooperativaCancelAnuncio: (
     input: CooperativaCancelAnuncioAsyncInput,
   ) => ReturnType<typeof getCooperativaCancelAnuncioInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  cooperativaConfirmarPagamento: (
+    input: CooperativaConfirmarPagamentoAsyncInput,
+  ) => ReturnType<typeof getCooperativaConfirmarPagamentoInstructionAsync> &
     SelfPlanAndSendFunctions;
   cooperativaCreateLote: (
     input: MakeOptional<CooperativaCreateLoteAsyncInput, "payer">,
@@ -1704,6 +1816,10 @@ export type EcolLotePluginInstructions = {
   cooperativaRegisterEntrega: (
     input: MakeOptional<CooperativaRegisterEntregaAsyncInput, "payer">,
   ) => ReturnType<typeof getCooperativaRegisterEntregaInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  cooperativaSetVendidoFora: (
+    input: CooperativaSetVendidoForaAsyncInput,
+  ) => ReturnType<typeof getCooperativaSetVendidoForaInstructionAsync> &
     SelfPlanAndSendFunctions;
   creditoMarkAgregado: (
     input: CreditoMarkAgregadoAsyncInput,
@@ -1740,6 +1856,10 @@ export type EcolLotePluginInstructions = {
   industriaAcceptVenda: (
     input: IndustriaAcceptVendaAsyncInput,
   ) => ReturnType<typeof getIndustriaAcceptVendaInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  industriaComprarLote: (
+    input: IndustriaComprarLoteAsyncInput,
+  ) => ReturnType<typeof getIndustriaComprarLoteInstructionAsync> &
     SelfPlanAndSendFunctions;
   industriaConfirmRecebimento: (
     input: MakeOptional<IndustriaConfirmRecebimentoAsyncInput, "payer">,
@@ -1917,10 +2037,20 @@ export function ecolLoteProgram() {
               client,
               getCooperativaAddEntregasInstructionAsync(input),
             ),
+          cooperativaAnunciarVenda: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCooperativaAnunciarVendaInstructionAsync(input),
+            ),
           cooperativaCancelAnuncio: (input) =>
             addSelfPlanAndSendFunctions(
               client,
               getCooperativaCancelAnuncioInstructionAsync(input),
+            ),
+          cooperativaConfirmarPagamento: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCooperativaConfirmarPagamentoInstructionAsync(input),
             ),
           cooperativaCreateLote: (input) =>
             addSelfPlanAndSendFunctions(
@@ -1958,6 +2088,11 @@ export function ecolLoteProgram() {
                 ...input,
                 payer: input.payer ?? client.payer,
               }),
+            ),
+          cooperativaSetVendidoFora: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCooperativaSetVendidoForaInstructionAsync(input),
             ),
           creditoMarkAgregado: (input) =>
             addSelfPlanAndSendFunctions(
@@ -2009,6 +2144,11 @@ export function ecolLoteProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getIndustriaAcceptVendaInstructionAsync(input),
+            ),
+          industriaComprarLote: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getIndustriaComprarLoteInstructionAsync(input),
             ),
           industriaConfirmRecebimento: (input) =>
             addSelfPlanAndSendFunctions(
