@@ -1,17 +1,24 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    constants::{CARENCIA_RETOMADA_S, SEED_GLOBAL, SEED_LOTE},
+    constants::{CARENCIA_RETOMADA_S, SEED_CARTEIRA, SEED_GLOBAL, SEED_LOTE},
     error::EcolLoteError,
     events::{EscrowMovimentado, LotePesoAlterado, LoteTransicionado, MovimentoEscrow},
-    state::{EstadoLote, GlobalConfig, Lote, MotivoDisputa},
+    state::{exigir_assinatura, Carteira, EstadoLote, GlobalConfig, Lote, MotivoDisputa},
 };
 
 /// Qualquer parte do lote (cooperativa, indústria, transportador) pode abrir disputa.
 #[event_cpi]
 #[derive(Accounts)]
 pub struct ParteOpenDisputa<'info> {
-    pub parte: Signer<'info>,
+    /// CHECK: carteira titular da parte; conferida contra o lote e pela assinatura.
+    pub parte: UncheckedAccount<'info>,
+    pub parte_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, parte_assinante.key().as_ref()],
+        bump = parte_carteira.bump
+    )]
+    pub parte_carteira: Option<Account<'info, Carteira>>,
     #[account(seeds = [SEED_GLOBAL], bump = config.bump)]
     pub config: Account<'info, GlobalConfig>,
     #[account(
@@ -28,6 +35,11 @@ pub fn handle_parte_open_disputa(
     motivo: MotivoDisputa,
 ) -> Result<()> {
     ctx.accounts.config.exigir_disputas_liberadas()?;
+    exigir_assinatura(
+        &ctx.accounts.parte.key(),
+        &ctx.accounts.parte_assinante.key(),
+        ctx.accounts.parte_carteira.as_deref(),
+    )?;
     // Prazo expirado só pelo crank, que confere o relógio.
     require!(
         motivo != MotivoDisputa::PrazoExpirado,

@@ -1,9 +1,7 @@
 use anchor_lang::prelude::*;
 use ecol_lote::Papel;
 
-use crate::{
-    constants::BPS_BASE, error::EcolReparticaoError, merkle::papel_u8, state::BpsReparticao,
-};
+use crate::{constants::BPS_BASE, error::EcolReparticaoError, merkle::balde, state::BpsReparticao};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
 pub enum EstadoDistribuicao {
@@ -148,7 +146,7 @@ impl Distribuicao {
             EcolReparticaoError::IndiceInvalido
         );
         require!(!self.ja_resgatado(indice), EcolReparticaoError::JaResgatado);
-        let p = usize::from(papel_u8(papel));
+        let p = balde(papel).ok_or(EcolReparticaoError::PapelIncorreto)?;
         let novo = self.resgatado_por_papel[p]
             .checked_add(valor_centavos)
             .ok_or(EcolReparticaoError::Overflow)?;
@@ -287,6 +285,21 @@ mod testes {
             "fora do num_folhas"
         );
         assert!(d.ja_resgatado(0) && d.ja_resgatado(1) && !d.ja_resgatado(2));
+    }
+
+    /// ADR 0011: a Clean Tech divide o teto da cooperativa; o importador não tem fatia.
+    #[test]
+    fn clean_tech_usa_teto_da_cooperativa() {
+        let mut d = vazia();
+        d.calcular(5_000, padrao(), 6_500, 0, 0).unwrap();
+        d.registrar_resgate(0, Papel::CleanTech, 300).unwrap();
+        d.registrar_resgate(1, Papel::Cooperativa, 200).unwrap();
+        assert_eq!(d.resgatado_por_papel[1], 500);
+        assert!(
+            d.registrar_resgate(2, Papel::CleanTech, 1).is_err(),
+            "passaria do teto de 500 da cooperativa"
+        );
+        assert!(d.registrar_resgate(3, Papel::Importador, 1).is_err());
     }
 }
 

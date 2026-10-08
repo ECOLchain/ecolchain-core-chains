@@ -25,8 +25,12 @@ import {
   getStructEncoder,
   getU16Decoder,
   getU16Encoder,
+  getU32Decoder,
+  getU32Encoder,
   getU64Decoder,
   getU64Encoder,
+  getU8Decoder,
+  getU8Encoder,
   type Address,
   type FixedSizeCodec,
   type FixedSizeDecoder,
@@ -59,6 +63,8 @@ export type EntregaRegistradaEvent = {
   pesoG: bigint;
   balanca: Address;
   tsPesagem: bigint;
+  variacao: number;
+  qtdGarrafas: number;
 };
 
 export type EntregaRegistradaEventArgs = {
@@ -71,6 +77,8 @@ export type EntregaRegistradaEventArgs = {
   pesoG: number | bigint;
   balanca: Address;
   tsPesagem: number | bigint;
+  variacao: number;
+  qtdGarrafas: number;
 };
 
 /** Gets the encoder for {@link EntregaRegistradaEventArgs} event data. */
@@ -86,6 +94,8 @@ export function getEntregaRegistradaEventEncoder(): FixedSizeEncoder<EntregaRegi
       ["pesoG", getU64Encoder()],
       ["balanca", getAddressEncoder()],
       ["tsPesagem", getI64Encoder()],
+      ["variacao", getU8Encoder()],
+      ["qtdGarrafas", getU32Encoder()],
     ]),
     [getConstantEncoder(ENTREGA_REGISTRADA_EVENT_DISCRIMINATOR)],
   );
@@ -104,6 +114,8 @@ export function getEntregaRegistradaEventDecoder(): FixedSizeDecoder<EntregaRegi
       ["pesoG", getU64Decoder()],
       ["balanca", getAddressDecoder()],
       ["tsPesagem", getI64Decoder()],
+      ["variacao", getU8Decoder()],
+      ["qtdGarrafas", getU32Decoder()],
     ]),
     [getConstantDecoder(ENTREGA_REGISTRADA_EVENT_DISCRIMINATOR)],
   );

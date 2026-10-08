@@ -55,6 +55,8 @@ export function getCooperativaCancelAnuncioDiscriminatorBytes(): ReadonlyUint8Ar
 export type CooperativaCancelAnuncioInstruction<
   TProgram extends string = typeof ECOL_LOTE_PROGRAM_ADDRESS,
   TAccountCooperativa extends string | AccountMeta<string> = string,
+  TAccountCooperativaAssinante extends string | AccountMeta<string> = string,
+  TAccountCooperativaCarteira extends string | AccountMeta<string> = string,
   TAccountCooperativaPart extends string | AccountMeta<string> = string,
   TAccountConfig extends string | AccountMeta<string> = string,
   TAccountLote extends string | AccountMeta<string> = string,
@@ -66,9 +68,15 @@ export type CooperativaCancelAnuncioInstruction<
   InstructionWithAccounts<
     [
       TAccountCooperativa extends string
-        ? ReadonlySignerAccount<TAccountCooperativa> &
-            AccountSignerMeta<TAccountCooperativa>
+        ? ReadonlyAccount<TAccountCooperativa>
         : TAccountCooperativa,
+      TAccountCooperativaAssinante extends string
+        ? ReadonlySignerAccount<TAccountCooperativaAssinante> &
+            AccountSignerMeta<TAccountCooperativaAssinante>
+        : TAccountCooperativaAssinante,
+      TAccountCooperativaCarteira extends string
+        ? ReadonlyAccount<TAccountCooperativaCarteira>
+        : TAccountCooperativaCarteira,
       TAccountCooperativaPart extends string
         ? ReadonlyAccount<TAccountCooperativaPart>
         : TAccountCooperativaPart,
@@ -121,7 +129,11 @@ export function getCooperativaCancelAnuncioInstructionDataCodec(): FixedSizeCode
 }
 
 export type CooperativaCancelAnuncioAsyncInput<
-  TAccountCooperativa extends InstructionSignerInput = InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput = InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput =
     InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
@@ -131,6 +143,8 @@ export type CooperativaCancelAnuncioAsyncInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   cooperativa: TAccountCooperativa;
+  cooperativaAssinante: TAccountCooperativaAssinante;
+  cooperativaCarteira?: TAccountCooperativaCarteira;
   cooperativaPart?: TAccountCooperativaPart;
   config?: TAccountConfig;
   lote: TAccountLote;
@@ -139,7 +153,9 @@ export type CooperativaCancelAnuncioAsyncInput<
 };
 
 export async function getCooperativaCancelAnuncioInstructionAsync<
-  TAccountCooperativa extends InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
@@ -149,6 +165,8 @@ export async function getCooperativaCancelAnuncioInstructionAsync<
 >(
   input: CooperativaCancelAnuncioAsyncInput<
     TAccountCooperativa,
+    TAccountCooperativaAssinante,
+    TAccountCooperativaCarteira,
     TAccountCooperativaPart,
     TAccountConfig,
     TAccountLote,
@@ -162,6 +180,14 @@ export async function getCooperativaCancelAnuncioInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountCooperativaPart,
@@ -195,7 +221,17 @@ export async function getCooperativaCancelAnuncioInstructionAsync<
   const originalAccounts = {
     cooperativa: {
       value: input.cooperativa ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    cooperativaAssinante: {
+      value: input.cooperativaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    cooperativaCarteira: {
+      value: input.cooperativaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     cooperativaPart: {
@@ -240,6 +276,8 @@ export async function getCooperativaCancelAnuncioInstructionAsync<
   return Object.freeze({
     accounts: [
       getAccountMeta("cooperativa", accounts.cooperativa),
+      getAccountMeta("cooperativaAssinante", accounts.cooperativaAssinante),
+      getAccountMeta("cooperativaCarteira", accounts.cooperativaCarteira),
       getAccountMeta("cooperativaPart", accounts.cooperativaPart),
       getAccountMeta("config", accounts.config),
       getAccountMeta("lote", accounts.lote),
@@ -253,6 +291,14 @@ export async function getCooperativaCancelAnuncioInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountCooperativaPart,
@@ -278,7 +324,11 @@ export async function getCooperativaCancelAnuncioInstructionAsync<
 }
 
 export type CooperativaCancelAnuncioInput<
-  TAccountCooperativa extends InstructionSignerInput = InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput = InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput =
     InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
@@ -288,6 +338,8 @@ export type CooperativaCancelAnuncioInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   cooperativa: TAccountCooperativa;
+  cooperativaAssinante: TAccountCooperativaAssinante;
+  cooperativaCarteira?: TAccountCooperativaCarteira;
   cooperativaPart: TAccountCooperativaPart;
   config: TAccountConfig;
   lote: TAccountLote;
@@ -296,7 +348,9 @@ export type CooperativaCancelAnuncioInput<
 };
 
 export function getCooperativaCancelAnuncioInstruction<
-  TAccountCooperativa extends InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
@@ -306,6 +360,8 @@ export function getCooperativaCancelAnuncioInstruction<
 >(
   input: CooperativaCancelAnuncioInput<
     TAccountCooperativa,
+    TAccountCooperativaAssinante,
+    TAccountCooperativaCarteira,
     TAccountCooperativaPart,
     TAccountConfig,
     TAccountLote,
@@ -318,6 +374,14 @@ export function getCooperativaCancelAnuncioInstruction<
   ResolvedInstructionAccountMeta<
     TAccountCooperativa,
     InstructionAccountInputAddress<TAccountCooperativa>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountCooperativaAssinante,
+    InstructionAccountInputAddress<TAccountCooperativaAssinante>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountCooperativaCarteira,
+    InstructionAccountInputAddress<TAccountCooperativaCarteira>
   >,
   ResolvedInstructionAccountMeta<
     TAccountCooperativaPart,
@@ -350,7 +414,17 @@ export function getCooperativaCancelAnuncioInstruction<
   const originalAccounts = {
     cooperativa: {
       value: input.cooperativa ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    cooperativaAssinante: {
+      value: input.cooperativaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    cooperativaCarteira: {
+      value: input.cooperativaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     cooperativaPart: {
@@ -379,6 +453,8 @@ export function getCooperativaCancelAnuncioInstruction<
   return Object.freeze({
     accounts: [
       getAccountMeta("cooperativa", accounts.cooperativa),
+      getAccountMeta("cooperativaAssinante", accounts.cooperativaAssinante),
+      getAccountMeta("cooperativaCarteira", accounts.cooperativaCarteira),
       getAccountMeta("cooperativaPart", accounts.cooperativaPart),
       getAccountMeta("config", accounts.config),
       getAccountMeta("lote", accounts.lote),
@@ -392,6 +468,14 @@ export function getCooperativaCancelAnuncioInstruction<
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountCooperativaPart,
@@ -423,11 +507,13 @@ export type ParsedCooperativaCancelAnuncioInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     cooperativa: TAccountMetas[0];
-    cooperativaPart: TAccountMetas[1];
-    config: TAccountMetas[2];
-    lote: TAccountMetas[3];
-    eventAuthority: TAccountMetas[4];
-    program: TAccountMetas[5];
+    cooperativaAssinante: TAccountMetas[1];
+    cooperativaCarteira?: TAccountMetas[2] | undefined;
+    cooperativaPart: TAccountMetas[3];
+    config: TAccountMetas[4];
+    lote: TAccountMetas[5];
+    eventAuthority: TAccountMetas[6];
+    program: TAccountMetas[7];
   };
   data: CooperativaCancelAnuncioInstructionData;
 };
@@ -440,12 +526,12 @@ export function parseCooperativaCancelAnuncioInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCooperativaCancelAnuncioInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 6) {
+  if (instruction.accounts.length < 8) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 6,
+        expectedAccountMetas: 8,
       },
     );
   }
@@ -455,10 +541,18 @@ export function parseCooperativaCancelAnuncioInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === ECOL_LOTE_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       cooperativa: getNextAccount(),
+      cooperativaAssinante: getNextAccount(),
+      cooperativaCarteira: getNextOptionalAccount(),
       cooperativaPart: getNextAccount(),
       config: getNextAccount(),
       lote: getNextAccount(),

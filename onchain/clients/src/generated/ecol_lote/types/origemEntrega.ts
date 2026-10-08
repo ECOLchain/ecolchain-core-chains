@@ -22,6 +22,7 @@ export enum OrigemEntrega {
   Doacao,
   Compra,
   Avulso,
+  Importador,
 }
 
 export type OrigemEntregaArgs = OrigemEntrega;

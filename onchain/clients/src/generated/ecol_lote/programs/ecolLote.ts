@@ -36,13 +36,23 @@ import {
 } from "@solana/program-client-core";
 import {
   getBalancaCodec,
+  getCarteiraCodec,
+  getColetaCodec,
+  getDistribuicaoCodec,
   getEntregaCodec,
   getGlobalConfigCodec,
   getLoteCodec,
   getMaterialCodec,
+  getMaterialVariacaoCodec,
   getParticipanteCodec,
   type Balanca,
   type BalancaArgs,
+  type Carteira,
+  type CarteiraArgs,
+  type Coleta,
+  type ColetaArgs,
+  type Distribuicao,
+  type DistribuicaoArgs,
   type Entrega,
   type EntregaArgs,
   type GlobalConfig,
@@ -51,6 +61,8 @@ import {
   type LoteArgs,
   type Material,
   type MaterialArgs,
+  type MaterialVariacao,
+  type MaterialVariacaoArgs,
   type Participante,
   type ParticipanteArgs,
 } from "../accounts";
@@ -73,19 +85,29 @@ import {
   getCreditoMarkAgregadoInstructionAsync,
   getCreditoMarkDesagregadoInstructionAsync,
   getGuardiaoPausarInstructionAsync,
+  getImportadorCancelarEntregaInstructionAsync,
+  getImportadorCreateDistribuicaoInstructionAsync,
+  getImportadorEntregarColetaInstructionAsync,
+  getImportadorInformarReciclagemInstructionAsync,
+  getImportadorRegisterColetaInstructionAsync,
   getIndustriaAcceptVendaInstructionAsync,
   getIndustriaConfirmRecebimentoInstructionAsync,
   getIntermediadorConfirmLiberacaoInstructionAsync,
   getOperadorCloseLeilaoSemLanceInstructionAsync,
   getOperadorCreateMaterialInstructionAsync,
+  getOperadorCreateVariacaoInstructionAsync,
   getOperadorRegisterBalancaInstructionAsync,
   getOperadorRegisterParticipanteInstructionAsync,
   getOperadorSetBalancaAtivaInstructionAsync,
   getOperadorSetBalancaNomeInstructionAsync,
+  getOperadorSetMaterialGarrafasInstructionAsync,
   getOperadorSetParticipanteAtivoInstructionAsync,
   getOperadorSetParticipanteNomeInstructionAsync,
   getOperadorUpdateMaterialInstructionAsync,
+  getOperadorUpdateVariacaoInstructionAsync,
   getParteOpenDisputaInstructionAsync,
+  getParticipanteAddCarteiraInstructionAsync,
+  getParticipanteUpdateCarteiraInstructionAsync,
   getPublicCrankPrazoExpiradoInstructionAsync,
   getTransportadorPickupLoteInstructionAsync,
   parseAdminAcceptAdminInstruction,
@@ -106,19 +128,29 @@ import {
   parseCreditoMarkAgregadoInstruction,
   parseCreditoMarkDesagregadoInstruction,
   parseGuardiaoPausarInstruction,
+  parseImportadorCancelarEntregaInstruction,
+  parseImportadorCreateDistribuicaoInstruction,
+  parseImportadorEntregarColetaInstruction,
+  parseImportadorInformarReciclagemInstruction,
+  parseImportadorRegisterColetaInstruction,
   parseIndustriaAcceptVendaInstruction,
   parseIndustriaConfirmRecebimentoInstruction,
   parseIntermediadorConfirmLiberacaoInstruction,
   parseOperadorCloseLeilaoSemLanceInstruction,
   parseOperadorCreateMaterialInstruction,
+  parseOperadorCreateVariacaoInstruction,
   parseOperadorRegisterBalancaInstruction,
   parseOperadorRegisterParticipanteInstruction,
   parseOperadorSetBalancaAtivaInstruction,
   parseOperadorSetBalancaNomeInstruction,
+  parseOperadorSetMaterialGarrafasInstruction,
   parseOperadorSetParticipanteAtivoInstruction,
   parseOperadorSetParticipanteNomeInstruction,
   parseOperadorUpdateMaterialInstruction,
+  parseOperadorUpdateVariacaoInstruction,
   parseParteOpenDisputaInstruction,
+  parseParticipanteAddCarteiraInstruction,
+  parseParticipanteUpdateCarteiraInstruction,
   parsePublicCrankPrazoExpiradoInstruction,
   parseTransportadorPickupLoteInstruction,
   type AdminAcceptAdminAsyncInput,
@@ -139,18 +171,26 @@ import {
   type CreditoMarkAgregadoAsyncInput,
   type CreditoMarkDesagregadoAsyncInput,
   type GuardiaoPausarAsyncInput,
+  type ImportadorCancelarEntregaAsyncInput,
+  type ImportadorCreateDistribuicaoAsyncInput,
+  type ImportadorEntregarColetaAsyncInput,
+  type ImportadorInformarReciclagemAsyncInput,
+  type ImportadorRegisterColetaAsyncInput,
   type IndustriaAcceptVendaAsyncInput,
   type IndustriaConfirmRecebimentoAsyncInput,
   type IntermediadorConfirmLiberacaoAsyncInput,
   type OperadorCloseLeilaoSemLanceAsyncInput,
   type OperadorCreateMaterialAsyncInput,
+  type OperadorCreateVariacaoAsyncInput,
   type OperadorRegisterBalancaAsyncInput,
   type OperadorRegisterParticipanteAsyncInput,
   type OperadorSetBalancaAtivaAsyncInput,
   type OperadorSetBalancaNomeAsyncInput,
+  type OperadorSetMaterialGarrafasAsyncInput,
   type OperadorSetParticipanteAtivoAsyncInput,
   type OperadorSetParticipanteNomeAsyncInput,
   type OperadorUpdateMaterialAsyncInput,
+  type OperadorUpdateVariacaoAsyncInput,
   type ParsedAdminAcceptAdminInstruction,
   type ParsedAdminInitGlobalInstruction,
   type ParsedAdminProposeAdminInstruction,
@@ -169,22 +209,34 @@ import {
   type ParsedCreditoMarkAgregadoInstruction,
   type ParsedCreditoMarkDesagregadoInstruction,
   type ParsedGuardiaoPausarInstruction,
+  type ParsedImportadorCancelarEntregaInstruction,
+  type ParsedImportadorCreateDistribuicaoInstruction,
+  type ParsedImportadorEntregarColetaInstruction,
+  type ParsedImportadorInformarReciclagemInstruction,
+  type ParsedImportadorRegisterColetaInstruction,
   type ParsedIndustriaAcceptVendaInstruction,
   type ParsedIndustriaConfirmRecebimentoInstruction,
   type ParsedIntermediadorConfirmLiberacaoInstruction,
   type ParsedOperadorCloseLeilaoSemLanceInstruction,
   type ParsedOperadorCreateMaterialInstruction,
+  type ParsedOperadorCreateVariacaoInstruction,
   type ParsedOperadorRegisterBalancaInstruction,
   type ParsedOperadorRegisterParticipanteInstruction,
   type ParsedOperadorSetBalancaAtivaInstruction,
   type ParsedOperadorSetBalancaNomeInstruction,
+  type ParsedOperadorSetMaterialGarrafasInstruction,
   type ParsedOperadorSetParticipanteAtivoInstruction,
   type ParsedOperadorSetParticipanteNomeInstruction,
   type ParsedOperadorUpdateMaterialInstruction,
+  type ParsedOperadorUpdateVariacaoInstruction,
   type ParsedParteOpenDisputaInstruction,
+  type ParsedParticipanteAddCarteiraInstruction,
+  type ParsedParticipanteUpdateCarteiraInstruction,
   type ParsedPublicCrankPrazoExpiradoInstruction,
   type ParsedTransportadorPickupLoteInstruction,
   type ParteOpenDisputaAsyncInput,
+  type ParticipanteAddCarteiraAsyncInput,
+  type ParticipanteUpdateCarteiraAsyncInput,
   type PublicCrankPrazoExpiradoAsyncInput,
   type TransportadorPickupLoteAsyncInput,
 } from "../instructions";
@@ -192,12 +244,21 @@ import {
   findAssetPda,
   findAutoridadeAssetPda,
   findBalancaPda,
+  findCarteiraPda,
   findConfigPda,
+  findCooperativaCarteiraPda,
   findCooperativaPartPda,
+  findEnderecoPartPda,
+  findImportadorCarteiraPda,
+  findImportadorPartPda,
+  findIndustriaCarteiraPda,
   findIndustriaPartPda,
   findMaterialPda,
+  findParteCarteiraPda,
   findParticipantePda,
+  findTransportadorCarteiraPda,
   findTransportadorPartPda,
+  findVinculoPda,
 } from "../pdas";
 
 export const ECOL_LOTE_PROGRAM_ADDRESS =
@@ -205,10 +266,14 @@ export const ECOL_LOTE_PROGRAM_ADDRESS =
 
 export enum EcolLoteAccount {
   Balanca,
+  Carteira,
+  Coleta,
+  Distribuicao,
   Entrega,
   GlobalConfig,
   Lote,
   Material,
+  MaterialVariacao,
   Participante,
 }
 
@@ -226,6 +291,39 @@ export function identifyEcolLoteAccount(
     )
   ) {
     return EcolLoteAccount.Balanca;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([49, 224, 76, 119, 20, 104, 228, 177]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteAccount.Carteira;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([210, 175, 225, 46, 232, 208, 28, 86]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteAccount.Coleta;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([173, 112, 177, 4, 70, 162, 99, 212]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteAccount.Distribuicao;
   }
   if (
     containsBytes(
@@ -275,6 +373,17 @@ export function identifyEcolLoteAccount(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([42, 111, 81, 236, 11, 216, 62, 17]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteAccount.MaterialVariacao;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([0, 99, 20, 52, 237, 100, 238, 85]),
       ),
       0,
@@ -290,7 +399,10 @@ export function identifyEcolLoteAccount(
 
 export enum EcolLoteEvent {
   BalancaAtualizada,
+  CarteiraAtualizada,
+  ColetaAtualizada,
   ConfigAtualizada,
+  DistribuicaoRegistrada,
   EntregaDevolvida,
   EntregaNoLote,
   EntregaRegistrada,
@@ -301,8 +413,10 @@ export enum EcolLoteEvent {
   LoteTransicionado,
   LoteVendido,
   MaterialAtualizado,
+  MaterialGarrafasAtualizado,
   ParticipanteAtualizado,
   PesagemAtestada,
+  VariacaoAtualizada,
 }
 
 export function identifyEcolLoteEvent(
@@ -324,12 +438,45 @@ export function identifyEcolLoteEvent(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([233, 237, 140, 221, 24, 157, 167, 24]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteEvent.CarteiraAtualizada;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([211, 0, 127, 160, 220, 3, 242, 7]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteEvent.ColetaAtualizada;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([175, 71, 97, 213, 232, 210, 212, 252]),
       ),
       0,
     )
   ) {
     return EcolLoteEvent.ConfigAtualizada;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([132, 74, 207, 16, 17, 50, 22, 212]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteEvent.DistribuicaoRegistrada;
   }
   if (
     containsBytes(
@@ -445,6 +592,17 @@ export function identifyEcolLoteEvent(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([222, 109, 35, 42, 18, 82, 49, 56]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteEvent.MaterialGarrafasAtualizado;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([50, 198, 128, 219, 129, 80, 169, 85]),
       ),
       0,
@@ -462,6 +620,17 @@ export function identifyEcolLoteEvent(
     )
   ) {
     return EcolLoteEvent.PesagemAtestada;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([100, 48, 178, 11, 99, 235, 137, 66]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteEvent.VariacaoAtualizada;
   }
   throw new Error(
     "The provided event could not be identified as a ecolLote event.",
@@ -487,19 +656,29 @@ export enum EcolLoteInstruction {
   CreditoMarkAgregado,
   CreditoMarkDesagregado,
   GuardiaoPausar,
+  ImportadorCancelarEntrega,
+  ImportadorCreateDistribuicao,
+  ImportadorEntregarColeta,
+  ImportadorInformarReciclagem,
+  ImportadorRegisterColeta,
   IndustriaAcceptVenda,
   IndustriaConfirmRecebimento,
   IntermediadorConfirmLiberacao,
   OperadorCloseLeilaoSemLance,
   OperadorCreateMaterial,
+  OperadorCreateVariacao,
   OperadorRegisterBalanca,
   OperadorRegisterParticipante,
   OperadorSetBalancaAtiva,
   OperadorSetBalancaNome,
+  OperadorSetMaterialGarrafas,
   OperadorSetParticipanteAtivo,
   OperadorSetParticipanteNome,
   OperadorUpdateMaterial,
+  OperadorUpdateVariacao,
   ParteOpenDisputa,
+  ParticipanteAddCarteira,
+  ParticipanteUpdateCarteira,
   PublicCrankPrazoExpirado,
   TransportadorPickupLote,
 }
@@ -710,6 +889,61 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([206, 120, 181, 151, 137, 223, 204, 192]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.ImportadorCancelarEntrega;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([247, 4, 212, 114, 117, 67, 81, 73]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.ImportadorCreateDistribuicao;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([222, 114, 212, 184, 144, 20, 51, 89]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.ImportadorEntregarColeta;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([205, 107, 55, 154, 121, 127, 206, 130]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.ImportadorInformarReciclagem;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([235, 157, 99, 194, 62, 83, 184, 163]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.ImportadorRegisterColeta;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([212, 78, 86, 239, 75, 126, 20, 43]),
       ),
       0,
@@ -765,6 +999,17 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([235, 50, 7, 31, 20, 88, 2, 181]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.OperadorCreateVariacao;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([136, 83, 136, 16, 221, 130, 139, 159]),
       ),
       0,
@@ -809,6 +1054,17 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([106, 94, 15, 250, 98, 159, 80, 9]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.OperadorSetMaterialGarrafas;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([165, 233, 199, 76, 249, 198, 50, 83]),
       ),
       0,
@@ -842,12 +1098,45 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([55, 209, 191, 155, 40, 31, 19, 234]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.OperadorUpdateVariacao;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([198, 216, 9, 175, 189, 225, 108, 11]),
       ),
       0,
     )
   ) {
     return EcolLoteInstruction.ParteOpenDisputa;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([65, 50, 132, 128, 130, 59, 175, 141]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.ParticipanteAddCarteira;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([209, 38, 1, 253, 200, 31, 23, 236]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.ParticipanteUpdateCarteira;
   }
   if (
     containsBytes(
@@ -935,6 +1224,21 @@ export type ParsedEcolLoteInstruction<
       instructionType: EcolLoteInstruction.GuardiaoPausar;
     } & ParsedGuardiaoPausarInstruction<TProgram>)
   | ({
+      instructionType: EcolLoteInstruction.ImportadorCancelarEntrega;
+    } & ParsedImportadorCancelarEntregaInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.ImportadorCreateDistribuicao;
+    } & ParsedImportadorCreateDistribuicaoInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.ImportadorEntregarColeta;
+    } & ParsedImportadorEntregarColetaInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.ImportadorInformarReciclagem;
+    } & ParsedImportadorInformarReciclagemInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.ImportadorRegisterColeta;
+    } & ParsedImportadorRegisterColetaInstruction<TProgram>)
+  | ({
       instructionType: EcolLoteInstruction.IndustriaAcceptVenda;
     } & ParsedIndustriaAcceptVendaInstruction<TProgram>)
   | ({
@@ -950,6 +1254,9 @@ export type ParsedEcolLoteInstruction<
       instructionType: EcolLoteInstruction.OperadorCreateMaterial;
     } & ParsedOperadorCreateMaterialInstruction<TProgram>)
   | ({
+      instructionType: EcolLoteInstruction.OperadorCreateVariacao;
+    } & ParsedOperadorCreateVariacaoInstruction<TProgram>)
+  | ({
       instructionType: EcolLoteInstruction.OperadorRegisterBalanca;
     } & ParsedOperadorRegisterBalancaInstruction<TProgram>)
   | ({
@@ -962,6 +1269,9 @@ export type ParsedEcolLoteInstruction<
       instructionType: EcolLoteInstruction.OperadorSetBalancaNome;
     } & ParsedOperadorSetBalancaNomeInstruction<TProgram>)
   | ({
+      instructionType: EcolLoteInstruction.OperadorSetMaterialGarrafas;
+    } & ParsedOperadorSetMaterialGarrafasInstruction<TProgram>)
+  | ({
       instructionType: EcolLoteInstruction.OperadorSetParticipanteAtivo;
     } & ParsedOperadorSetParticipanteAtivoInstruction<TProgram>)
   | ({
@@ -971,8 +1281,17 @@ export type ParsedEcolLoteInstruction<
       instructionType: EcolLoteInstruction.OperadorUpdateMaterial;
     } & ParsedOperadorUpdateMaterialInstruction<TProgram>)
   | ({
+      instructionType: EcolLoteInstruction.OperadorUpdateVariacao;
+    } & ParsedOperadorUpdateVariacaoInstruction<TProgram>)
+  | ({
       instructionType: EcolLoteInstruction.ParteOpenDisputa;
     } & ParsedParteOpenDisputaInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.ParticipanteAddCarteira;
+    } & ParsedParticipanteAddCarteiraInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.ParticipanteUpdateCarteira;
+    } & ParsedParticipanteUpdateCarteiraInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.PublicCrankPrazoExpirado;
     } & ParsedPublicCrankPrazoExpiradoInstruction<TProgram>)
@@ -1111,6 +1430,41 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseGuardiaoPausarInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.ImportadorCancelarEntrega: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.ImportadorCancelarEntrega,
+        ...parseImportadorCancelarEntregaInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.ImportadorCreateDistribuicao: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.ImportadorCreateDistribuicao,
+        ...parseImportadorCreateDistribuicaoInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.ImportadorEntregarColeta: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.ImportadorEntregarColeta,
+        ...parseImportadorEntregarColetaInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.ImportadorInformarReciclagem: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.ImportadorInformarReciclagem,
+        ...parseImportadorInformarReciclagemInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.ImportadorRegisterColeta: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.ImportadorRegisterColeta,
+        ...parseImportadorRegisterColetaInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.IndustriaAcceptVenda: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -1146,6 +1500,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseOperadorCreateMaterialInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.OperadorCreateVariacao: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.OperadorCreateVariacao,
+        ...parseOperadorCreateVariacaoInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.OperadorRegisterBalanca: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -1174,6 +1535,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseOperadorSetBalancaNomeInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.OperadorSetMaterialGarrafas: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.OperadorSetMaterialGarrafas,
+        ...parseOperadorSetMaterialGarrafasInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.OperadorSetParticipanteAtivo: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -1195,11 +1563,32 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseOperadorUpdateMaterialInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.OperadorUpdateVariacao: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.OperadorUpdateVariacao,
+        ...parseOperadorUpdateVariacaoInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.ParteOpenDisputa: {
       assertIsInstructionWithAccounts(instruction);
       return {
         instructionType: EcolLoteInstruction.ParteOpenDisputa,
         ...parseParteOpenDisputaInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.ParticipanteAddCarteira: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.ParticipanteAddCarteira,
+        ...parseParticipanteAddCarteiraInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.ParticipanteUpdateCarteira: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.ParticipanteUpdateCarteira,
+        ...parseParticipanteUpdateCarteiraInstruction(instruction),
       };
     }
     case EcolLoteInstruction.PublicCrankPrazoExpirado: {
@@ -1236,6 +1625,12 @@ export type EcolLotePlugin = {
 export type EcolLotePluginAccounts = {
   balanca: ReturnType<typeof getBalancaCodec> &
     SelfFetchFunctions<BalancaArgs, Balanca>;
+  carteira: ReturnType<typeof getCarteiraCodec> &
+    SelfFetchFunctions<CarteiraArgs, Carteira>;
+  coleta: ReturnType<typeof getColetaCodec> &
+    SelfFetchFunctions<ColetaArgs, Coleta>;
+  distribuicao: ReturnType<typeof getDistribuicaoCodec> &
+    SelfFetchFunctions<DistribuicaoArgs, Distribuicao>;
   entrega: ReturnType<typeof getEntregaCodec> &
     SelfFetchFunctions<EntregaArgs, Entrega>;
   globalConfig: ReturnType<typeof getGlobalConfigCodec> &
@@ -1243,6 +1638,8 @@ export type EcolLotePluginAccounts = {
   lote: ReturnType<typeof getLoteCodec> & SelfFetchFunctions<LoteArgs, Lote>;
   material: ReturnType<typeof getMaterialCodec> &
     SelfFetchFunctions<MaterialArgs, Material>;
+  materialVariacao: ReturnType<typeof getMaterialVariacaoCodec> &
+    SelfFetchFunctions<MaterialVariacaoArgs, MaterialVariacao>;
   participante: ReturnType<typeof getParticipanteCodec> &
     SelfFetchFunctions<ParticipanteArgs, Participante>;
 };
@@ -1320,6 +1717,26 @@ export type EcolLotePluginInstructions = {
     input: GuardiaoPausarAsyncInput,
   ) => ReturnType<typeof getGuardiaoPausarInstructionAsync> &
     SelfPlanAndSendFunctions;
+  importadorCancelarEntrega: (
+    input: ImportadorCancelarEntregaAsyncInput,
+  ) => ReturnType<typeof getImportadorCancelarEntregaInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  importadorCreateDistribuicao: (
+    input: MakeOptional<ImportadorCreateDistribuicaoAsyncInput, "payer">,
+  ) => ReturnType<typeof getImportadorCreateDistribuicaoInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  importadorEntregarColeta: (
+    input: ImportadorEntregarColetaAsyncInput,
+  ) => ReturnType<typeof getImportadorEntregarColetaInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  importadorInformarReciclagem: (
+    input: ImportadorInformarReciclagemAsyncInput,
+  ) => ReturnType<typeof getImportadorInformarReciclagemInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  importadorRegisterColeta: (
+    input: MakeOptional<ImportadorRegisterColetaAsyncInput, "payer">,
+  ) => ReturnType<typeof getImportadorRegisterColetaInstructionAsync> &
+    SelfPlanAndSendFunctions;
   industriaAcceptVenda: (
     input: IndustriaAcceptVendaAsyncInput,
   ) => ReturnType<typeof getIndustriaAcceptVendaInstructionAsync> &
@@ -1340,6 +1757,10 @@ export type EcolLotePluginInstructions = {
     input: MakeOptional<OperadorCreateMaterialAsyncInput, "payer">,
   ) => ReturnType<typeof getOperadorCreateMaterialInstructionAsync> &
     SelfPlanAndSendFunctions;
+  operadorCreateVariacao: (
+    input: MakeOptional<OperadorCreateVariacaoAsyncInput, "payer">,
+  ) => ReturnType<typeof getOperadorCreateVariacaoInstructionAsync> &
+    SelfPlanAndSendFunctions;
   operadorRegisterBalanca: (
     input: MakeOptional<OperadorRegisterBalancaAsyncInput, "payer">,
   ) => ReturnType<typeof getOperadorRegisterBalancaInstructionAsync> &
@@ -1356,6 +1777,10 @@ export type EcolLotePluginInstructions = {
     input: OperadorSetBalancaNomeAsyncInput,
   ) => ReturnType<typeof getOperadorSetBalancaNomeInstructionAsync> &
     SelfPlanAndSendFunctions;
+  operadorSetMaterialGarrafas: (
+    input: OperadorSetMaterialGarrafasAsyncInput,
+  ) => ReturnType<typeof getOperadorSetMaterialGarrafasInstructionAsync> &
+    SelfPlanAndSendFunctions;
   operadorSetParticipanteAtivo: (
     input: OperadorSetParticipanteAtivoAsyncInput,
   ) => ReturnType<typeof getOperadorSetParticipanteAtivoInstructionAsync> &
@@ -1368,9 +1793,21 @@ export type EcolLotePluginInstructions = {
     input: OperadorUpdateMaterialAsyncInput,
   ) => ReturnType<typeof getOperadorUpdateMaterialInstructionAsync> &
     SelfPlanAndSendFunctions;
+  operadorUpdateVariacao: (
+    input: OperadorUpdateVariacaoAsyncInput,
+  ) => ReturnType<typeof getOperadorUpdateVariacaoInstructionAsync> &
+    SelfPlanAndSendFunctions;
   parteOpenDisputa: (
     input: ParteOpenDisputaAsyncInput,
   ) => ReturnType<typeof getParteOpenDisputaInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  participanteAddCarteira: (
+    input: MakeOptional<ParticipanteAddCarteiraAsyncInput, "payer">,
+  ) => ReturnType<typeof getParticipanteAddCarteiraInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  participanteUpdateCarteira: (
+    input: ParticipanteUpdateCarteiraAsyncInput,
+  ) => ReturnType<typeof getParticipanteUpdateCarteiraInstructionAsync> &
     SelfPlanAndSendFunctions;
   publicCrankPrazoExpirado: (
     input: PublicCrankPrazoExpiradoAsyncInput,
@@ -1384,13 +1821,22 @@ export type EcolLotePluginInstructions = {
 
 export type EcolLotePluginPdas = {
   config: typeof findConfigPda;
+  cooperativaCarteira: typeof findCooperativaCarteiraPda;
   cooperativaPart: typeof findCooperativaPartPda;
   asset: typeof findAssetPda;
   autoridadeAsset: typeof findAutoridadeAssetPda;
+  importadorCarteira: typeof findImportadorCarteiraPda;
+  importadorPart: typeof findImportadorPartPda;
+  industriaCarteira: typeof findIndustriaCarteiraPda;
   industriaPart: typeof findIndustriaPartPda;
   material: typeof findMaterialPda;
   balanca: typeof findBalancaPda;
   participante: typeof findParticipantePda;
+  vinculo: typeof findVinculoPda;
+  parteCarteira: typeof findParteCarteiraPda;
+  enderecoPart: typeof findEnderecoPartPda;
+  carteira: typeof findCarteiraPda;
+  transportadorCarteira: typeof findTransportadorCarteiraPda;
   transportadorPart: typeof findTransportadorPartPda;
 };
 
@@ -1409,10 +1855,17 @@ export function ecolLoteProgram() {
       ecolLote: <EcolLotePlugin>{
         accounts: {
           balanca: addSelfFetchFunctions(client, getBalancaCodec()),
+          carteira: addSelfFetchFunctions(client, getCarteiraCodec()),
+          coleta: addSelfFetchFunctions(client, getColetaCodec()),
+          distribuicao: addSelfFetchFunctions(client, getDistribuicaoCodec()),
           entrega: addSelfFetchFunctions(client, getEntregaCodec()),
           globalConfig: addSelfFetchFunctions(client, getGlobalConfigCodec()),
           lote: addSelfFetchFunctions(client, getLoteCodec()),
           material: addSelfFetchFunctions(client, getMaterialCodec()),
+          materialVariacao: addSelfFetchFunctions(
+            client,
+            getMaterialVariacaoCodec(),
+          ),
           participante: addSelfFetchFunctions(client, getParticipanteCodec()),
         },
         instructions: {
@@ -1521,6 +1974,37 @@ export function ecolLoteProgram() {
               client,
               getGuardiaoPausarInstructionAsync(input),
             ),
+          importadorCancelarEntrega: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getImportadorCancelarEntregaInstructionAsync(input),
+            ),
+          importadorCreateDistribuicao: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getImportadorCreateDistribuicaoInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              }),
+            ),
+          importadorEntregarColeta: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getImportadorEntregarColetaInstructionAsync(input),
+            ),
+          importadorInformarReciclagem: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getImportadorInformarReciclagemInstructionAsync(input),
+            ),
+          importadorRegisterColeta: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getImportadorRegisterColetaInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              }),
+            ),
           industriaAcceptVenda: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -1552,6 +2036,14 @@ export function ecolLoteProgram() {
                 payer: input.payer ?? client.payer,
               }),
             ),
+          operadorCreateVariacao: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getOperadorCreateVariacaoInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              }),
+            ),
           operadorRegisterBalanca: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -1578,6 +2070,11 @@ export function ecolLoteProgram() {
               client,
               getOperadorSetBalancaNomeInstructionAsync(input),
             ),
+          operadorSetMaterialGarrafas: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getOperadorSetMaterialGarrafasInstructionAsync(input),
+            ),
           operadorSetParticipanteAtivo: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -1593,10 +2090,28 @@ export function ecolLoteProgram() {
               client,
               getOperadorUpdateMaterialInstructionAsync(input),
             ),
+          operadorUpdateVariacao: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getOperadorUpdateVariacaoInstructionAsync(input),
+            ),
           parteOpenDisputa: (input) =>
             addSelfPlanAndSendFunctions(
               client,
               getParteOpenDisputaInstructionAsync(input),
+            ),
+          participanteAddCarteira: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getParticipanteAddCarteiraInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              }),
+            ),
+          participanteUpdateCarteira: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getParticipanteUpdateCarteiraInstructionAsync(input),
             ),
           publicCrankPrazoExpirado: (input) =>
             addSelfPlanAndSendFunctions(
@@ -1614,13 +2129,22 @@ export function ecolLoteProgram() {
         },
         pdas: {
           config: findConfigPda,
+          cooperativaCarteira: findCooperativaCarteiraPda,
           cooperativaPart: findCooperativaPartPda,
           asset: findAssetPda,
           autoridadeAsset: findAutoridadeAssetPda,
+          importadorCarteira: findImportadorCarteiraPda,
+          importadorPart: findImportadorPartPda,
+          industriaCarteira: findIndustriaCarteiraPda,
           industriaPart: findIndustriaPartPda,
           material: findMaterialPda,
           balanca: findBalancaPda,
           participante: findParticipantePda,
+          vinculo: findVinculoPda,
+          parteCarteira: findParteCarteiraPda,
+          enderecoPart: findEnderecoPartPda,
+          carteira: findCarteiraPda,
+          transportadorCarteira: findTransportadorCarteiraPda,
           transportadorPart: findTransportadorPartPda,
         },
         identifyAccount: identifyEcolLoteAccount,

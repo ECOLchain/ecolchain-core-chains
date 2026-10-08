@@ -8,9 +8,21 @@ pub enum Papel {
     Cooperativa,
     Transportador,
     Industria,
+    /// Importador de vinhos: põe garrafas no mercado e faz a logística reversa (ADR 0011).
+    Importador,
+    /// Recebe, pesa, monta e vende lotes como a cooperativa (ADR 0011).
+    CleanTech,
 }
 
-/// Cadastro de uma carteira na EcolChain (PDA `["part", carteira]`). Uma carteira tem um único papel.
+impl Papel {
+    /// Papéis que recebem material na balança própria, montam lotes de venda e os anunciam.
+    pub fn eh_recebedor(self) -> bool {
+        matches!(self, Papel::Cooperativa | Papel::CleanTech)
+    }
+}
+
+/// Cadastro de uma carteira na EcolChain (PDA `["part", carteira]`). Uma carteira tem um único papel;
+/// o ator pode ter outras carteiras vinculadas (`Carteira`), que assinam por ele.
 #[account]
 #[derive(InitSpace)]
 pub struct Participante {

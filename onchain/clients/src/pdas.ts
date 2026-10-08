@@ -34,6 +34,15 @@ export const lote = {
         pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('lote'), addr(cooperativa), u64(loteId)]),
     asset: (lotePda: Address) => pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('asset'), addr(lotePda)]),
     autoridadeAsset: () => pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('autoridade_asset')]),
+    /** Variação de um material (índice 1..n), como a cor do vidro (ADR 0011). */
+    variacao: (codigo: number, indice: number) =>
+        pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('variacao'), getU16Encoder().encode(codigo), Uint8Array.of(indice)]),
+    /** Carteira vinculada a um participante (ADR 0011). */
+    carteira: (endereco: Address) => pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('carteira'), addr(endereco)]),
+    distribuicao: (importador: Address, distribId: bigint) =>
+        pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('distrib'), addr(importador), u64(distribId)]),
+    coleta: (importador: Address, coletaId: bigint) =>
+        pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('coleta'), addr(importador), u64(coletaId)]),
 };
 
 export const credito = {

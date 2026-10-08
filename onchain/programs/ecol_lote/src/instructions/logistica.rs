@@ -2,11 +2,14 @@ use anchor_lang::prelude::*;
 
 use crate::{
     ativo::{self, ContasAsset},
-    constants::{SEED_AUTORIDADE_ASSET, SEED_BALANCA, SEED_GLOBAL, SEED_LOTE, SEED_PARTICIPANTE},
+    constants::{
+        SEED_AUTORIDADE_ASSET, SEED_BALANCA, SEED_CARTEIRA, SEED_GLOBAL, SEED_LOTE,
+        SEED_PARTICIPANTE,
+    },
     error::EcolLoteError,
     events::{EscrowMovimentado, LoteTransicionado, MovimentoEscrow, PesagemAtestada},
     pesagem::{self, TipoPesagem},
-    state::{Balanca, GlobalConfig, Lote, Papel, Participante},
+    state::{exigir_assinatura, Balanca, Carteira, GlobalConfig, Lote, Papel, Participante},
 };
 
 /// Contas para mover o Core asset do lote junto com a custódia.
@@ -49,30 +52,54 @@ impl<'info> ContasCustodia<'info> {
 #[event_cpi]
 #[derive(Accounts)]
 pub struct TransportadorPickupLote<'info> {
-    pub transportador: Signer<'info>,
+    /// CHECK: carteira titular do transportador; conferida pelo cadastro e pela assinatura.
+    pub transportador: UncheckedAccount<'info>,
+    pub transportador_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, transportador_assinante.key().as_ref()],
+        bump = transportador_carteira.bump
+    )]
+    pub transportador_carteira: Option<Box<Account<'info, Carteira>>>,
     #[account(seeds = [SEED_PARTICIPANTE, transportador.key().as_ref()], bump = transportador_part.bump)]
-    pub transportador_part: Account<'info, Participante>,
-    pub cooperativa: Signer<'info>,
+    pub transportador_part: Box<Account<'info, Participante>>,
+    /// CHECK: carteira titular da cooperativa; conferida pelo cadastro/lote e pela assinatura.
+    pub cooperativa: UncheckedAccount<'info>,
+    pub cooperativa_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, cooperativa_assinante.key().as_ref()],
+        bump = cooperativa_carteira.bump
+    )]
+    pub cooperativa_carteira: Option<Box<Account<'info, Carteira>>>,
     #[account(seeds = [SEED_PARTICIPANTE, cooperativa.key().as_ref()], bump = cooperativa_part.bump)]
-    pub cooperativa_part: Account<'info, Participante>,
+    pub cooperativa_part: Box<Account<'info, Participante>>,
     #[account(seeds = [SEED_GLOBAL], bump = config.bump)]
-    pub config: Account<'info, GlobalConfig>,
+    pub config: Box<Account<'info, GlobalConfig>>,
     #[account(
         mut,
         seeds = [SEED_LOTE, lote.cooperativa.as_ref(), &lote.lote_id.to_le_bytes()],
         bump = lote.bump,
         has_one = cooperativa @ EcolLoteError::NaoEhCooperativaDoLote
     )]
-    pub lote: Account<'info, Lote>,
+    pub lote: Box<Account<'info, Lote>>,
     pub custodia: ContasCustodia<'info>,
 }
 
 pub fn handle_transportador_pickup_lote(ctx: Context<TransportadorPickupLote>) -> Result<()> {
     ctx.accounts.config.exigir_modo_normal()?;
+    exigir_assinatura(
+        &ctx.accounts.transportador.key(),
+        &ctx.accounts.transportador_assinante.key(),
+        ctx.accounts.transportador_carteira.as_deref().map(|c| &**c),
+    )?;
+    exigir_assinatura(
+        &ctx.accounts.cooperativa.key(),
+        &ctx.accounts.cooperativa_assinante.key(),
+        ctx.accounts.cooperativa_carteira.as_deref().map(|c| &**c),
+    )?;
     ctx.accounts
         .transportador_part
         .exigir(Papel::Transportador)?;
-    ctx.accounts.cooperativa_part.exigir(Papel::Cooperativa)?;
+    ctx.accounts.cooperativa_part.exigir_recebedor()?;
     let agora = Clock::get()?.unix_timestamp;
     let lote_key = ctx.accounts.lote.key();
     let ator = ctx.accounts.transportador.key();
@@ -101,7 +128,14 @@ pub fn handle_transportador_pickup_lote(ctx: Context<TransportadorPickupLote>) -
 #[event_cpi]
 #[derive(Accounts)]
 pub struct IndustriaConfirmRecebimento<'info> {
-    pub industria: Signer<'info>,
+    /// CHECK: carteira titular da indústria; conferida contra o lote e pela assinatura.
+    pub industria: UncheckedAccount<'info>,
+    pub industria_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, industria_assinante.key().as_ref()],
+        bump = industria_carteira.bump
+    )]
+    pub industria_carteira: Option<Account<'info, Carteira>>,
     #[account(
         seeds = [SEED_BALANCA, balanca.dispositivo.as_ref()],
         bump = balanca.bump
@@ -129,6 +163,11 @@ pub fn handle_industria_confirm_recebimento(
 ) -> Result<()> {
     let config = &ctx.accounts.config;
     config.exigir_modo_normal()?;
+    exigir_assinatura(
+        &ctx.accounts.industria.key(),
+        &ctx.accounts.industria_assinante.key(),
+        ctx.accounts.industria_carteira.as_deref(),
+    )?;
     require!(peso_recebido_g > 0, EcolLoteError::PesoInvalido);
     let agora = Clock::get()?.unix_timestamp;
     let lote_key = ctx.accounts.lote.key();

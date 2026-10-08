@@ -100,4 +100,34 @@ pub enum EcolLoteError {
     PesoConsolidadoForaDaFaixa,
     #[msg("O lote de origem não pertence a este lote de venda")]
     EntregaDeOutroLote,
+    #[msg("Material com variações: informe a variação")]
+    VariacaoObrigatoria,
+    #[msg("Variação não pertence ao material ou não existe")]
+    VariacaoInvalida,
+    #[msg("Variação inativa")]
+    VariacaoInativa,
+    #[msg("Variação do lote de origem difere da variação do lote de venda")]
+    VariacaoDiferente,
+    #[msg("Limite de variações do material atingido")]
+    LimiteDeVariacoes,
+    #[msg("Este material não conta garrafas")]
+    MaterialSemGarrafas,
+    #[msg("Carteira não está vinculada a este participante ou está inativa")]
+    CarteiraNaoAutorizada,
+    #[msg("Carteira já é titular ou está vinculada a outro participante")]
+    CarteiraEmUso,
+    #[msg("Coleta em estado que não permite esta operação")]
+    ColetaEstadoInvalido,
+    #[msg("Coleta não é destinada a este participante")]
+    ColetaDeOutroDestino,
+    #[msg("Material ou variação da entrega difere da coleta")]
+    ColetaDivergente,
+    #[msg("Origem Importador exige a coleta, e só ela")]
+    ColetaAusente,
+    #[msg("O lote da coleta ainda não foi reciclado")]
+    LoteNaoReciclado,
+    #[msg("Quantidade de garrafas inválida")]
+    GarrafasInvalidas,
+    #[msg("Data inválida: vazia ou no futuro")]
+    DataInvalida,
 }

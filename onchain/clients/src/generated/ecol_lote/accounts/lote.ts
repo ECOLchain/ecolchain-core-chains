@@ -130,6 +130,10 @@ export type Lote = {
    * ser queimado ao desfazer a união.
    */
   assetQueimavel: boolean;
+  /** Variação do material (0 = sem variação); todos os lotes de origem têm a mesma. */
+  variacao: number;
+  /** Soma das garrafas aproximadas dos lotes de origem. */
+  qtdGarrafas: number;
   reserved: ReadonlyUint8Array;
 };
 
@@ -193,6 +197,10 @@ export type LoteArgs = {
    * ser queimado ao desfazer a união.
    */
   assetQueimavel: boolean;
+  /** Variação do material (0 = sem variação); todos os lotes de origem têm a mesma. */
+  variacao: number;
+  /** Soma das garrafas aproximadas dos lotes de origem. */
+  qtdGarrafas: number;
   reserved: ReadonlyUint8Array;
 };
 
@@ -232,7 +240,9 @@ export function getLoteEncoder(): Encoder<LoteArgs> {
       ["bump", getU8Encoder()],
       ["pesoSemColetorG", getU64Encoder()],
       ["assetQueimavel", getBooleanEncoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 55)],
+      ["variacao", getU8Encoder()],
+      ["qtdGarrafas", getU32Encoder()],
+      ["reserved", fixEncoderSize(getBytesEncoder(), 50)],
     ]),
     (value) => ({ ...value, discriminator: LOTE_DISCRIMINATOR }),
   );
@@ -273,7 +283,9 @@ export function getLoteDecoder(): Decoder<Lote> {
     ["bump", getU8Decoder()],
     ["pesoSemColetorG", getU64Decoder()],
     ["assetQueimavel", getBooleanDecoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 55)],
+    ["variacao", getU8Decoder()],
+    ["qtdGarrafas", getU32Decoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 50)],
   ]);
 }
 

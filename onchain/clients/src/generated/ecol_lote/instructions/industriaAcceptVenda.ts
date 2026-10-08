@@ -57,6 +57,8 @@ export function getIndustriaAcceptVendaDiscriminatorBytes(): ReadonlyUint8Array 
 export type IndustriaAcceptVendaInstruction<
   TProgram extends string = typeof ECOL_LOTE_PROGRAM_ADDRESS,
   TAccountIndustria extends string | AccountMeta<string> = string,
+  TAccountIndustriaAssinante extends string | AccountMeta<string> = string,
+  TAccountIndustriaCarteira extends string | AccountMeta<string> = string,
   TAccountIndustriaPart extends string | AccountMeta<string> = string,
   TAccountCooperativaPart extends string | AccountMeta<string> = string,
   TAccountOperador extends string | AccountMeta<string> = string,
@@ -71,9 +73,15 @@ export type IndustriaAcceptVendaInstruction<
   InstructionWithAccounts<
     [
       TAccountIndustria extends string
-        ? ReadonlySignerAccount<TAccountIndustria> &
-            AccountSignerMeta<TAccountIndustria>
+        ? ReadonlyAccount<TAccountIndustria>
         : TAccountIndustria,
+      TAccountIndustriaAssinante extends string
+        ? ReadonlySignerAccount<TAccountIndustriaAssinante> &
+            AccountSignerMeta<TAccountIndustriaAssinante>
+        : TAccountIndustriaAssinante,
+      TAccountIndustriaCarteira extends string
+        ? ReadonlyAccount<TAccountIndustriaCarteira>
+        : TAccountIndustriaCarteira,
       TAccountIndustriaPart extends string
         ? ReadonlyAccount<TAccountIndustriaPart>
         : TAccountIndustriaPart,
@@ -152,7 +160,11 @@ export function getIndustriaAcceptVendaInstructionDataCodec(): FixedSizeCodec<
 }
 
 export type IndustriaAcceptVendaAsyncInput<
-  TAccountIndustria extends InstructionSignerInput = InstructionSignerInput,
+  TAccountIndustria extends InstructionAccountInput = InstructionAccountInput,
+  TAccountIndustriaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountIndustriaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountIndustriaPart extends InstructionAccountInput =
     InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput =
@@ -166,6 +178,8 @@ export type IndustriaAcceptVendaAsyncInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   industria: TAccountIndustria;
+  industriaAssinante: TAccountIndustriaAssinante;
+  industriaCarteira?: TAccountIndustriaCarteira;
   industriaPart?: TAccountIndustriaPart;
   cooperativaPart: TAccountCooperativaPart;
   operador: TAccountOperador;
@@ -180,7 +194,9 @@ export type IndustriaAcceptVendaAsyncInput<
 };
 
 export async function getIndustriaAcceptVendaInstructionAsync<
-  TAccountIndustria extends InstructionSignerInput,
+  TAccountIndustria extends InstructionAccountInput,
+  TAccountIndustriaAssinante extends InstructionSignerInput,
+  TAccountIndustriaCarteira extends InstructionAccountInput,
   TAccountIndustriaPart extends InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput,
   TAccountOperador extends InstructionSignerInput,
@@ -193,6 +209,8 @@ export async function getIndustriaAcceptVendaInstructionAsync<
 >(
   input: IndustriaAcceptVendaAsyncInput<
     TAccountIndustria,
+    TAccountIndustriaAssinante,
+    TAccountIndustriaCarteira,
     TAccountIndustriaPart,
     TAccountCooperativaPart,
     TAccountOperador,
@@ -209,6 +227,14 @@ export async function getIndustriaAcceptVendaInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountIndustria,
       InstructionAccountInputAddress<TAccountIndustria>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaAssinante,
+      InstructionAccountInputAddress<TAccountIndustriaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaCarteira,
+      InstructionAccountInputAddress<TAccountIndustriaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountIndustriaPart,
@@ -254,7 +280,17 @@ export async function getIndustriaAcceptVendaInstructionAsync<
   const originalAccounts = {
     industria: {
       value: input.industria ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    industriaAssinante: {
+      value: input.industriaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    industriaCarteira: {
+      value: input.industriaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     industriaPart: {
@@ -317,6 +353,8 @@ export async function getIndustriaAcceptVendaInstructionAsync<
   return Object.freeze({
     accounts: [
       getAccountMeta("industria", accounts.industria),
+      getAccountMeta("industriaAssinante", accounts.industriaAssinante),
+      getAccountMeta("industriaCarteira", accounts.industriaCarteira),
       getAccountMeta("industriaPart", accounts.industriaPart),
       getAccountMeta("cooperativaPart", accounts.cooperativaPart),
       getAccountMeta("operador", accounts.operador),
@@ -335,6 +373,14 @@ export async function getIndustriaAcceptVendaInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountIndustria,
       InstructionAccountInputAddress<TAccountIndustria>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaAssinante,
+      InstructionAccountInputAddress<TAccountIndustriaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaCarteira,
+      InstructionAccountInputAddress<TAccountIndustriaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountIndustriaPart,
@@ -372,7 +418,11 @@ export async function getIndustriaAcceptVendaInstructionAsync<
 }
 
 export type IndustriaAcceptVendaInput<
-  TAccountIndustria extends InstructionSignerInput = InstructionSignerInput,
+  TAccountIndustria extends InstructionAccountInput = InstructionAccountInput,
+  TAccountIndustriaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountIndustriaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountIndustriaPart extends InstructionAccountInput =
     InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput =
@@ -386,6 +436,8 @@ export type IndustriaAcceptVendaInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   industria: TAccountIndustria;
+  industriaAssinante: TAccountIndustriaAssinante;
+  industriaCarteira?: TAccountIndustriaCarteira;
   industriaPart: TAccountIndustriaPart;
   cooperativaPart: TAccountCooperativaPart;
   operador: TAccountOperador;
@@ -400,7 +452,9 @@ export type IndustriaAcceptVendaInput<
 };
 
 export function getIndustriaAcceptVendaInstruction<
-  TAccountIndustria extends InstructionSignerInput,
+  TAccountIndustria extends InstructionAccountInput,
+  TAccountIndustriaAssinante extends InstructionSignerInput,
+  TAccountIndustriaCarteira extends InstructionAccountInput,
   TAccountIndustriaPart extends InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput,
   TAccountOperador extends InstructionSignerInput,
@@ -413,6 +467,8 @@ export function getIndustriaAcceptVendaInstruction<
 >(
   input: IndustriaAcceptVendaInput<
     TAccountIndustria,
+    TAccountIndustriaAssinante,
+    TAccountIndustriaCarteira,
     TAccountIndustriaPart,
     TAccountCooperativaPart,
     TAccountOperador,
@@ -428,6 +484,14 @@ export function getIndustriaAcceptVendaInstruction<
   ResolvedInstructionAccountMeta<
     TAccountIndustria,
     InstructionAccountInputAddress<TAccountIndustria>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountIndustriaAssinante,
+    InstructionAccountInputAddress<TAccountIndustriaAssinante>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountIndustriaCarteira,
+    InstructionAccountInputAddress<TAccountIndustriaCarteira>
   >,
   ResolvedInstructionAccountMeta<
     TAccountIndustriaPart,
@@ -472,7 +536,17 @@ export function getIndustriaAcceptVendaInstruction<
   const originalAccounts = {
     industria: {
       value: input.industria ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    industriaAssinante: {
+      value: input.industriaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    industriaCarteira: {
+      value: input.industriaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     industriaPart: {
@@ -519,6 +593,8 @@ export function getIndustriaAcceptVendaInstruction<
   return Object.freeze({
     accounts: [
       getAccountMeta("industria", accounts.industria),
+      getAccountMeta("industriaAssinante", accounts.industriaAssinante),
+      getAccountMeta("industriaCarteira", accounts.industriaCarteira),
       getAccountMeta("industriaPart", accounts.industriaPart),
       getAccountMeta("cooperativaPart", accounts.cooperativaPart),
       getAccountMeta("operador", accounts.operador),
@@ -537,6 +613,14 @@ export function getIndustriaAcceptVendaInstruction<
     ResolvedInstructionAccountMeta<
       TAccountIndustria,
       InstructionAccountInputAddress<TAccountIndustria>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaAssinante,
+      InstructionAccountInputAddress<TAccountIndustriaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaCarteira,
+      InstructionAccountInputAddress<TAccountIndustriaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountIndustriaPart,
@@ -580,14 +664,16 @@ export type ParsedIndustriaAcceptVendaInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     industria: TAccountMetas[0];
-    industriaPart: TAccountMetas[1];
-    cooperativaPart: TAccountMetas[2];
-    operador: TAccountMetas[3];
-    intermediador: TAccountMetas[4];
-    config: TAccountMetas[5];
-    lote: TAccountMetas[6];
-    eventAuthority: TAccountMetas[7];
-    program: TAccountMetas[8];
+    industriaAssinante: TAccountMetas[1];
+    industriaCarteira?: TAccountMetas[2] | undefined;
+    industriaPart: TAccountMetas[3];
+    cooperativaPart: TAccountMetas[4];
+    operador: TAccountMetas[5];
+    intermediador: TAccountMetas[6];
+    config: TAccountMetas[7];
+    lote: TAccountMetas[8];
+    eventAuthority: TAccountMetas[9];
+    program: TAccountMetas[10];
   };
   data: IndustriaAcceptVendaInstructionData;
 };
@@ -600,12 +686,12 @@ export function parseIndustriaAcceptVendaInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedIndustriaAcceptVendaInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 9) {
+  if (instruction.accounts.length < 11) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 9,
+        expectedAccountMetas: 11,
       },
     );
   }
@@ -615,10 +701,18 @@ export function parseIndustriaAcceptVendaInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === ECOL_LOTE_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       industria: getNextAccount(),
+      industriaAssinante: getNextAccount(),
+      industriaCarteira: getNextOptionalAccount(),
       industriaPart: getNextAccount(),
       cooperativaPart: getNextAccount(),
       operador: getNextAccount(),

@@ -57,6 +57,8 @@ export type CooperativaDesmontarLoteInstruction<
   TProgram extends string = typeof ECOL_LOTE_PROGRAM_ADDRESS,
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountCooperativa extends string | AccountMeta<string> = string,
+  TAccountCooperativaAssinante extends string | AccountMeta<string> = string,
+  TAccountCooperativaCarteira extends string | AccountMeta<string> = string,
   TAccountConfig extends string | AccountMeta<string> = string,
   TAccountLote extends string | AccountMeta<string> = string,
   TAccountAsset extends string | AccountMeta<string> = string,
@@ -77,9 +79,15 @@ export type CooperativaDesmontarLoteInstruction<
             AccountSignerMeta<TAccountPayer>
         : TAccountPayer,
       TAccountCooperativa extends string
-        ? ReadonlySignerAccount<TAccountCooperativa> &
-            AccountSignerMeta<TAccountCooperativa>
+        ? ReadonlyAccount<TAccountCooperativa>
         : TAccountCooperativa,
+      TAccountCooperativaAssinante extends string
+        ? ReadonlySignerAccount<TAccountCooperativaAssinante> &
+            AccountSignerMeta<TAccountCooperativaAssinante>
+        : TAccountCooperativaAssinante,
+      TAccountCooperativaCarteira extends string
+        ? ReadonlyAccount<TAccountCooperativaCarteira>
+        : TAccountCooperativaCarteira,
       TAccountConfig extends string
         ? ReadonlyAccount<TAccountConfig>
         : TAccountConfig,
@@ -142,7 +150,11 @@ export function getCooperativaDesmontarLoteInstructionDataCodec(): FixedSizeCode
 
 export type CooperativaDesmontarLoteAsyncInput<
   TAccountPayer extends InstructionSignerInput = InstructionSignerInput,
-  TAccountCooperativa extends InstructionSignerInput = InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput = InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountLote extends InstructionAccountInput = InstructionAccountInput,
   TAccountAsset extends InstructionAccountInput = InstructionAccountInput,
@@ -158,6 +170,8 @@ export type CooperativaDesmontarLoteAsyncInput<
 > = {
   payer: TAccountPayer;
   cooperativa: TAccountCooperativa;
+  cooperativaAssinante: TAccountCooperativaAssinante;
+  cooperativaCarteira?: TAccountCooperativaCarteira;
   config?: TAccountConfig;
   lote: TAccountLote;
   asset?: TAccountAsset;
@@ -170,7 +184,9 @@ export type CooperativaDesmontarLoteAsyncInput<
 
 export async function getCooperativaDesmontarLoteInstructionAsync<
   TAccountPayer extends InstructionSignerInput,
-  TAccountCooperativa extends InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
   TAccountAsset extends InstructionAccountInput,
@@ -184,6 +200,8 @@ export async function getCooperativaDesmontarLoteInstructionAsync<
   input: CooperativaDesmontarLoteAsyncInput<
     TAccountPayer,
     TAccountCooperativa,
+    TAccountCooperativaAssinante,
+    TAccountCooperativaCarteira,
     TAccountConfig,
     TAccountLote,
     TAccountAsset,
@@ -204,6 +222,14 @@ export async function getCooperativaDesmontarLoteInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountConfig,
@@ -250,7 +276,17 @@ export async function getCooperativaDesmontarLoteInstructionAsync<
     payer: { value: input.payer ?? null, isSigner: true, isWritable: true },
     cooperativa: {
       value: input.cooperativa ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    cooperativaAssinante: {
+      value: input.cooperativaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    cooperativaCarteira: {
+      value: input.cooperativaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     config: { value: input.config ?? null, isSigner: false, isWritable: false },
@@ -320,6 +356,8 @@ export async function getCooperativaDesmontarLoteInstructionAsync<
     accounts: [
       getAccountMeta("payer", accounts.payer),
       getAccountMeta("cooperativa", accounts.cooperativa),
+      getAccountMeta("cooperativaAssinante", accounts.cooperativaAssinante),
+      getAccountMeta("cooperativaCarteira", accounts.cooperativaCarteira),
       getAccountMeta("config", accounts.config),
       getAccountMeta("lote", accounts.lote),
       getAccountMeta("asset", accounts.asset),
@@ -340,6 +378,14 @@ export async function getCooperativaDesmontarLoteInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountConfig,
@@ -378,7 +424,11 @@ export async function getCooperativaDesmontarLoteInstructionAsync<
 
 export type CooperativaDesmontarLoteInput<
   TAccountPayer extends InstructionSignerInput = InstructionSignerInput,
-  TAccountCooperativa extends InstructionSignerInput = InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput = InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountLote extends InstructionAccountInput = InstructionAccountInput,
   TAccountAsset extends InstructionAccountInput = InstructionAccountInput,
@@ -394,6 +444,8 @@ export type CooperativaDesmontarLoteInput<
 > = {
   payer: TAccountPayer;
   cooperativa: TAccountCooperativa;
+  cooperativaAssinante: TAccountCooperativaAssinante;
+  cooperativaCarteira?: TAccountCooperativaCarteira;
   config: TAccountConfig;
   lote: TAccountLote;
   asset: TAccountAsset;
@@ -406,7 +458,9 @@ export type CooperativaDesmontarLoteInput<
 
 export function getCooperativaDesmontarLoteInstruction<
   TAccountPayer extends InstructionSignerInput,
-  TAccountCooperativa extends InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
   TAccountAsset extends InstructionAccountInput,
@@ -420,6 +474,8 @@ export function getCooperativaDesmontarLoteInstruction<
   input: CooperativaDesmontarLoteInput<
     TAccountPayer,
     TAccountCooperativa,
+    TAccountCooperativaAssinante,
+    TAccountCooperativaCarteira,
     TAccountConfig,
     TAccountLote,
     TAccountAsset,
@@ -439,6 +495,14 @@ export function getCooperativaDesmontarLoteInstruction<
   ResolvedInstructionAccountMeta<
     TAccountCooperativa,
     InstructionAccountInputAddress<TAccountCooperativa>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountCooperativaAssinante,
+    InstructionAccountInputAddress<TAccountCooperativaAssinante>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountCooperativaCarteira,
+    InstructionAccountInputAddress<TAccountCooperativaCarteira>
   >,
   ResolvedInstructionAccountMeta<
     TAccountConfig,
@@ -484,7 +548,17 @@ export function getCooperativaDesmontarLoteInstruction<
     payer: { value: input.payer ?? null, isSigner: true, isWritable: true },
     cooperativa: {
       value: input.cooperativa ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    cooperativaAssinante: {
+      value: input.cooperativaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    cooperativaCarteira: {
+      value: input.cooperativaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     config: { value: input.config ?? null, isSigner: false, isWritable: false },
@@ -535,6 +609,8 @@ export function getCooperativaDesmontarLoteInstruction<
     accounts: [
       getAccountMeta("payer", accounts.payer),
       getAccountMeta("cooperativa", accounts.cooperativa),
+      getAccountMeta("cooperativaAssinante", accounts.cooperativaAssinante),
+      getAccountMeta("cooperativaCarteira", accounts.cooperativaCarteira),
       getAccountMeta("config", accounts.config),
       getAccountMeta("lote", accounts.lote),
       getAccountMeta("asset", accounts.asset),
@@ -555,6 +631,14 @@ export function getCooperativaDesmontarLoteInstruction<
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountConfig,
@@ -599,14 +683,16 @@ export type ParsedCooperativaDesmontarLoteInstruction<
   accounts: {
     payer: TAccountMetas[0];
     cooperativa: TAccountMetas[1];
-    config: TAccountMetas[2];
-    lote: TAccountMetas[3];
-    asset: TAccountMetas[4];
-    autoridadeAsset: TAccountMetas[5];
-    mplCoreProgram: TAccountMetas[6];
-    systemProgram: TAccountMetas[7];
-    eventAuthority: TAccountMetas[8];
-    program: TAccountMetas[9];
+    cooperativaAssinante: TAccountMetas[2];
+    cooperativaCarteira?: TAccountMetas[3] | undefined;
+    config: TAccountMetas[4];
+    lote: TAccountMetas[5];
+    asset: TAccountMetas[6];
+    autoridadeAsset: TAccountMetas[7];
+    mplCoreProgram: TAccountMetas[8];
+    systemProgram: TAccountMetas[9];
+    eventAuthority: TAccountMetas[10];
+    program: TAccountMetas[11];
   };
   data: CooperativaDesmontarLoteInstructionData;
 };
@@ -619,12 +705,12 @@ export function parseCooperativaDesmontarLoteInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCooperativaDesmontarLoteInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 10) {
+  if (instruction.accounts.length < 12) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 10,
+        expectedAccountMetas: 12,
       },
     );
   }
@@ -634,11 +720,19 @@ export function parseCooperativaDesmontarLoteInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === ECOL_LOTE_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       payer: getNextAccount(),
       cooperativa: getNextAccount(),
+      cooperativaAssinante: getNextAccount(),
+      cooperativaCarteira: getNextOptionalAccount(),
       config: getNextAccount(),
       lote: getNextAccount(),
       asset: getNextAccount(),

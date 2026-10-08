@@ -18,8 +18,12 @@ import {
   getStructEncoder,
   getU16Decoder,
   getU16Encoder,
+  getU32Decoder,
+  getU32Encoder,
   getU64Decoder,
   getU64Encoder,
+  getU8Decoder,
+  getU8Encoder,
   SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
   SolanaError,
   transformEncoder,
@@ -69,10 +73,14 @@ export type CooperativaRegisterEntregaInstruction<
   TProgram extends string = typeof ECOL_LOTE_PROGRAM_ADDRESS,
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountCooperativa extends string | AccountMeta<string> = string,
+  TAccountCooperativaAssinante extends string | AccountMeta<string> = string,
+  TAccountCooperativaCarteira extends string | AccountMeta<string> = string,
   TAccountCooperativaPart extends string | AccountMeta<string> = string,
   TAccountConfig extends string | AccountMeta<string> = string,
   TAccountBalanca extends string | AccountMeta<string> = string,
   TAccountMaterialCadastro extends string | AccountMeta<string> = string,
+  TAccountVariacaoCadastro extends string | AccountMeta<string> = string,
+  TAccountColeta extends string | AccountMeta<string> = string,
   TAccountEntrega extends string | AccountMeta<string> = string,
   TAccountInstrucoesSysvar extends string | AccountMeta<string> =
     "Sysvar1nstructions1111111111111111111111111",
@@ -90,9 +98,15 @@ export type CooperativaRegisterEntregaInstruction<
             AccountSignerMeta<TAccountPayer>
         : TAccountPayer,
       TAccountCooperativa extends string
-        ? ReadonlySignerAccount<TAccountCooperativa> &
-            AccountSignerMeta<TAccountCooperativa>
+        ? ReadonlyAccount<TAccountCooperativa>
         : TAccountCooperativa,
+      TAccountCooperativaAssinante extends string
+        ? ReadonlySignerAccount<TAccountCooperativaAssinante> &
+            AccountSignerMeta<TAccountCooperativaAssinante>
+        : TAccountCooperativaAssinante,
+      TAccountCooperativaCarteira extends string
+        ? ReadonlyAccount<TAccountCooperativaCarteira>
+        : TAccountCooperativaCarteira,
       TAccountCooperativaPart extends string
         ? ReadonlyAccount<TAccountCooperativaPart>
         : TAccountCooperativaPart,
@@ -105,6 +119,12 @@ export type CooperativaRegisterEntregaInstruction<
       TAccountMaterialCadastro extends string
         ? ReadonlyAccount<TAccountMaterialCadastro>
         : TAccountMaterialCadastro,
+      TAccountVariacaoCadastro extends string
+        ? ReadonlyAccount<TAccountVariacaoCadastro>
+        : TAccountVariacaoCadastro,
+      TAccountColeta extends string
+        ? WritableAccount<TAccountColeta>
+        : TAccountColeta,
       TAccountEntrega extends string
         ? WritableAccount<TAccountEntrega>
         : TAccountEntrega,
@@ -135,6 +155,10 @@ export type CooperativaRegisterEntregaInstructionData = {
   pesoG: bigint;
   /** Timestamp assinado pela balança. */
   tsPesagem: bigint;
+  /** Índice da variação do material (0 se o material não tem variações). */
+  variacao: number;
+  /** Garrafas aproximadas (só em material que conta garrafas; 0 nos demais). */
+  qtdGarrafas: number;
 };
 
 export type CooperativaRegisterEntregaInstructionDataArgs = {
@@ -147,6 +171,10 @@ export type CooperativaRegisterEntregaInstructionDataArgs = {
   pesoG: number | bigint;
   /** Timestamp assinado pela balança. */
   tsPesagem: number | bigint;
+  /** Índice da variação do material (0 se o material não tem variações). */
+  variacao: number;
+  /** Garrafas aproximadas (só em material que conta garrafas; 0 nos demais). */
+  qtdGarrafas: number;
 };
 
 export function getCooperativaRegisterEntregaInstructionDataEncoder(): FixedSizeEncoder<CooperativaRegisterEntregaInstructionDataArgs> {
@@ -159,6 +187,8 @@ export function getCooperativaRegisterEntregaInstructionDataEncoder(): FixedSize
       ["material", getU16Encoder()],
       ["pesoG", getU64Encoder()],
       ["tsPesagem", getI64Encoder()],
+      ["variacao", getU8Encoder()],
+      ["qtdGarrafas", getU32Encoder()],
     ]),
     (value) => ({
       ...value,
@@ -176,6 +206,8 @@ export function getCooperativaRegisterEntregaInstructionDataDecoder(): FixedSize
     ["material", getU16Decoder()],
     ["pesoG", getU64Decoder()],
     ["tsPesagem", getI64Decoder()],
+    ["variacao", getU8Decoder()],
+    ["qtdGarrafas", getU32Decoder()],
   ]);
 }
 
@@ -191,13 +223,20 @@ export function getCooperativaRegisterEntregaInstructionDataCodec(): FixedSizeCo
 
 export type CooperativaRegisterEntregaAsyncInput<
   TAccountPayer extends InstructionSignerInput = InstructionSignerInput,
-  TAccountCooperativa extends InstructionSignerInput = InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput = InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput =
     InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput = InstructionAccountInput,
   TAccountMaterialCadastro extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountVariacaoCadastro extends InstructionAccountInput =
+    InstructionAccountInput,
+  TAccountColeta extends InstructionAccountInput = InstructionAccountInput,
   TAccountEntrega extends InstructionAccountInput = InstructionAccountInput,
   TAccountInstrucoesSysvar extends InstructionAccountInput =
     InstructionAccountInput,
@@ -209,10 +248,15 @@ export type CooperativaRegisterEntregaAsyncInput<
 > = {
   payer: TAccountPayer;
   cooperativa: TAccountCooperativa;
+  /** Titular ou carteira vinculada a ele. */
+  cooperativaAssinante: TAccountCooperativaAssinante;
+  cooperativaCarteira?: TAccountCooperativaCarteira;
   cooperativaPart?: TAccountCooperativaPart;
   config?: TAccountConfig;
   balanca: TAccountBalanca;
   materialCadastro: TAccountMaterialCadastro;
+  variacaoCadastro?: TAccountVariacaoCadastro;
+  coleta?: TAccountColeta;
   entrega: TAccountEntrega;
   instrucoesSysvar?: TAccountInstrucoesSysvar;
   systemProgram?: TAccountSystemProgram;
@@ -224,15 +268,21 @@ export type CooperativaRegisterEntregaAsyncInput<
   material: CooperativaRegisterEntregaInstructionDataArgs["material"];
   pesoG: CooperativaRegisterEntregaInstructionDataArgs["pesoG"];
   tsPesagem: CooperativaRegisterEntregaInstructionDataArgs["tsPesagem"];
+  variacao: CooperativaRegisterEntregaInstructionDataArgs["variacao"];
+  qtdGarrafas: CooperativaRegisterEntregaInstructionDataArgs["qtdGarrafas"];
 };
 
 export async function getCooperativaRegisterEntregaInstructionAsync<
   TAccountPayer extends InstructionSignerInput,
-  TAccountCooperativa extends InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput,
   TAccountMaterialCadastro extends InstructionAccountInput,
+  TAccountVariacaoCadastro extends InstructionAccountInput,
+  TAccountColeta extends InstructionAccountInput,
   TAccountEntrega extends InstructionAccountInput,
   TAccountInstrucoesSysvar extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
@@ -243,10 +293,14 @@ export async function getCooperativaRegisterEntregaInstructionAsync<
   input: CooperativaRegisterEntregaAsyncInput<
     TAccountPayer,
     TAccountCooperativa,
+    TAccountCooperativaAssinante,
+    TAccountCooperativaCarteira,
     TAccountCooperativaPart,
     TAccountConfig,
     TAccountBalanca,
     TAccountMaterialCadastro,
+    TAccountVariacaoCadastro,
+    TAccountColeta,
     TAccountEntrega,
     TAccountInstrucoesSysvar,
     TAccountSystemProgram,
@@ -266,6 +320,14 @@ export async function getCooperativaRegisterEntregaInstructionAsync<
       InstructionAccountInputAddress<TAccountCooperativa>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountCooperativaPart,
       InstructionAccountInputAddress<TAccountCooperativaPart>
     >,
@@ -280,6 +342,14 @@ export async function getCooperativaRegisterEntregaInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountMaterialCadastro,
       InstructionAccountInputAddress<TAccountMaterialCadastro>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountVariacaoCadastro,
+      InstructionAccountInputAddress<TAccountVariacaoCadastro>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountColeta,
+      InstructionAccountInputAddress<TAccountColeta>
     >,
     ResolvedInstructionAccountMeta<
       TAccountEntrega,
@@ -314,7 +384,17 @@ export async function getCooperativaRegisterEntregaInstructionAsync<
     payer: { value: input.payer ?? null, isSigner: true, isWritable: true },
     cooperativa: {
       value: input.cooperativa ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    cooperativaAssinante: {
+      value: input.cooperativaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    cooperativaCarteira: {
+      value: input.cooperativaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     cooperativaPart: {
@@ -333,6 +413,12 @@ export async function getCooperativaRegisterEntregaInstructionAsync<
       isSigner: false,
       isWritable: false,
     },
+    variacaoCadastro: {
+      value: input.variacaoCadastro ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    coleta: { value: input.coleta ?? null, isSigner: false, isWritable: true },
     entrega: {
       value: input.entrega ?? null,
       isSigner: false,
@@ -395,10 +481,14 @@ export async function getCooperativaRegisterEntregaInstructionAsync<
     accounts: [
       getAccountMeta("payer", accounts.payer),
       getAccountMeta("cooperativa", accounts.cooperativa),
+      getAccountMeta("cooperativaAssinante", accounts.cooperativaAssinante),
+      getAccountMeta("cooperativaCarteira", accounts.cooperativaCarteira),
       getAccountMeta("cooperativaPart", accounts.cooperativaPart),
       getAccountMeta("config", accounts.config),
       getAccountMeta("balanca", accounts.balanca),
       getAccountMeta("materialCadastro", accounts.materialCadastro),
+      getAccountMeta("variacaoCadastro", accounts.variacaoCadastro),
+      getAccountMeta("coleta", accounts.coleta),
       getAccountMeta("entrega", accounts.entrega),
       getAccountMeta("instrucoesSysvar", accounts.instrucoesSysvar),
       getAccountMeta("systemProgram", accounts.systemProgram),
@@ -420,6 +510,14 @@ export async function getCooperativaRegisterEntregaInstructionAsync<
       InstructionAccountInputAddress<TAccountCooperativa>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountCooperativaPart,
       InstructionAccountInputAddress<TAccountCooperativaPart>
     >,
@@ -434,6 +532,14 @@ export async function getCooperativaRegisterEntregaInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountMaterialCadastro,
       InstructionAccountInputAddress<TAccountMaterialCadastro>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountVariacaoCadastro,
+      InstructionAccountInputAddress<TAccountVariacaoCadastro>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountColeta,
+      InstructionAccountInputAddress<TAccountColeta>
     >,
     ResolvedInstructionAccountMeta<
       TAccountEntrega,
@@ -460,13 +566,20 @@ export async function getCooperativaRegisterEntregaInstructionAsync<
 
 export type CooperativaRegisterEntregaInput<
   TAccountPayer extends InstructionSignerInput = InstructionSignerInput,
-  TAccountCooperativa extends InstructionSignerInput = InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput = InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput =
     InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput = InstructionAccountInput,
   TAccountMaterialCadastro extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountVariacaoCadastro extends InstructionAccountInput =
+    InstructionAccountInput,
+  TAccountColeta extends InstructionAccountInput = InstructionAccountInput,
   TAccountEntrega extends InstructionAccountInput = InstructionAccountInput,
   TAccountInstrucoesSysvar extends InstructionAccountInput =
     InstructionAccountInput,
@@ -478,10 +591,15 @@ export type CooperativaRegisterEntregaInput<
 > = {
   payer: TAccountPayer;
   cooperativa: TAccountCooperativa;
+  /** Titular ou carteira vinculada a ele. */
+  cooperativaAssinante: TAccountCooperativaAssinante;
+  cooperativaCarteira?: TAccountCooperativaCarteira;
   cooperativaPart: TAccountCooperativaPart;
   config: TAccountConfig;
   balanca: TAccountBalanca;
   materialCadastro: TAccountMaterialCadastro;
+  variacaoCadastro?: TAccountVariacaoCadastro;
+  coleta?: TAccountColeta;
   entrega: TAccountEntrega;
   instrucoesSysvar?: TAccountInstrucoesSysvar;
   systemProgram?: TAccountSystemProgram;
@@ -493,15 +611,21 @@ export type CooperativaRegisterEntregaInput<
   material: CooperativaRegisterEntregaInstructionDataArgs["material"];
   pesoG: CooperativaRegisterEntregaInstructionDataArgs["pesoG"];
   tsPesagem: CooperativaRegisterEntregaInstructionDataArgs["tsPesagem"];
+  variacao: CooperativaRegisterEntregaInstructionDataArgs["variacao"];
+  qtdGarrafas: CooperativaRegisterEntregaInstructionDataArgs["qtdGarrafas"];
 };
 
 export function getCooperativaRegisterEntregaInstruction<
   TAccountPayer extends InstructionSignerInput,
-  TAccountCooperativa extends InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput,
   TAccountMaterialCadastro extends InstructionAccountInput,
+  TAccountVariacaoCadastro extends InstructionAccountInput,
+  TAccountColeta extends InstructionAccountInput,
   TAccountEntrega extends InstructionAccountInput,
   TAccountInstrucoesSysvar extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
@@ -512,10 +636,14 @@ export function getCooperativaRegisterEntregaInstruction<
   input: CooperativaRegisterEntregaInput<
     TAccountPayer,
     TAccountCooperativa,
+    TAccountCooperativaAssinante,
+    TAccountCooperativaCarteira,
     TAccountCooperativaPart,
     TAccountConfig,
     TAccountBalanca,
     TAccountMaterialCadastro,
+    TAccountVariacaoCadastro,
+    TAccountColeta,
     TAccountEntrega,
     TAccountInstrucoesSysvar,
     TAccountSystemProgram,
@@ -534,6 +662,14 @@ export function getCooperativaRegisterEntregaInstruction<
     InstructionAccountInputAddress<TAccountCooperativa>
   >,
   ResolvedInstructionAccountMeta<
+    TAccountCooperativaAssinante,
+    InstructionAccountInputAddress<TAccountCooperativaAssinante>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountCooperativaCarteira,
+    InstructionAccountInputAddress<TAccountCooperativaCarteira>
+  >,
+  ResolvedInstructionAccountMeta<
     TAccountCooperativaPart,
     InstructionAccountInputAddress<TAccountCooperativaPart>
   >,
@@ -548,6 +684,14 @@ export function getCooperativaRegisterEntregaInstruction<
   ResolvedInstructionAccountMeta<
     TAccountMaterialCadastro,
     InstructionAccountInputAddress<TAccountMaterialCadastro>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountVariacaoCadastro,
+    InstructionAccountInputAddress<TAccountVariacaoCadastro>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountColeta,
+    InstructionAccountInputAddress<TAccountColeta>
   >,
   ResolvedInstructionAccountMeta<
     TAccountEntrega,
@@ -581,7 +725,17 @@ export function getCooperativaRegisterEntregaInstruction<
     payer: { value: input.payer ?? null, isSigner: true, isWritable: true },
     cooperativa: {
       value: input.cooperativa ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    cooperativaAssinante: {
+      value: input.cooperativaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    cooperativaCarteira: {
+      value: input.cooperativaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     cooperativaPart: {
@@ -600,6 +754,12 @@ export function getCooperativaRegisterEntregaInstruction<
       isSigner: false,
       isWritable: false,
     },
+    variacaoCadastro: {
+      value: input.variacaoCadastro ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    coleta: { value: input.coleta ?? null, isSigner: false, isWritable: true },
     entrega: {
       value: input.entrega ?? null,
       isSigner: false,
@@ -648,10 +808,14 @@ export function getCooperativaRegisterEntregaInstruction<
     accounts: [
       getAccountMeta("payer", accounts.payer),
       getAccountMeta("cooperativa", accounts.cooperativa),
+      getAccountMeta("cooperativaAssinante", accounts.cooperativaAssinante),
+      getAccountMeta("cooperativaCarteira", accounts.cooperativaCarteira),
       getAccountMeta("cooperativaPart", accounts.cooperativaPart),
       getAccountMeta("config", accounts.config),
       getAccountMeta("balanca", accounts.balanca),
       getAccountMeta("materialCadastro", accounts.materialCadastro),
+      getAccountMeta("variacaoCadastro", accounts.variacaoCadastro),
+      getAccountMeta("coleta", accounts.coleta),
       getAccountMeta("entrega", accounts.entrega),
       getAccountMeta("instrucoesSysvar", accounts.instrucoesSysvar),
       getAccountMeta("systemProgram", accounts.systemProgram),
@@ -673,6 +837,14 @@ export function getCooperativaRegisterEntregaInstruction<
       InstructionAccountInputAddress<TAccountCooperativa>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountCooperativaPart,
       InstructionAccountInputAddress<TAccountCooperativaPart>
     >,
@@ -687,6 +859,14 @@ export function getCooperativaRegisterEntregaInstruction<
     ResolvedInstructionAccountMeta<
       TAccountMaterialCadastro,
       InstructionAccountInputAddress<TAccountMaterialCadastro>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountVariacaoCadastro,
+      InstructionAccountInputAddress<TAccountVariacaoCadastro>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountColeta,
+      InstructionAccountInputAddress<TAccountColeta>
     >,
     ResolvedInstructionAccountMeta<
       TAccountEntrega,
@@ -719,15 +899,20 @@ export type ParsedCooperativaRegisterEntregaInstruction<
   accounts: {
     payer: TAccountMetas[0];
     cooperativa: TAccountMetas[1];
-    cooperativaPart: TAccountMetas[2];
-    config: TAccountMetas[3];
-    balanca: TAccountMetas[4];
-    materialCadastro: TAccountMetas[5];
-    entrega: TAccountMetas[6];
-    instrucoesSysvar: TAccountMetas[7];
-    systemProgram: TAccountMetas[8];
-    eventAuthority: TAccountMetas[9];
-    program: TAccountMetas[10];
+    /** Titular ou carteira vinculada a ele. */
+    cooperativaAssinante: TAccountMetas[2];
+    cooperativaCarteira?: TAccountMetas[3] | undefined;
+    cooperativaPart: TAccountMetas[4];
+    config: TAccountMetas[5];
+    balanca: TAccountMetas[6];
+    materialCadastro: TAccountMetas[7];
+    variacaoCadastro?: TAccountMetas[8] | undefined;
+    coleta?: TAccountMetas[9] | undefined;
+    entrega: TAccountMetas[10];
+    instrucoesSysvar: TAccountMetas[11];
+    systemProgram: TAccountMetas[12];
+    eventAuthority: TAccountMetas[13];
+    program: TAccountMetas[14];
   };
   data: CooperativaRegisterEntregaInstructionData;
 };
@@ -740,12 +925,12 @@ export function parseCooperativaRegisterEntregaInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCooperativaRegisterEntregaInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 11) {
+  if (instruction.accounts.length < 15) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 11,
+        expectedAccountMetas: 15,
       },
     );
   }
@@ -755,15 +940,25 @@ export function parseCooperativaRegisterEntregaInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === ECOL_LOTE_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       payer: getNextAccount(),
       cooperativa: getNextAccount(),
+      cooperativaAssinante: getNextAccount(),
+      cooperativaCarteira: getNextOptionalAccount(),
       cooperativaPart: getNextAccount(),
       config: getNextAccount(),
       balanca: getNextAccount(),
       materialCadastro: getNextAccount(),
+      variacaoCadastro: getNextOptionalAccount(),
+      coleta: getNextOptionalAccount(),
       entrega: getNextAccount(),
       instrucoesSysvar: getNextAccount(),
       systemProgram: getNextAccount(),

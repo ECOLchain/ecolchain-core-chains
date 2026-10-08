@@ -49,7 +49,7 @@ import {
   type ResolvedInstructionAccount,
   type ResolvedInstructionAccountMeta,
 } from "@solana/program-client-core";
-import { findConfigPda, findParticipantePda } from "../pdas";
+import { findConfigPda, findParticipantePda, findVinculoPda } from "../pdas";
 import { ECOL_LOTE_PROGRAM_ADDRESS } from "../programs";
 import {
   getPapelDecoder,
@@ -73,6 +73,7 @@ export type OperadorRegisterParticipanteInstruction<
   TAccountOperador extends string | AccountMeta<string> = string,
   TAccountConfig extends string | AccountMeta<string> = string,
   TAccountParticipante extends string | AccountMeta<string> = string,
+  TAccountVinculo extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
   TAccountEventAuthority extends string | AccountMeta<string> = string,
@@ -96,6 +97,9 @@ export type OperadorRegisterParticipanteInstruction<
       TAccountParticipante extends string
         ? WritableAccount<TAccountParticipante>
         : TAccountParticipante,
+      TAccountVinculo extends string
+        ? ReadonlyAccount<TAccountVinculo>
+        : TAccountVinculo,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
@@ -166,6 +170,7 @@ export type OperadorRegisterParticipanteAsyncInput<
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountParticipante extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountVinculo extends InstructionAccountInput = InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput =
     InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput =
@@ -176,6 +181,7 @@ export type OperadorRegisterParticipanteAsyncInput<
   operador: TAccountOperador;
   config?: TAccountConfig;
   participante?: TAccountParticipante;
+  vinculo?: TAccountVinculo;
   systemProgram?: TAccountSystemProgram;
   eventAuthority: TAccountEventAuthority;
   program: TAccountProgram;
@@ -190,6 +196,7 @@ export async function getOperadorRegisterParticipanteInstructionAsync<
   TAccountOperador extends InstructionSignerInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountParticipante extends InstructionAccountInput,
+  TAccountVinculo extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput,
   TAccountProgram extends InstructionAccountInput,
@@ -200,6 +207,7 @@ export async function getOperadorRegisterParticipanteInstructionAsync<
     TAccountOperador,
     TAccountConfig,
     TAccountParticipante,
+    TAccountVinculo,
     TAccountSystemProgram,
     TAccountEventAuthority,
     TAccountProgram
@@ -223,6 +231,10 @@ export async function getOperadorRegisterParticipanteInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountParticipante,
       InstructionAccountInputAddress<TAccountParticipante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountVinculo,
+      InstructionAccountInputAddress<TAccountVinculo>
     >,
     ResolvedInstructionAccountMeta<
       TAccountSystemProgram,
@@ -257,6 +269,11 @@ export async function getOperadorRegisterParticipanteInstructionAsync<
       value: input.participante ?? null,
       isSigner: false,
       isWritable: true,
+    },
+    vinculo: {
+      value: input.vinculo ?? null,
+      isSigner: false,
+      isWritable: false,
     },
     systemProgram: {
       value: input.systemProgram ?? null,
@@ -294,6 +311,14 @@ export async function getOperadorRegisterParticipanteInstructionAsync<
       { programAddress },
     );
   }
+  if (!accounts.vinculo.value) {
+    accounts.vinculo.value = await findVinculoPda(
+      {
+        carteira: getNonNullResolvedInstructionInput("carteira", args.carteira),
+      },
+      { programAddress },
+    );
+  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
@@ -305,6 +330,7 @@ export async function getOperadorRegisterParticipanteInstructionAsync<
       getAccountMeta("operador", accounts.operador),
       getAccountMeta("config", accounts.config),
       getAccountMeta("participante", accounts.participante),
+      getAccountMeta("vinculo", accounts.vinculo),
       getAccountMeta("systemProgram", accounts.systemProgram),
       getAccountMeta("eventAuthority", accounts.eventAuthority),
       getAccountMeta("program", accounts.program),
@@ -332,6 +358,10 @@ export async function getOperadorRegisterParticipanteInstructionAsync<
       InstructionAccountInputAddress<TAccountParticipante>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountVinculo,
+      InstructionAccountInputAddress<TAccountVinculo>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountSystemProgram,
       InstructionAccountInputAddress<TAccountSystemProgram>
     >,
@@ -352,6 +382,7 @@ export type OperadorRegisterParticipanteInput<
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountParticipante extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountVinculo extends InstructionAccountInput = InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput =
     InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput =
@@ -362,6 +393,7 @@ export type OperadorRegisterParticipanteInput<
   operador: TAccountOperador;
   config: TAccountConfig;
   participante: TAccountParticipante;
+  vinculo: TAccountVinculo;
   systemProgram?: TAccountSystemProgram;
   eventAuthority: TAccountEventAuthority;
   program: TAccountProgram;
@@ -376,6 +408,7 @@ export function getOperadorRegisterParticipanteInstruction<
   TAccountOperador extends InstructionSignerInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountParticipante extends InstructionAccountInput,
+  TAccountVinculo extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput,
   TAccountProgram extends InstructionAccountInput,
@@ -386,6 +419,7 @@ export function getOperadorRegisterParticipanteInstruction<
     TAccountOperador,
     TAccountConfig,
     TAccountParticipante,
+    TAccountVinculo,
     TAccountSystemProgram,
     TAccountEventAuthority,
     TAccountProgram
@@ -408,6 +442,10 @@ export function getOperadorRegisterParticipanteInstruction<
   ResolvedInstructionAccountMeta<
     TAccountParticipante,
     InstructionAccountInputAddress<TAccountParticipante>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountVinculo,
+    InstructionAccountInputAddress<TAccountVinculo>
   >,
   ResolvedInstructionAccountMeta<
     TAccountSystemProgram,
@@ -441,6 +479,11 @@ export function getOperadorRegisterParticipanteInstruction<
       value: input.participante ?? null,
       isSigner: false,
       isWritable: true,
+    },
+    vinculo: {
+      value: input.vinculo ?? null,
+      isSigner: false,
+      isWritable: false,
     },
     systemProgram: {
       value: input.systemProgram ?? null,
@@ -478,6 +521,7 @@ export function getOperadorRegisterParticipanteInstruction<
       getAccountMeta("operador", accounts.operador),
       getAccountMeta("config", accounts.config),
       getAccountMeta("participante", accounts.participante),
+      getAccountMeta("vinculo", accounts.vinculo),
       getAccountMeta("systemProgram", accounts.systemProgram),
       getAccountMeta("eventAuthority", accounts.eventAuthority),
       getAccountMeta("program", accounts.program),
@@ -505,6 +549,10 @@ export function getOperadorRegisterParticipanteInstruction<
       InstructionAccountInputAddress<TAccountParticipante>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountVinculo,
+      InstructionAccountInputAddress<TAccountVinculo>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountSystemProgram,
       InstructionAccountInputAddress<TAccountSystemProgram>
     >,
@@ -529,9 +577,10 @@ export type ParsedOperadorRegisterParticipanteInstruction<
     operador: TAccountMetas[1];
     config: TAccountMetas[2];
     participante: TAccountMetas[3];
-    systemProgram: TAccountMetas[4];
-    eventAuthority: TAccountMetas[5];
-    program: TAccountMetas[6];
+    vinculo: TAccountMetas[4];
+    systemProgram: TAccountMetas[5];
+    eventAuthority: TAccountMetas[6];
+    program: TAccountMetas[7];
   };
   data: OperadorRegisterParticipanteInstructionData;
 };
@@ -544,12 +593,12 @@ export function parseOperadorRegisterParticipanteInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedOperadorRegisterParticipanteInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 7) {
+  if (instruction.accounts.length < 8) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 7,
+        expectedAccountMetas: 8,
       },
     );
   }
@@ -566,6 +615,7 @@ export function parseOperadorRegisterParticipanteInstruction<
       operador: getNextAccount(),
       config: getNextAccount(),
       participante: getNextAccount(),
+      vinculo: getNextAccount(),
       systemProgram: getNextAccount(),
       eventAuthority: getNextAccount(),
       program: getNextAccount(),

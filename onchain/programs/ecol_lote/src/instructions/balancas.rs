@@ -39,7 +39,7 @@ pub fn handle_operador_register_balanca(
     let dono_part = &ctx.accounts.dono_part;
     require!(dono_part.ativo, EcolLoteError::ParticipanteInativo);
     require!(
-        matches!(dono_part.papel, Papel::Cooperativa | Papel::Industria),
+        dono_part.papel.eh_recebedor() || dono_part.papel == Papel::Industria,
         EcolLoteError::PapelIncorreto
     );
     let dono = dono_part.carteira;

@@ -63,6 +63,8 @@ export function getIndustriaConfirmRecebimentoDiscriminatorBytes(): ReadonlyUint
 export type IndustriaConfirmRecebimentoInstruction<
   TProgram extends string = typeof ECOL_LOTE_PROGRAM_ADDRESS,
   TAccountIndustria extends string | AccountMeta<string> = string,
+  TAccountIndustriaAssinante extends string | AccountMeta<string> = string,
+  TAccountIndustriaCarteira extends string | AccountMeta<string> = string,
   TAccountBalanca extends string | AccountMeta<string> = string,
   TAccountInstrucoesSysvar extends string | AccountMeta<string> =
     "Sysvar1nstructions1111111111111111111111111",
@@ -83,9 +85,15 @@ export type IndustriaConfirmRecebimentoInstruction<
   InstructionWithAccounts<
     [
       TAccountIndustria extends string
-        ? ReadonlySignerAccount<TAccountIndustria> &
-            AccountSignerMeta<TAccountIndustria>
+        ? ReadonlyAccount<TAccountIndustria>
         : TAccountIndustria,
+      TAccountIndustriaAssinante extends string
+        ? ReadonlySignerAccount<TAccountIndustriaAssinante> &
+            AccountSignerMeta<TAccountIndustriaAssinante>
+        : TAccountIndustriaAssinante,
+      TAccountIndustriaCarteira extends string
+        ? ReadonlyAccount<TAccountIndustriaCarteira>
+        : TAccountIndustriaCarteira,
       TAccountBalanca extends string
         ? ReadonlyAccount<TAccountBalanca>
         : TAccountBalanca,
@@ -168,7 +176,11 @@ export function getIndustriaConfirmRecebimentoInstructionDataCodec(): Codec<
 }
 
 export type IndustriaConfirmRecebimentoAsyncInput<
-  TAccountIndustria extends InstructionSignerInput = InstructionSignerInput,
+  TAccountIndustria extends InstructionAccountInput = InstructionAccountInput,
+  TAccountIndustriaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountIndustriaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput = InstructionAccountInput,
   TAccountInstrucoesSysvar extends InstructionAccountInput =
     InstructionAccountInput,
@@ -187,6 +199,8 @@ export type IndustriaConfirmRecebimentoAsyncInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   industria: TAccountIndustria;
+  industriaAssinante: TAccountIndustriaAssinante;
+  industriaCarteira?: TAccountIndustriaCarteira;
   balanca?: TAccountBalanca;
   instrucoesSysvar?: TAccountInstrucoesSysvar;
   config?: TAccountConfig;
@@ -203,7 +217,9 @@ export type IndustriaConfirmRecebimentoAsyncInput<
 };
 
 export async function getIndustriaConfirmRecebimentoInstructionAsync<
-  TAccountIndustria extends InstructionSignerInput,
+  TAccountIndustria extends InstructionAccountInput,
+  TAccountIndustriaAssinante extends InstructionSignerInput,
+  TAccountIndustriaCarteira extends InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput,
   TAccountInstrucoesSysvar extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
@@ -219,6 +235,8 @@ export async function getIndustriaConfirmRecebimentoInstructionAsync<
 >(
   input: IndustriaConfirmRecebimentoAsyncInput<
     TAccountIndustria,
+    TAccountIndustriaAssinante,
+    TAccountIndustriaCarteira,
     TAccountBalanca,
     TAccountInstrucoesSysvar,
     TAccountConfig,
@@ -238,6 +256,14 @@ export async function getIndustriaConfirmRecebimentoInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountIndustria,
       InstructionAccountInputAddress<TAccountIndustria>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaAssinante,
+      InstructionAccountInputAddress<TAccountIndustriaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaCarteira,
+      InstructionAccountInputAddress<TAccountIndustriaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountBalanca,
@@ -295,7 +321,17 @@ export async function getIndustriaConfirmRecebimentoInstructionAsync<
   const originalAccounts = {
     industria: {
       value: input.industria ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    industriaAssinante: {
+      value: input.industriaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    industriaCarteira: {
+      value: input.industriaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     balanca: {
@@ -371,6 +407,8 @@ export async function getIndustriaConfirmRecebimentoInstructionAsync<
   return Object.freeze({
     accounts: [
       getAccountMeta("industria", accounts.industria),
+      getAccountMeta("industriaAssinante", accounts.industriaAssinante),
+      getAccountMeta("industriaCarteira", accounts.industriaCarteira),
       getAccountMeta("balanca", accounts.balanca),
       getAccountMeta("instrucoesSysvar", accounts.instrucoesSysvar),
       getAccountMeta("config", accounts.config),
@@ -392,6 +430,14 @@ export async function getIndustriaConfirmRecebimentoInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountIndustria,
       InstructionAccountInputAddress<TAccountIndustria>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaAssinante,
+      InstructionAccountInputAddress<TAccountIndustriaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaCarteira,
+      InstructionAccountInputAddress<TAccountIndustriaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountBalanca,
@@ -441,7 +487,11 @@ export async function getIndustriaConfirmRecebimentoInstructionAsync<
 }
 
 export type IndustriaConfirmRecebimentoInput<
-  TAccountIndustria extends InstructionSignerInput = InstructionSignerInput,
+  TAccountIndustria extends InstructionAccountInput = InstructionAccountInput,
+  TAccountIndustriaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountIndustriaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput = InstructionAccountInput,
   TAccountInstrucoesSysvar extends InstructionAccountInput =
     InstructionAccountInput,
@@ -460,6 +510,8 @@ export type IndustriaConfirmRecebimentoInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   industria: TAccountIndustria;
+  industriaAssinante: TAccountIndustriaAssinante;
+  industriaCarteira?: TAccountIndustriaCarteira;
   balanca?: TAccountBalanca;
   instrucoesSysvar?: TAccountInstrucoesSysvar;
   config: TAccountConfig;
@@ -476,7 +528,9 @@ export type IndustriaConfirmRecebimentoInput<
 };
 
 export function getIndustriaConfirmRecebimentoInstruction<
-  TAccountIndustria extends InstructionSignerInput,
+  TAccountIndustria extends InstructionAccountInput,
+  TAccountIndustriaAssinante extends InstructionSignerInput,
+  TAccountIndustriaCarteira extends InstructionAccountInput,
   TAccountBalanca extends InstructionAccountInput,
   TAccountInstrucoesSysvar extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
@@ -492,6 +546,8 @@ export function getIndustriaConfirmRecebimentoInstruction<
 >(
   input: IndustriaConfirmRecebimentoInput<
     TAccountIndustria,
+    TAccountIndustriaAssinante,
+    TAccountIndustriaCarteira,
     TAccountBalanca,
     TAccountInstrucoesSysvar,
     TAccountConfig,
@@ -510,6 +566,14 @@ export function getIndustriaConfirmRecebimentoInstruction<
   ResolvedInstructionAccountMeta<
     TAccountIndustria,
     InstructionAccountInputAddress<TAccountIndustria>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountIndustriaAssinante,
+    InstructionAccountInputAddress<TAccountIndustriaAssinante>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountIndustriaCarteira,
+    InstructionAccountInputAddress<TAccountIndustriaCarteira>
   >,
   ResolvedInstructionAccountMeta<
     TAccountBalanca,
@@ -566,7 +630,17 @@ export function getIndustriaConfirmRecebimentoInstruction<
   const originalAccounts = {
     industria: {
       value: input.industria ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    industriaAssinante: {
+      value: input.industriaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    industriaCarteira: {
+      value: input.industriaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     balanca: {
@@ -634,6 +708,8 @@ export function getIndustriaConfirmRecebimentoInstruction<
   return Object.freeze({
     accounts: [
       getAccountMeta("industria", accounts.industria),
+      getAccountMeta("industriaAssinante", accounts.industriaAssinante),
+      getAccountMeta("industriaCarteira", accounts.industriaCarteira),
       getAccountMeta("balanca", accounts.balanca),
       getAccountMeta("instrucoesSysvar", accounts.instrucoesSysvar),
       getAccountMeta("config", accounts.config),
@@ -655,6 +731,14 @@ export function getIndustriaConfirmRecebimentoInstruction<
     ResolvedInstructionAccountMeta<
       TAccountIndustria,
       InstructionAccountInputAddress<TAccountIndustria>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaAssinante,
+      InstructionAccountInputAddress<TAccountIndustriaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountIndustriaCarteira,
+      InstructionAccountInputAddress<TAccountIndustriaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountBalanca,
@@ -710,17 +794,19 @@ export type ParsedIndustriaConfirmRecebimentoInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     industria: TAccountMetas[0];
-    balanca?: TAccountMetas[1] | undefined;
-    instrucoesSysvar: TAccountMetas[2];
-    config: TAccountMetas[3];
-    lote: TAccountMetas[4];
-    payer: TAccountMetas[5];
-    asset: TAccountMetas[6];
-    autoridadeAsset: TAccountMetas[7];
-    mplCoreProgram: TAccountMetas[8];
-    systemProgram: TAccountMetas[9];
-    eventAuthority: TAccountMetas[10];
-    program: TAccountMetas[11];
+    industriaAssinante: TAccountMetas[1];
+    industriaCarteira?: TAccountMetas[2] | undefined;
+    balanca?: TAccountMetas[3] | undefined;
+    instrucoesSysvar: TAccountMetas[4];
+    config: TAccountMetas[5];
+    lote: TAccountMetas[6];
+    payer: TAccountMetas[7];
+    asset: TAccountMetas[8];
+    autoridadeAsset: TAccountMetas[9];
+    mplCoreProgram: TAccountMetas[10];
+    systemProgram: TAccountMetas[11];
+    eventAuthority: TAccountMetas[12];
+    program: TAccountMetas[13];
   };
   data: IndustriaConfirmRecebimentoInstructionData;
 };
@@ -733,12 +819,12 @@ export function parseIndustriaConfirmRecebimentoInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedIndustriaConfirmRecebimentoInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 12) {
+  if (instruction.accounts.length < 14) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 12,
+        expectedAccountMetas: 14,
       },
     );
   }
@@ -758,6 +844,8 @@ export function parseIndustriaConfirmRecebimentoInstruction<
     programAddress: instruction.programAddress,
     accounts: {
       industria: getNextAccount(),
+      industriaAssinante: getNextAccount(),
+      industriaCarteira: getNextOptionalAccount(),
       balanca: getNextOptionalAccount(),
       instrucoesSysvar: getNextAccount(),
       config: getNextAccount(),

@@ -60,6 +60,10 @@ export type Material = {
   /** Material inativo não entra em lotes novos; lotes existentes não são afetados. */
   ativo: boolean;
   bump: number;
+  /** Variações cadastradas (`MaterialVariacao` com índices 1..=qtd). Com alguma, lotes exigem variação. */
+  qtdVariacoes: number;
+  /** Lotes deste material informam a quantidade aproximada de garrafas (vidro). */
+  contaGarrafas: boolean;
   reserved: ReadonlyUint8Array;
 };
 
@@ -69,6 +73,10 @@ export type MaterialArgs = {
   /** Material inativo não entra em lotes novos; lotes existentes não são afetados. */
   ativo: boolean;
   bump: number;
+  /** Variações cadastradas (`MaterialVariacao` com índices 1..=qtd). Com alguma, lotes exigem variação. */
+  qtdVariacoes: number;
+  /** Lotes deste material informam a quantidade aproximada de garrafas (vidro). */
+  contaGarrafas: boolean;
   reserved: ReadonlyUint8Array;
 };
 
@@ -81,7 +89,9 @@ export function getMaterialEncoder(): Encoder<MaterialArgs> {
       ["nome", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
       ["ativo", getBooleanEncoder()],
       ["bump", getU8Encoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 32)],
+      ["qtdVariacoes", getU8Encoder()],
+      ["contaGarrafas", getBooleanEncoder()],
+      ["reserved", fixEncoderSize(getBytesEncoder(), 30)],
     ]),
     (value) => ({ ...value, discriminator: MATERIAL_DISCRIMINATOR }),
   );
@@ -95,7 +105,9 @@ export function getMaterialDecoder(): Decoder<Material> {
     ["nome", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
     ["ativo", getBooleanDecoder()],
     ["bump", getU8Decoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 32)],
+    ["qtdVariacoes", getU8Decoder()],
+    ["contaGarrafas", getBooleanDecoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 30)],
   ]);
 }
 

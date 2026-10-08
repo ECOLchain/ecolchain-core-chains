@@ -112,6 +112,36 @@ export const ECOL_LOTE_ERROR__ENTREGA_INVALIDA = 0x179e; // 6046
 export const ECOL_LOTE_ERROR__PESO_CONSOLIDADO_FORA_DA_FAIXA = 0x179f; // 6047
 /** EntregaDeOutroLote: O lote de origem não pertence a este lote de venda */
 export const ECOL_LOTE_ERROR__ENTREGA_DE_OUTRO_LOTE = 0x17a0; // 6048
+/** VariacaoObrigatoria: Material com variações: informe a variação */
+export const ECOL_LOTE_ERROR__VARIACAO_OBRIGATORIA = 0x17a1; // 6049
+/** VariacaoInvalida: Variação não pertence ao material ou não existe */
+export const ECOL_LOTE_ERROR__VARIACAO_INVALIDA = 0x17a2; // 6050
+/** VariacaoInativa: Variação inativa */
+export const ECOL_LOTE_ERROR__VARIACAO_INATIVA = 0x17a3; // 6051
+/** VariacaoDiferente: Variação do lote de origem difere da variação do lote de venda */
+export const ECOL_LOTE_ERROR__VARIACAO_DIFERENTE = 0x17a4; // 6052
+/** LimiteDeVariacoes: Limite de variações do material atingido */
+export const ECOL_LOTE_ERROR__LIMITE_DE_VARIACOES = 0x17a5; // 6053
+/** MaterialSemGarrafas: Este material não conta garrafas */
+export const ECOL_LOTE_ERROR__MATERIAL_SEM_GARRAFAS = 0x17a6; // 6054
+/** CarteiraNaoAutorizada: Carteira não está vinculada a este participante ou está inativa */
+export const ECOL_LOTE_ERROR__CARTEIRA_NAO_AUTORIZADA = 0x17a7; // 6055
+/** CarteiraEmUso: Carteira já é titular ou está vinculada a outro participante */
+export const ECOL_LOTE_ERROR__CARTEIRA_EM_USO = 0x17a8; // 6056
+/** ColetaEstadoInvalido: Coleta em estado que não permite esta operação */
+export const ECOL_LOTE_ERROR__COLETA_ESTADO_INVALIDO = 0x17a9; // 6057
+/** ColetaDeOutroDestino: Coleta não é destinada a este participante */
+export const ECOL_LOTE_ERROR__COLETA_DE_OUTRO_DESTINO = 0x17aa; // 6058
+/** ColetaDivergente: Material ou variação da entrega difere da coleta */
+export const ECOL_LOTE_ERROR__COLETA_DIVERGENTE = 0x17ab; // 6059
+/** ColetaAusente: Origem Importador exige a coleta, e só ela */
+export const ECOL_LOTE_ERROR__COLETA_AUSENTE = 0x17ac; // 6060
+/** LoteNaoReciclado: O lote da coleta ainda não foi reciclado */
+export const ECOL_LOTE_ERROR__LOTE_NAO_RECICLADO = 0x17ad; // 6061
+/** GarrafasInvalidas: Quantidade de garrafas inválida */
+export const ECOL_LOTE_ERROR__GARRAFAS_INVALIDAS = 0x17ae; // 6062
+/** DataInvalida: Data inválida: vazia ou no futuro */
+export const ECOL_LOTE_ERROR__DATA_INVALIDA = 0x17af; // 6063
 
 export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__ASSET_INCORRETO
@@ -120,20 +150,31 @@ export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__BALANCA_DE_OUTRO_DONO
   | typeof ECOL_LOTE_ERROR__BALANCA_INATIVA
   | typeof ECOL_LOTE_ERROR__BALANCA_INCORRETA
+  | typeof ECOL_LOTE_ERROR__CARTEIRA_EM_USO
+  | typeof ECOL_LOTE_ERROR__CARTEIRA_NAO_AUTORIZADA
   | typeof ECOL_LOTE_ERROR__CARTEIRA_RESERVADA
   | typeof ECOL_LOTE_ERROR__CHAVES_DE_CONFIG_INVALIDAS
+  | typeof ECOL_LOTE_ERROR__COLETA_AUSENTE
+  | typeof ECOL_LOTE_ERROR__COLETA_DE_OUTRO_DESTINO
+  | typeof ECOL_LOTE_ERROR__COLETA_DIVERGENTE
+  | typeof ECOL_LOTE_ERROR__COLETA_ESTADO_INVALIDO
+  | typeof ECOL_LOTE_ERROR__DATA_INVALIDA
   | typeof ECOL_LOTE_ERROR__DISPUTA_JA_JULGADA
   | typeof ECOL_LOTE_ERROR__EM_CARENCIA
   | typeof ECOL_LOTE_ERROR__ENTREGA_DE_OUTRA_COOPERATIVA
   | typeof ECOL_LOTE_ERROR__ENTREGA_DE_OUTRO_LOTE
   | typeof ECOL_LOTE_ERROR__ENTREGA_INVALIDA
   | typeof ECOL_LOTE_ERROR__ENTREGA_JA_VINCULADA
+  | typeof ECOL_LOTE_ERROR__GARRAFAS_INVALIDAS
   | typeof ECOL_LOTE_ERROR__GUARDIAO_SO_RESTRINGE
   | typeof ECOL_LOTE_ERROR__LEILAO_EM_ANDAMENTO
+  | typeof ECOL_LOTE_ERROR__LIMITE_DE_VARIACOES
   | typeof ECOL_LOTE_ERROR__LOTE_DE_OUTRO_CREDITO
+  | typeof ECOL_LOTE_ERROR__LOTE_NAO_RECICLADO
   | typeof ECOL_LOTE_ERROR__LOTE_SEM_ENTREGAS
   | typeof ECOL_LOTE_ERROR__MATERIAL_DIFERENTE
   | typeof ECOL_LOTE_ERROR__MATERIAL_INATIVO
+  | typeof ECOL_LOTE_ERROR__MATERIAL_SEM_GARRAFAS
   | typeof ECOL_LOTE_ERROR__NAO_EH_ADMIN
   | typeof ECOL_LOTE_ERROR__NAO_EH_ARBITRO
   | typeof ECOL_LOTE_ERROR__NAO_EH_AUTORIDADE_CREDITO
@@ -162,7 +203,11 @@ export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__TRANSICAO_INVALIDA
   | typeof ECOL_LOTE_ERROR__URI_INVALIDA
   | typeof ECOL_LOTE_ERROR__VALOR_ABAIXO_DO_MINIMO
-  | typeof ECOL_LOTE_ERROR__VALOR_LIBERADO_INVALIDO;
+  | typeof ECOL_LOTE_ERROR__VALOR_LIBERADO_INVALIDO
+  | typeof ECOL_LOTE_ERROR__VARIACAO_DIFERENTE
+  | typeof ECOL_LOTE_ERROR__VARIACAO_INATIVA
+  | typeof ECOL_LOTE_ERROR__VARIACAO_INVALIDA
+  | typeof ECOL_LOTE_ERROR__VARIACAO_OBRIGATORIA;
 
 let ecolLoteErrorMessages: Record<EcolLoteError, string> | undefined;
 if (process.env["NODE_ENV"] !== "production") {
@@ -173,20 +218,31 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_LOTE_ERROR__BALANCA_DE_OUTRO_DONO]: `Balança não pertence ao participante`,
     [ECOL_LOTE_ERROR__BALANCA_INATIVA]: `Balança inativa`,
     [ECOL_LOTE_ERROR__BALANCA_INCORRETA]: `Assinatura não é da balança informada`,
+    [ECOL_LOTE_ERROR__CARTEIRA_EM_USO]: `Carteira já é titular ou está vinculada a outro participante`,
+    [ECOL_LOTE_ERROR__CARTEIRA_NAO_AUTORIZADA]: `Carteira não está vinculada a este participante ou está inativa`,
     [ECOL_LOTE_ERROR__CARTEIRA_RESERVADA]: `Carteira é chave de papel do config e não pode ser participante`,
     [ECOL_LOTE_ERROR__CHAVES_DE_CONFIG_INVALIDAS]: `Chaves de papéis do config devem ser distintas e não nulas`,
+    [ECOL_LOTE_ERROR__COLETA_AUSENTE]: `Origem Importador exige a coleta, e só ela`,
+    [ECOL_LOTE_ERROR__COLETA_DE_OUTRO_DESTINO]: `Coleta não é destinada a este participante`,
+    [ECOL_LOTE_ERROR__COLETA_DIVERGENTE]: `Material ou variação da entrega difere da coleta`,
+    [ECOL_LOTE_ERROR__COLETA_ESTADO_INVALIDO]: `Coleta em estado que não permite esta operação`,
+    [ECOL_LOTE_ERROR__DATA_INVALIDA]: `Data inválida: vazia ou no futuro`,
     [ECOL_LOTE_ERROR__DISPUTA_JA_JULGADA]: `Esta etapa já teve disputa julgada; só o árbitro pode reabri-la`,
     [ECOL_LOTE_ERROR__EM_CARENCIA]: `Crank de prazo em carência após retomada do programa`,
     [ECOL_LOTE_ERROR__ENTREGA_DE_OUTRA_COOPERATIVA]: `Entrega de outra cooperativa`,
     [ECOL_LOTE_ERROR__ENTREGA_DE_OUTRO_LOTE]: `O lote de origem não pertence a este lote de venda`,
     [ECOL_LOTE_ERROR__ENTREGA_INVALIDA]: `Conta informada não é uma entrega válida`,
     [ECOL_LOTE_ERROR__ENTREGA_JA_VINCULADA]: `Entrega já vinculada a um lote`,
+    [ECOL_LOTE_ERROR__GARRAFAS_INVALIDAS]: `Quantidade de garrafas inválida`,
     [ECOL_LOTE_ERROR__GUARDIAO_SO_RESTRINGE]: `O guardião só pode deixar o modo mais restritivo`,
     [ECOL_LOTE_ERROR__LEILAO_EM_ANDAMENTO]: `Leilão ainda em andamento`,
+    [ECOL_LOTE_ERROR__LIMITE_DE_VARIACOES]: `Limite de variações do material atingido`,
     [ECOL_LOTE_ERROR__LOTE_DE_OUTRO_CREDITO]: `Lote não está agregado a este crédito`,
+    [ECOL_LOTE_ERROR__LOTE_NAO_RECICLADO]: `O lote da coleta ainda não foi reciclado`,
     [ECOL_LOTE_ERROR__LOTE_SEM_ENTREGAS]: `Lote sem entregas vinculadas`,
     [ECOL_LOTE_ERROR__MATERIAL_DIFERENTE]: `Material da entrega difere do material do lote`,
     [ECOL_LOTE_ERROR__MATERIAL_INATIVO]: `Material inativo`,
+    [ECOL_LOTE_ERROR__MATERIAL_SEM_GARRAFAS]: `Este material não conta garrafas`,
     [ECOL_LOTE_ERROR__NAO_EH_ADMIN]: `Assinante não é o admin`,
     [ECOL_LOTE_ERROR__NAO_EH_ARBITRO]: `Assinante não é o árbitro`,
     [ECOL_LOTE_ERROR__NAO_EH_AUTORIDADE_CREDITO]: `Assinante não é a autoridade do programa de créditos`,
@@ -216,6 +272,10 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_LOTE_ERROR__URI_INVALIDA]: `URI de metadados vazia ou longa demais`,
     [ECOL_LOTE_ERROR__VALOR_ABAIXO_DO_MINIMO]: `Valor abaixo do preço mínimo do anúncio`,
     [ECOL_LOTE_ERROR__VALOR_LIBERADO_INVALIDO]: `Valor a liberar maior que o valor da venda`,
+    [ECOL_LOTE_ERROR__VARIACAO_DIFERENTE]: `Variação do lote de origem difere da variação do lote de venda`,
+    [ECOL_LOTE_ERROR__VARIACAO_INATIVA]: `Variação inativa`,
+    [ECOL_LOTE_ERROR__VARIACAO_INVALIDA]: `Variação não pertence ao material ou não existe`,
+    [ECOL_LOTE_ERROR__VARIACAO_OBRIGATORIA]: `Material com variações: informe a variação`,
   };
 }
 

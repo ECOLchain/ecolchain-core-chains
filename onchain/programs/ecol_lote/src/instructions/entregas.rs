@@ -3,15 +3,15 @@ use solana_sha256_hasher::hashv;
 
 use crate::{
     constants::{
-        MAX_ENTREGAS_POR_TX, SEED_BALANCA, SEED_ENTREGA, SEED_GLOBAL, SEED_LOTE, SEED_MATERIAL,
-        SEED_PARTICIPANTE,
+        MAX_ENTREGAS_POR_TX, SEED_BALANCA, SEED_CARTEIRA, SEED_COLETA, SEED_ENTREGA, SEED_GLOBAL,
+        SEED_LOTE, SEED_MATERIAL, SEED_PARTICIPANTE, SEED_VARIACAO,
     },
     error::EcolLoteError,
-    events::{EntregaNoLote, EntregaRegistrada},
+    events::{ColetaAtualizada, EntregaNoLote, EntregaRegistrada},
     pesagem::{self, TipoPesagem},
     state::{
-        Balanca, Entrega, EstadoLote, GlobalConfig, Lote, Material, OrigemEntrega, Papel,
-        Participante,
+        exigir_assinatura, Balanca, Carteira, Coleta, Entrega, EstadoColeta, EstadoLote,
+        GlobalConfig, Lote, Material, MaterialVariacao, OrigemEntrega, Participante,
     },
 };
 
@@ -26,17 +26,31 @@ pub struct DadosEntrega {
     pub peso_g: u64,
     /// Timestamp assinado pela balança.
     pub ts_pesagem: i64,
+    /// Índice da variação do material (0 se o material não tem variações).
+    pub variacao: u8,
+    /// Garrafas aproximadas (só em material que conta garrafas; 0 nos demais).
+    pub qtd_garrafas: u32,
 }
 
-/// Registra um lote de origem (com ou sem coletor), pesado pela balança da cooperativa. A transação
-/// deve ter, imediatamente antes, a instrução Ed25519 da balança sobre `(domínio, Entrega, entrega, peso, ts)`.
+/// Registra um lote de origem (com ou sem coletor), pesado pela balança da cooperativa ou Clean Tech.
+/// A transação deve ter, imediatamente antes, a instrução Ed25519 da balança sobre
+/// `(domínio, Entrega, entrega, peso, ts)`. Com origem `Importador`, recebe a coleta enviada a este
+/// destino e a marca como entregue.
 #[event_cpi]
 #[derive(Accounts)]
 #[instruction(dados: DadosEntrega)]
 pub struct CooperativaRegisterEntrega<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub cooperativa: Signer<'info>,
+    /// CHECK: carteira titular da cooperativa; conferida pelo cadastro e pela assinatura.
+    pub cooperativa: UncheckedAccount<'info>,
+    /// Titular ou carteira vinculada a ele.
+    pub cooperativa_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, cooperativa_assinante.key().as_ref()],
+        bump = cooperativa_carteira.bump
+    )]
+    pub cooperativa_carteira: Option<Box<Account<'info, Carteira>>>,
     #[account(seeds = [SEED_PARTICIPANTE, cooperativa.key().as_ref()], bump = cooperativa_part.bump)]
     pub cooperativa_part: Box<Account<'info, Participante>>,
     #[account(seeds = [SEED_GLOBAL], bump = config.bump)]
@@ -45,6 +59,17 @@ pub struct CooperativaRegisterEntrega<'info> {
     pub balanca: Box<Account<'info, Balanca>>,
     #[account(seeds = [SEED_MATERIAL, &dados.material.to_le_bytes()], bump = material_cadastro.bump)]
     pub material_cadastro: Box<Account<'info, Material>>,
+    #[account(
+        seeds = [SEED_VARIACAO, &dados.material.to_le_bytes(), &[dados.variacao]],
+        bump = variacao_cadastro.bump
+    )]
+    pub variacao_cadastro: Option<Box<Account<'info, MaterialVariacao>>>,
+    #[account(
+        mut,
+        seeds = [SEED_COLETA, coleta.importador.as_ref(), &coleta.coleta_id.to_le_bytes()],
+        bump = coleta.bump
+    )]
+    pub coleta: Option<Box<Account<'info, Coleta>>>,
     #[account(
         init,
         payer = payer,
@@ -64,12 +89,22 @@ pub fn handle_cooperativa_register_entrega(
     dados: DadosEntrega,
 ) -> Result<()> {
     ctx.accounts.config.exigir_modo_normal()?;
-    ctx.accounts.cooperativa_part.exigir(Papel::Cooperativa)?;
     let cooperativa = ctx.accounts.cooperativa.key();
+    exigir_assinatura(
+        &cooperativa,
+        &ctx.accounts.cooperativa_assinante.key(),
+        ctx.accounts.cooperativa_carteira.as_deref().map(|c| &**c),
+    )?;
+    ctx.accounts.cooperativa_part.exigir_recebedor()?;
     ctx.accounts.balanca.exigir_ativa_de(&cooperativa)?;
-    ctx.accounts.material_cadastro.exigir_ativo()?;
+    let material = &ctx.accounts.material_cadastro;
+    material.exigir_ativo()?;
+    let variacao =
+        material.variacao_do_lote(ctx.accounts.variacao_cadastro.as_deref().map(|v| &**v))?;
+    require!(variacao == dados.variacao, EcolLoteError::VariacaoInvalida);
+    material.exigir_garrafas(dados.qtd_garrafas)?;
     require!(dados.peso_g > 0, EcolLoteError::PesoInvalido);
-    // Toda origem tem referência: coletor, documento da doação/compra ou ticket da triagem.
+    // Toda origem tem referência: coletor, documento da doação/compra, ticket da triagem ou coleta.
     require!(dados.origem_ref != [0; 32], EcolLoteError::ReferenciaVazia);
 
     let agora = Clock::get()?.unix_timestamp;
@@ -86,6 +121,45 @@ pub fn handle_cooperativa_register_entrega(
         ),
     )?;
 
+    // Coleta do importador: a referência é a própria conta, enviada a este destino.
+    match (dados.origem, ctx.accounts.coleta.as_deref_mut()) {
+        (OrigemEntrega::Importador, Some(coleta)) => {
+            require_keys_eq!(
+                Pubkey::new_from_array(dados.origem_ref),
+                coleta.key(),
+                EcolLoteError::ColetaAusente
+            );
+            coleta.exigir_estado(EstadoColeta::EmEntrega)?;
+            require_keys_eq!(
+                coleta.destino,
+                cooperativa,
+                EcolLoteError::ColetaDeOutroDestino
+            );
+            require!(
+                coleta.material == dados.material && coleta.variacao == dados.variacao,
+                EcolLoteError::ColetaDivergente
+            );
+            coleta.estado = EstadoColeta::Entregue;
+            coleta.entrega = entrega_key;
+            coleta.atualizado_em = agora;
+            emit_cpi!(ColetaAtualizada {
+                coleta: coleta.key(),
+                importador: coleta.importador,
+                de: Some(EstadoColeta::EmEntrega),
+                para: EstadoColeta::Entregue,
+                destino: cooperativa,
+                entrega: entrega_key,
+                nf_reciclagem_hash: [0; 32],
+                ator: ctx.accounts.cooperativa_assinante.key(),
+                ts: agora,
+            });
+        }
+        (OrigemEntrega::Importador, None) | (_, Some(_)) => {
+            return err!(EcolLoteError::ColetaAusente);
+        }
+        (_, None) => {}
+    }
+
     let balanca_key = ctx.accounts.balanca.key();
     let entrega = &mut ctx.accounts.entrega;
     entrega.cooperativa = cooperativa;
@@ -98,6 +172,8 @@ pub fn handle_cooperativa_register_entrega(
     entrega.ts_pesagem = dados.ts_pesagem;
     entrega.criado_em = agora;
     entrega.bump = ctx.bumps.entrega;
+    entrega.variacao = dados.variacao;
+    entrega.qtd_garrafas = dados.qtd_garrafas;
 
     emit_cpi!(EntregaRegistrada {
         entrega: entrega_key,
@@ -109,6 +185,8 @@ pub fn handle_cooperativa_register_entrega(
         peso_g: dados.peso_g,
         balanca: balanca_key,
         ts_pesagem: dados.ts_pesagem,
+        variacao: dados.variacao,
+        qtd_garrafas: dados.qtd_garrafas,
     });
     Ok(())
 }
@@ -118,7 +196,14 @@ pub fn handle_cooperativa_register_entrega(
 #[event_cpi]
 #[derive(Accounts)]
 pub struct CooperativaAddEntregas<'info> {
-    pub cooperativa: Signer<'info>,
+    /// CHECK: carteira titular da cooperativa; conferida contra o lote e pela assinatura.
+    pub cooperativa: UncheckedAccount<'info>,
+    pub cooperativa_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, cooperativa_assinante.key().as_ref()],
+        bump = cooperativa_carteira.bump
+    )]
+    pub cooperativa_carteira: Option<Account<'info, Carteira>>,
     #[account(seeds = [SEED_GLOBAL], bump = config.bump)]
     pub config: Account<'info, GlobalConfig>,
     #[account(
@@ -134,6 +219,11 @@ pub fn handle_cooperativa_add_entregas<'info>(
     ctx: Context<'info, CooperativaAddEntregas<'info>>,
 ) -> Result<()> {
     ctx.accounts.config.exigir_modo_normal()?;
+    exigir_assinatura(
+        &ctx.accounts.cooperativa.key(),
+        &ctx.accounts.cooperativa_assinante.key(),
+        ctx.accounts.cooperativa_carteira.as_deref(),
+    )?;
     let n = ctx.remaining_accounts.len();
     require!(
         n > 0 && n <= MAX_ENTREGAS_POR_TX,
@@ -161,8 +251,16 @@ pub fn handle_cooperativa_add_entregas<'info>(
             entrega.material == lote.material,
             EcolLoteError::MaterialDiferente
         );
+        require!(
+            entrega.variacao == lote.variacao,
+            EcolLoteError::VariacaoDiferente
+        );
 
         entrega.lote = lote_key;
+        lote.qtd_garrafas = lote
+            .qtd_garrafas
+            .checked_add(entrega.qtd_garrafas)
+            .ok_or(EcolLoteError::Overflow)?;
         lote.qtd_entregas = lote
             .qtd_entregas
             .checked_add(1)

@@ -61,8 +61,12 @@ export function getTransportadorPickupLoteDiscriminatorBytes(): ReadonlyUint8Arr
 export type TransportadorPickupLoteInstruction<
   TProgram extends string = typeof ECOL_LOTE_PROGRAM_ADDRESS,
   TAccountTransportador extends string | AccountMeta<string> = string,
+  TAccountTransportadorAssinante extends string | AccountMeta<string> = string,
+  TAccountTransportadorCarteira extends string | AccountMeta<string> = string,
   TAccountTransportadorPart extends string | AccountMeta<string> = string,
   TAccountCooperativa extends string | AccountMeta<string> = string,
+  TAccountCooperativaAssinante extends string | AccountMeta<string> = string,
+  TAccountCooperativaCarteira extends string | AccountMeta<string> = string,
   TAccountCooperativaPart extends string | AccountMeta<string> = string,
   TAccountConfig extends string | AccountMeta<string> = string,
   TAccountLote extends string | AccountMeta<string> = string,
@@ -81,16 +85,28 @@ export type TransportadorPickupLoteInstruction<
   InstructionWithAccounts<
     [
       TAccountTransportador extends string
-        ? ReadonlySignerAccount<TAccountTransportador> &
-            AccountSignerMeta<TAccountTransportador>
+        ? ReadonlyAccount<TAccountTransportador>
         : TAccountTransportador,
+      TAccountTransportadorAssinante extends string
+        ? ReadonlySignerAccount<TAccountTransportadorAssinante> &
+            AccountSignerMeta<TAccountTransportadorAssinante>
+        : TAccountTransportadorAssinante,
+      TAccountTransportadorCarteira extends string
+        ? ReadonlyAccount<TAccountTransportadorCarteira>
+        : TAccountTransportadorCarteira,
       TAccountTransportadorPart extends string
         ? ReadonlyAccount<TAccountTransportadorPart>
         : TAccountTransportadorPart,
       TAccountCooperativa extends string
-        ? ReadonlySignerAccount<TAccountCooperativa> &
-            AccountSignerMeta<TAccountCooperativa>
+        ? ReadonlyAccount<TAccountCooperativa>
         : TAccountCooperativa,
+      TAccountCooperativaAssinante extends string
+        ? ReadonlySignerAccount<TAccountCooperativaAssinante> &
+            AccountSignerMeta<TAccountCooperativaAssinante>
+        : TAccountCooperativaAssinante,
+      TAccountCooperativaCarteira extends string
+        ? ReadonlyAccount<TAccountCooperativaCarteira>
+        : TAccountCooperativaCarteira,
       TAccountCooperativaPart extends string
         ? ReadonlyAccount<TAccountCooperativaPart>
         : TAccountCooperativaPart,
@@ -159,10 +175,19 @@ export function getTransportadorPickupLoteInstructionDataCodec(): FixedSizeCodec
 }
 
 export type TransportadorPickupLoteAsyncInput<
-  TAccountTransportador extends InstructionSignerInput = InstructionSignerInput,
+  TAccountTransportador extends InstructionAccountInput =
+    InstructionAccountInput,
+  TAccountTransportadorAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountTransportadorCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountTransportadorPart extends InstructionAccountInput =
     InstructionAccountInput,
-  TAccountCooperativa extends InstructionSignerInput = InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput = InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput =
     InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
@@ -180,8 +205,12 @@ export type TransportadorPickupLoteAsyncInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   transportador: TAccountTransportador;
+  transportadorAssinante: TAccountTransportadorAssinante;
+  transportadorCarteira?: TAccountTransportadorCarteira;
   transportadorPart?: TAccountTransportadorPart;
   cooperativa: TAccountCooperativa;
+  cooperativaAssinante: TAccountCooperativaAssinante;
+  cooperativaCarteira?: TAccountCooperativaCarteira;
   cooperativaPart?: TAccountCooperativaPart;
   config?: TAccountConfig;
   lote: TAccountLote;
@@ -195,9 +224,13 @@ export type TransportadorPickupLoteAsyncInput<
 };
 
 export async function getTransportadorPickupLoteInstructionAsync<
-  TAccountTransportador extends InstructionSignerInput,
+  TAccountTransportador extends InstructionAccountInput,
+  TAccountTransportadorAssinante extends InstructionSignerInput,
+  TAccountTransportadorCarteira extends InstructionAccountInput,
   TAccountTransportadorPart extends InstructionAccountInput,
-  TAccountCooperativa extends InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
@@ -212,8 +245,12 @@ export async function getTransportadorPickupLoteInstructionAsync<
 >(
   input: TransportadorPickupLoteAsyncInput<
     TAccountTransportador,
+    TAccountTransportadorAssinante,
+    TAccountTransportadorCarteira,
     TAccountTransportadorPart,
     TAccountCooperativa,
+    TAccountCooperativaAssinante,
+    TAccountCooperativaCarteira,
     TAccountCooperativaPart,
     TAccountConfig,
     TAccountLote,
@@ -234,12 +271,28 @@ export async function getTransportadorPickupLoteInstructionAsync<
       InstructionAccountInputAddress<TAccountTransportador>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountTransportadorAssinante,
+      InstructionAccountInputAddress<TAccountTransportadorAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountTransportadorCarteira,
+      InstructionAccountInputAddress<TAccountTransportadorCarteira>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountTransportadorPart,
       InstructionAccountInputAddress<TAccountTransportadorPart>
     >,
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountCooperativaPart,
@@ -293,7 +346,17 @@ export async function getTransportadorPickupLoteInstructionAsync<
   const originalAccounts = {
     transportador: {
       value: input.transportador ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    transportadorAssinante: {
+      value: input.transportadorAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    transportadorCarteira: {
+      value: input.transportadorCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     transportadorPart: {
@@ -303,7 +366,17 @@ export async function getTransportadorPickupLoteInstructionAsync<
     },
     cooperativa: {
       value: input.cooperativa ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    cooperativaAssinante: {
+      value: input.cooperativaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    cooperativaCarteira: {
+      value: input.cooperativaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     cooperativaPart: {
@@ -389,8 +462,12 @@ export async function getTransportadorPickupLoteInstructionAsync<
   return Object.freeze({
     accounts: [
       getAccountMeta("transportador", accounts.transportador),
+      getAccountMeta("transportadorAssinante", accounts.transportadorAssinante),
+      getAccountMeta("transportadorCarteira", accounts.transportadorCarteira),
       getAccountMeta("transportadorPart", accounts.transportadorPart),
       getAccountMeta("cooperativa", accounts.cooperativa),
+      getAccountMeta("cooperativaAssinante", accounts.cooperativaAssinante),
+      getAccountMeta("cooperativaCarteira", accounts.cooperativaCarteira),
       getAccountMeta("cooperativaPart", accounts.cooperativaPart),
       getAccountMeta("config", accounts.config),
       getAccountMeta("lote", accounts.lote),
@@ -411,12 +488,28 @@ export async function getTransportadorPickupLoteInstructionAsync<
       InstructionAccountInputAddress<TAccountTransportador>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountTransportadorAssinante,
+      InstructionAccountInputAddress<TAccountTransportadorAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountTransportadorCarteira,
+      InstructionAccountInputAddress<TAccountTransportadorCarteira>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountTransportadorPart,
       InstructionAccountInputAddress<TAccountTransportadorPart>
     >,
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountCooperativaPart,
@@ -462,10 +555,19 @@ export async function getTransportadorPickupLoteInstructionAsync<
 }
 
 export type TransportadorPickupLoteInput<
-  TAccountTransportador extends InstructionSignerInput = InstructionSignerInput,
+  TAccountTransportador extends InstructionAccountInput =
+    InstructionAccountInput,
+  TAccountTransportadorAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountTransportadorCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountTransportadorPart extends InstructionAccountInput =
     InstructionAccountInput,
-  TAccountCooperativa extends InstructionSignerInput = InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput = InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput =
     InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
@@ -483,8 +585,12 @@ export type TransportadorPickupLoteInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   transportador: TAccountTransportador;
+  transportadorAssinante: TAccountTransportadorAssinante;
+  transportadorCarteira?: TAccountTransportadorCarteira;
   transportadorPart: TAccountTransportadorPart;
   cooperativa: TAccountCooperativa;
+  cooperativaAssinante: TAccountCooperativaAssinante;
+  cooperativaCarteira?: TAccountCooperativaCarteira;
   cooperativaPart: TAccountCooperativaPart;
   config: TAccountConfig;
   lote: TAccountLote;
@@ -498,9 +604,13 @@ export type TransportadorPickupLoteInput<
 };
 
 export function getTransportadorPickupLoteInstruction<
-  TAccountTransportador extends InstructionSignerInput,
+  TAccountTransportador extends InstructionAccountInput,
+  TAccountTransportadorAssinante extends InstructionSignerInput,
+  TAccountTransportadorCarteira extends InstructionAccountInput,
   TAccountTransportadorPart extends InstructionAccountInput,
-  TAccountCooperativa extends InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput,
   TAccountCooperativaPart extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
@@ -515,8 +625,12 @@ export function getTransportadorPickupLoteInstruction<
 >(
   input: TransportadorPickupLoteInput<
     TAccountTransportador,
+    TAccountTransportadorAssinante,
+    TAccountTransportadorCarteira,
     TAccountTransportadorPart,
     TAccountCooperativa,
+    TAccountCooperativaAssinante,
+    TAccountCooperativaCarteira,
     TAccountCooperativaPart,
     TAccountConfig,
     TAccountLote,
@@ -536,12 +650,28 @@ export function getTransportadorPickupLoteInstruction<
     InstructionAccountInputAddress<TAccountTransportador>
   >,
   ResolvedInstructionAccountMeta<
+    TAccountTransportadorAssinante,
+    InstructionAccountInputAddress<TAccountTransportadorAssinante>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountTransportadorCarteira,
+    InstructionAccountInputAddress<TAccountTransportadorCarteira>
+  >,
+  ResolvedInstructionAccountMeta<
     TAccountTransportadorPart,
     InstructionAccountInputAddress<TAccountTransportadorPart>
   >,
   ResolvedInstructionAccountMeta<
     TAccountCooperativa,
     InstructionAccountInputAddress<TAccountCooperativa>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountCooperativaAssinante,
+    InstructionAccountInputAddress<TAccountCooperativaAssinante>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountCooperativaCarteira,
+    InstructionAccountInputAddress<TAccountCooperativaCarteira>
   >,
   ResolvedInstructionAccountMeta<
     TAccountCooperativaPart,
@@ -594,7 +724,17 @@ export function getTransportadorPickupLoteInstruction<
   const originalAccounts = {
     transportador: {
       value: input.transportador ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    transportadorAssinante: {
+      value: input.transportadorAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    transportadorCarteira: {
+      value: input.transportadorCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     transportadorPart: {
@@ -604,7 +744,17 @@ export function getTransportadorPickupLoteInstruction<
     },
     cooperativa: {
       value: input.cooperativa ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    cooperativaAssinante: {
+      value: input.cooperativaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    cooperativaCarteira: {
+      value: input.cooperativaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     cooperativaPart: {
@@ -660,8 +810,12 @@ export function getTransportadorPickupLoteInstruction<
   return Object.freeze({
     accounts: [
       getAccountMeta("transportador", accounts.transportador),
+      getAccountMeta("transportadorAssinante", accounts.transportadorAssinante),
+      getAccountMeta("transportadorCarteira", accounts.transportadorCarteira),
       getAccountMeta("transportadorPart", accounts.transportadorPart),
       getAccountMeta("cooperativa", accounts.cooperativa),
+      getAccountMeta("cooperativaAssinante", accounts.cooperativaAssinante),
+      getAccountMeta("cooperativaCarteira", accounts.cooperativaCarteira),
       getAccountMeta("cooperativaPart", accounts.cooperativaPart),
       getAccountMeta("config", accounts.config),
       getAccountMeta("lote", accounts.lote),
@@ -682,12 +836,28 @@ export function getTransportadorPickupLoteInstruction<
       InstructionAccountInputAddress<TAccountTransportador>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountTransportadorAssinante,
+      InstructionAccountInputAddress<TAccountTransportadorAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountTransportadorCarteira,
+      InstructionAccountInputAddress<TAccountTransportadorCarteira>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountTransportadorPart,
       InstructionAccountInputAddress<TAccountTransportadorPart>
     >,
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountCooperativaPart,
@@ -739,18 +909,22 @@ export type ParsedTransportadorPickupLoteInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     transportador: TAccountMetas[0];
-    transportadorPart: TAccountMetas[1];
-    cooperativa: TAccountMetas[2];
-    cooperativaPart: TAccountMetas[3];
-    config: TAccountMetas[4];
-    lote: TAccountMetas[5];
-    payer: TAccountMetas[6];
-    asset: TAccountMetas[7];
-    autoridadeAsset: TAccountMetas[8];
-    mplCoreProgram: TAccountMetas[9];
-    systemProgram: TAccountMetas[10];
-    eventAuthority: TAccountMetas[11];
-    program: TAccountMetas[12];
+    transportadorAssinante: TAccountMetas[1];
+    transportadorCarteira?: TAccountMetas[2] | undefined;
+    transportadorPart: TAccountMetas[3];
+    cooperativa: TAccountMetas[4];
+    cooperativaAssinante: TAccountMetas[5];
+    cooperativaCarteira?: TAccountMetas[6] | undefined;
+    cooperativaPart: TAccountMetas[7];
+    config: TAccountMetas[8];
+    lote: TAccountMetas[9];
+    payer: TAccountMetas[10];
+    asset: TAccountMetas[11];
+    autoridadeAsset: TAccountMetas[12];
+    mplCoreProgram: TAccountMetas[13];
+    systemProgram: TAccountMetas[14];
+    eventAuthority: TAccountMetas[15];
+    program: TAccountMetas[16];
   };
   data: TransportadorPickupLoteInstructionData;
 };
@@ -763,12 +937,12 @@ export function parseTransportadorPickupLoteInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedTransportadorPickupLoteInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 13) {
+  if (instruction.accounts.length < 17) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 13,
+        expectedAccountMetas: 17,
       },
     );
   }
@@ -778,12 +952,22 @@ export function parseTransportadorPickupLoteInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === ECOL_LOTE_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       transportador: getNextAccount(),
+      transportadorAssinante: getNextAccount(),
+      transportadorCarteira: getNextOptionalAccount(),
       transportadorPart: getNextAccount(),
       cooperativa: getNextAccount(),
+      cooperativaAssinante: getNextAccount(),
+      cooperativaCarteira: getNextOptionalAccount(),
       cooperativaPart: getNextAccount(),
       config: getNextAccount(),
       lote: getNextAccount(),

@@ -4,7 +4,7 @@ Documento vivo para retomar o trabalho entre sessões. Atualizar ao fim de cada 
 (seção **Histórico** + ajustar **Pendências** e **Próximos passos**).
 
 - **Diagrama de referência:** `docs/Proposta_04.excalidraw` (v04, com as decisões de 2026-09-28; `Proposta_03` mantido como original)
-- **Última atualização:** 2026-10-04
+- **Última atualização:** 2026-10-07
 - **Repositórios:** blockchain https://github.com/ECOLchain/ecolchain-core-chains · web https://github.com/ECOLchain/ecolchain-core-web (clonado em `web/`)
 
 ---
@@ -52,7 +52,7 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 | F4 `ecol_reparticao` | ✅ 8 instruções, 17 testes (3 programas encadeados); riscos R1–R3 registrados |
 | F5 Codama, devnet, Squads, segurança | ✅ clientes Codama, gerador TS da árvore, E2E Surfpool, testes de propriedade; **deploy devnet verificável + Squads 3 de 5** (2026-09-28) |
 
-**Estado atual do `ecol_lote`:** 33 instruções (materiais, guardião e entregas desde a sessão 10; nomes de participante e balança e a ADR 0010 na sessão 12); workspace com 129 testes Rust + 6 TS + 2 E2E; clippy estrito limpo. Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
+**Estado atual do `ecol_lote`:** 43 instruções (materiais, guardião e entregas desde a sessão 10; nomes de participante e balança e a ADR 0010 na sessão 12; **ADR 0011 na sessão 15**: carteiras vinculadas, variações do material, garrafas, importador e Clean Tech); workspace com 146 testes Rust + 6 TS + 2 E2E; clippy estrito limpo. **A ADR 0011 ainda não está na devnet** (upgrade pelo Squads pendente). Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
 
 **Interface web (estado em 2026-09-29, repositório `ecolchain-core-web`):** o fluxo do lote está completo, da origem até `Reciclado`.
 
@@ -65,6 +65,9 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 | Transportador | Minha carteira (QR), Retiradas (assinar) |
 | Indústria | Compras (aceitar compra), Recebimentos (balança da indústria) |
 | Intermediador | Escrow dos lotes (assinar venda, liberar pagamento) |
+| Clean Tech | as mesmas telas da Cooperativa (ADR 0011) |
+| Importador | Painel (página inicial, gráficos), Lotes de distribuição, Coletas, Entregas, Reciclagem (NF), Minha carteira |
+| Todos os participantes | Minha carteira com as carteiras vinculadas (titular gerencia; Administração › Participantes › Carteiras também) |
 
 Ainda provisórias: Painel, Marketplace, Entregas em curso, Disputas, Meus direitos, Créditos de carbono, Distribuições, Vendas de crédito, Repasses, Créditos em validação, Aposentadorias, Resgates de cupons, Arbitragem.
 
@@ -183,6 +186,7 @@ Configs inicializadas nos 3 programas. Custo ≈ 7,5 SOL (14,05 → 6,57). Chave
 
 | Data | Decisão |
 |---|---|
+| 2026-10-07 | **ADR 0011:** Importador de vinhos (trilha de logística reversa integrada: distribuição → coleta → entrega vira lote de origem `Importador` → NF da reciclagem); **Clean Tech** = papel que opera como a cooperativa (fatia da cooperativa na repartição); **várias carteiras por ator**, com nome, todas assinando pelo titular; **Vidro com variações** (Transparente, Verde, Marrom) e garrafas aproximadas; lote de venda não mistura cores |
 | 2026-09-28 | Foco da análise na camada blockchain Solana |
 | 2026-09-28 | Escrow incluído como premissa em aberto no diagrama (sugestão inicial: R$ off-chain) |
 | 2026-09-28 | **Escrow em R$ off-chain** via intermediador (Pix / conta garantia); programa só registra bloqueio/liberação |
@@ -226,6 +230,9 @@ Configs inicializadas nos 3 programas. Custo ≈ 7,5 SOL (14,05 → 6,57). Chave
 - [x] Enviar ~0,01 SOL ao intermediador da devnet (`39J3…82Ez`) — recebeu 0,02 SOL em 2026-10-03
 - [ ] Clientes para a web sem depender da pasta vizinha (pacote npm ou submódulo), quando for preciso publicar o site em https (câmera no celular)
 - [ ] Corrigir notação/legenda das setas e sobreposições do diagrama (ver achados gerais abaixo)
+- [ ] **Upgrade da ADR 0011 na devnet** (3 programas pelo Squads, ampliar a conta do `ecol_lote`; depois cadastrar as cores do Vidro, ligar "conta garrafas" e criar Importador e Clean Tech de teste) — aguardando confirmação do usuário
+- [ ] Commit da interface (`web/`): as mudanças da ADR 0011 estão junto com alterações anteriores não commitadas (venda sem nonce durável, `venda.ts`/`Vendas.tsx`/`erros.ts`/i18n) — decidir com o usuário como separar
+- [ ] Riscos da ADR 0011 antes da mainnet: vínculo de carteira sem prova de posse; distribuição autodeclarada
 
 ### Achados gerais do diagrama (fora do foco atual, para depois)
 - Setas fora da legenda: `a_35` (preta, mas não é material), `a_37`/`a_97` (dinheiro tracejado), `a_52`–`a_54` (dados contínuos), `a_76` (sentido invertido).
@@ -243,6 +250,7 @@ Configs inicializadas nos 3 programas. Custo ≈ 7,5 SOL (14,05 → 6,57). Chave
 - Explicado o conceito de escrow e as opções A/B.
 - Diagrama alterado: nova linha em "❓ PREMISSAS EM ABERTO" (`t_1014`), retângulo `r_1013` +16 px de altura.
 - Criado este `CONTINUATION.md`.
+- Sessão 15 (2026-10-07): **ADR 0011 implementada** (pedido do usuário: Importador de vinhos, Clean Tech, várias carteiras por ator com nome, Vidro com cores e garrafas). On-chain (`ecol_lote`): `Papel::Importador`/`CleanTech` (`exigir_recebedor`), conta `Carteira` (`participante_add_carteira`/`participante_update_carteira`; instruções assinadas por participante passaram a `X` titular + `X_assinante` + `X_carteira` opcional, `exigir_assinatura`), `MaterialVariacao` (`operador_create_variacao`/`update_variacao`/`set_material_garrafas`), `variacao`/`qtd_garrafas` em `Entrega` e `Lote` (no `_reserved`), `Distribuicao` e `Coleta` com `importador_create_distribuicao`, `register_coleta`, `entregar_coleta`, `cancelar_entrega`, `informar_reciclagem`; `OrigemEntrega::Importador` em `cooperativa_register_entrega`. `ecol_reparticao`: `balde()` (Clean Tech na fatia da cooperativa). 146 testes Rust (+17), clippy limpo, E2E ok. Codama: contas opcionais sem PDA derivada automaticamente (`gerar-clientes.ts`). Interface: telas do Importador com painel em SVG próprio (skill dataviz, paleta validada nos dois temas), Clean Tech com as telas da cooperativa, carteiras vinculadas (Minha carteira e Administração), variações em Materiais, cor/garrafas em lotes e trilha; códigos de retirada `v2` e de venda `v3` com a carteira que assina. `rede-local.ts` cria Vidro com cores, Importador (2 carteiras), Clean Tech, 6 meses de distribuições e coletas em todas as etapas. Testado no navegador (Playwright + carteira Wallet Standard injetada): painel claro/escuro/celular, envio de coleta pela carteira vinculada, recebimento da coleta pela Clean Tech, montagem por cor, carteiras e variações na Administração, retirada v2 e venda v3. Obs.: o relógio do Surfpool atrasa (~19 min depois de meia hora rodando) e a pesagem do navegador expira; `surfnet_timeTravel` para a hora atual resolve.
 - Sessão 14 (2026-10-04): demonstração local executada (`clients/scripts/rede-local.ts` + `web` com `VITE_RPC_LOCALNET`/`VITE_WS_LOCALNET` e `--host`) e aberta no navegador do Windows (`cmd.exe /c start http://localhost:5173`; o WSL repassa o `localhost`). O Playwright não abriu: falta o Chrome (`npx playwright install chrome`). Sem mudança de código.
 - Sessão 13 (cont.): **Liberação do escrow (web `0fb4208`).** A tela Escrow dos lotes (intermediador) foi reescrita: situação do dinheiro por lote (retido, aguardando liberação, liberado, devolvido, em disputa), filtros, **Liberar pagamento** (`intermediador_confirm_liberacao`, `Recebido → Reciclado`, referência do repasse com hash `ECOLCHAIN:LIBERACAO:v1` sobre o texto normalizado) e o **Assinar venda** de antes. `rede-local.ts`: etapa `recebido` no `loteDemo` (pesagem da balança da indústria), lote #4 recebido e SOL para o intermediador. Testado: liberação do #4 e, de novo, a venda em três assinaturas. Na devnet, o intermediador (`39J3…82Ez`) está com 0 SOL: precisa de ~0,01 SOL para a taxa (anotado no roteiro, ato 2.8c).
 - Sessão 13 (cont.): **Recebimentos da indústria (web `7aee915`).** `industria_confirm_recebimento` com pesagem Ed25519 da balança da indústria (opcional; sem ela, peso "informado") e aviso de divergência antes de assinar (mesma conta de `Lote::peso_diverge`, tolerância fixada na venda); fora da faixa, o lote vai a `EmDisputa`. Balança de teste extraída para `componentes/BalancaTeste.tsx` (cooperativa e indústria, textos `balancaTeste.*` com `{{quem}}`). `useLotesDaIndustria` comum a Compras e Recebimentos. `rede-local.ts` reorganizado com `loteDemo(id, material, peso, coletor, etapa)`: #1 vendido, #2 em leilão, #3 em transporte, e a balança da indústria cadastrada (semente no JSON); a indústria recebe SOL para a taxa. Testado: aviso de divergência, recebimento atestado (119,2 kg de 120), e regressão de Lotes de origem. Roteiro ganhou o ato 2.8b (recebimento) e a balança da indústria na preparação.

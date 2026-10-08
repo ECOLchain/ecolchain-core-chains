@@ -20,6 +20,25 @@ pub const MAX_ENTREGAS_POR_TX: usize = 10;
 #[constant]
 pub const SEED_MATERIAL: &[u8] = b"material";
 
+/// Variação de um material (cor do vidro, por exemplo): PDA `["variacao", codigo (u16 LE), indice (u8)]`.
+#[constant]
+pub const SEED_VARIACAO: &[u8] = b"variacao";
+
+/// Máximo de variações por material (índices 1..=MAX; 0 = sem variação).
+pub const MAX_VARIACOES: u8 = 16;
+
+/// Carteira vinculada a um participante: PDA `["carteira", endereco]` (ADR 0011).
+#[constant]
+pub const SEED_CARTEIRA: &[u8] = b"carteira";
+
+/// Lote de distribuição do importador (garrafas postas no mercado): `["distrib", importador, id (u64 LE)]`.
+#[constant]
+pub const SEED_DISTRIBUICAO: &[u8] = b"distrib";
+
+/// Coleta do importador (logística reversa): `["coleta", importador, id (u64 LE)]`.
+#[constant]
+pub const SEED_COLETA: &[u8] = b"coleta";
+
 /// Tamanho máximo do nome de um material, em bytes UTF-8.
 pub const MATERIAL_NOME_MAX: usize = 32;
 /// Nome de exibição de participantes e balanças, em bytes UTF-8 (ocupa o antigo espaço reservado das contas).

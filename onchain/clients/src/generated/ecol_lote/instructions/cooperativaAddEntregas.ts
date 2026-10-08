@@ -54,6 +54,8 @@ export function getCooperativaAddEntregasDiscriminatorBytes(): ReadonlyUint8Arra
 export type CooperativaAddEntregasInstruction<
   TProgram extends string = typeof ECOL_LOTE_PROGRAM_ADDRESS,
   TAccountCooperativa extends string | AccountMeta<string> = string,
+  TAccountCooperativaAssinante extends string | AccountMeta<string> = string,
+  TAccountCooperativaCarteira extends string | AccountMeta<string> = string,
   TAccountConfig extends string | AccountMeta<string> = string,
   TAccountLote extends string | AccountMeta<string> = string,
   TAccountEventAuthority extends string | AccountMeta<string> = string,
@@ -64,9 +66,15 @@ export type CooperativaAddEntregasInstruction<
   InstructionWithAccounts<
     [
       TAccountCooperativa extends string
-        ? ReadonlySignerAccount<TAccountCooperativa> &
-            AccountSignerMeta<TAccountCooperativa>
+        ? ReadonlyAccount<TAccountCooperativa>
         : TAccountCooperativa,
+      TAccountCooperativaAssinante extends string
+        ? ReadonlySignerAccount<TAccountCooperativaAssinante> &
+            AccountSignerMeta<TAccountCooperativaAssinante>
+        : TAccountCooperativaAssinante,
+      TAccountCooperativaCarteira extends string
+        ? ReadonlyAccount<TAccountCooperativaCarteira>
+        : TAccountCooperativaCarteira,
       TAccountConfig extends string
         ? ReadonlyAccount<TAccountConfig>
         : TAccountConfig,
@@ -116,7 +124,11 @@ export function getCooperativaAddEntregasInstructionDataCodec(): FixedSizeCodec<
 }
 
 export type CooperativaAddEntregasAsyncInput<
-  TAccountCooperativa extends InstructionSignerInput = InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput = InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountLote extends InstructionAccountInput = InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput =
@@ -124,6 +136,8 @@ export type CooperativaAddEntregasAsyncInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   cooperativa: TAccountCooperativa;
+  cooperativaAssinante: TAccountCooperativaAssinante;
+  cooperativaCarteira?: TAccountCooperativaCarteira;
   config?: TAccountConfig;
   lote: TAccountLote;
   eventAuthority: TAccountEventAuthority;
@@ -131,7 +145,9 @@ export type CooperativaAddEntregasAsyncInput<
 };
 
 export async function getCooperativaAddEntregasInstructionAsync<
-  TAccountCooperativa extends InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput,
@@ -140,6 +156,8 @@ export async function getCooperativaAddEntregasInstructionAsync<
 >(
   input: CooperativaAddEntregasAsyncInput<
     TAccountCooperativa,
+    TAccountCooperativaAssinante,
+    TAccountCooperativaCarteira,
     TAccountConfig,
     TAccountLote,
     TAccountEventAuthority,
@@ -152,6 +170,14 @@ export async function getCooperativaAddEntregasInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountConfig,
@@ -181,7 +207,17 @@ export async function getCooperativaAddEntregasInstructionAsync<
   const originalAccounts = {
     cooperativa: {
       value: input.cooperativa ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    cooperativaAssinante: {
+      value: input.cooperativaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    cooperativaCarteira: {
+      value: input.cooperativaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     config: { value: input.config ?? null, isSigner: false, isWritable: false },
@@ -210,6 +246,8 @@ export async function getCooperativaAddEntregasInstructionAsync<
   return Object.freeze({
     accounts: [
       getAccountMeta("cooperativa", accounts.cooperativa),
+      getAccountMeta("cooperativaAssinante", accounts.cooperativaAssinante),
+      getAccountMeta("cooperativaCarteira", accounts.cooperativaCarteira),
       getAccountMeta("config", accounts.config),
       getAccountMeta("lote", accounts.lote),
       getAccountMeta("eventAuthority", accounts.eventAuthority),
@@ -222,6 +260,14 @@ export async function getCooperativaAddEntregasInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountConfig,
@@ -243,7 +289,11 @@ export async function getCooperativaAddEntregasInstructionAsync<
 }
 
 export type CooperativaAddEntregasInput<
-  TAccountCooperativa extends InstructionSignerInput = InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput = InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountLote extends InstructionAccountInput = InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput =
@@ -251,6 +301,8 @@ export type CooperativaAddEntregasInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   cooperativa: TAccountCooperativa;
+  cooperativaAssinante: TAccountCooperativaAssinante;
+  cooperativaCarteira?: TAccountCooperativaCarteira;
   config: TAccountConfig;
   lote: TAccountLote;
   eventAuthority: TAccountEventAuthority;
@@ -258,7 +310,9 @@ export type CooperativaAddEntregasInput<
 };
 
 export function getCooperativaAddEntregasInstruction<
-  TAccountCooperativa extends InstructionSignerInput,
+  TAccountCooperativa extends InstructionAccountInput,
+  TAccountCooperativaAssinante extends InstructionSignerInput,
+  TAccountCooperativaCarteira extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput,
@@ -267,6 +321,8 @@ export function getCooperativaAddEntregasInstruction<
 >(
   input: CooperativaAddEntregasInput<
     TAccountCooperativa,
+    TAccountCooperativaAssinante,
+    TAccountCooperativaCarteira,
     TAccountConfig,
     TAccountLote,
     TAccountEventAuthority,
@@ -278,6 +334,14 @@ export function getCooperativaAddEntregasInstruction<
   ResolvedInstructionAccountMeta<
     TAccountCooperativa,
     InstructionAccountInputAddress<TAccountCooperativa>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountCooperativaAssinante,
+    InstructionAccountInputAddress<TAccountCooperativaAssinante>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountCooperativaCarteira,
+    InstructionAccountInputAddress<TAccountCooperativaCarteira>
   >,
   ResolvedInstructionAccountMeta<
     TAccountConfig,
@@ -306,7 +370,17 @@ export function getCooperativaAddEntregasInstruction<
   const originalAccounts = {
     cooperativa: {
       value: input.cooperativa ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    cooperativaAssinante: {
+      value: input.cooperativaAssinante ?? null,
       isSigner: true,
+      isWritable: false,
+    },
+    cooperativaCarteira: {
+      value: input.cooperativaCarteira ?? null,
+      isSigner: false,
       isWritable: false,
     },
     config: { value: input.config ?? null, isSigner: false, isWritable: false },
@@ -330,6 +404,8 @@ export function getCooperativaAddEntregasInstruction<
   return Object.freeze({
     accounts: [
       getAccountMeta("cooperativa", accounts.cooperativa),
+      getAccountMeta("cooperativaAssinante", accounts.cooperativaAssinante),
+      getAccountMeta("cooperativaCarteira", accounts.cooperativaCarteira),
       getAccountMeta("config", accounts.config),
       getAccountMeta("lote", accounts.lote),
       getAccountMeta("eventAuthority", accounts.eventAuthority),
@@ -342,6 +418,14 @@ export function getCooperativaAddEntregasInstruction<
     ResolvedInstructionAccountMeta<
       TAccountCooperativa,
       InstructionAccountInputAddress<TAccountCooperativa>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaAssinante,
+      InstructionAccountInputAddress<TAccountCooperativaAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCooperativaCarteira,
+      InstructionAccountInputAddress<TAccountCooperativaCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountConfig,
@@ -369,10 +453,12 @@ export type ParsedCooperativaAddEntregasInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     cooperativa: TAccountMetas[0];
-    config: TAccountMetas[1];
-    lote: TAccountMetas[2];
-    eventAuthority: TAccountMetas[3];
-    program: TAccountMetas[4];
+    cooperativaAssinante: TAccountMetas[1];
+    cooperativaCarteira?: TAccountMetas[2] | undefined;
+    config: TAccountMetas[3];
+    lote: TAccountMetas[4];
+    eventAuthority: TAccountMetas[5];
+    program: TAccountMetas[6];
   };
   data: CooperativaAddEntregasInstructionData;
 };
@@ -385,12 +471,12 @@ export function parseCooperativaAddEntregasInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCooperativaAddEntregasInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 5) {
+  if (instruction.accounts.length < 7) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 5,
+        expectedAccountMetas: 7,
       },
     );
   }
@@ -400,10 +486,18 @@ export function parseCooperativaAddEntregasInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === ECOL_LOTE_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       cooperativa: getNextAccount(),
+      cooperativaAssinante: getNextAccount(),
+      cooperativaCarteira: getNextOptionalAccount(),
       config: getNextAccount(),
       lote: getNextAccount(),
       eventAuthority: getNextAccount(),

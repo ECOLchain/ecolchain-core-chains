@@ -13,6 +13,8 @@ pub enum OrigemEntrega {
     Compra,
     /// Catador avulso, sem cadastro.
     Avulso,
+    /// Coleta do importador (logística reversa): `origem_ref` é a chave da conta `Coleta` (ADR 0011).
+    Importador,
 }
 
 /// Lote de origem (PDA `["entrega", cooperativa, entrega_id]`): material recebido pela cooperativa,
@@ -37,7 +39,11 @@ pub struct Entrega {
     pub bump: u8,
     /// Ocupa o primeiro byte do antigo espaço reservado (layout inalterado).
     pub origem: OrigemEntrega,
-    pub _reserved: [u8; 31],
+    /// Índice da `MaterialVariacao` (0 = material sem variações ou registro anterior à ADR 0011).
+    pub variacao: u8,
+    /// Quantidade aproximada de garrafas (0 quando o material não conta garrafas).
+    pub qtd_garrafas: u32,
+    pub _reserved: [u8; 26],
 }
 
 impl Entrega {

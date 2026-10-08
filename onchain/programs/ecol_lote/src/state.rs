@@ -1,4 +1,6 @@
 pub mod balanca;
+pub mod carteira;
+pub mod coleta;
 pub mod config;
 pub mod entrega;
 pub mod lote;
@@ -6,6 +8,8 @@ pub mod material;
 pub mod participante;
 
 pub use balanca::*;
+pub use carteira::*;
+pub use coleta::*;
 pub use config::*;
 pub use entrega::*;
 pub use lote::*;

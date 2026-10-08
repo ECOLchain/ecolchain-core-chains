@@ -20,6 +20,18 @@ export const SEED_BALANCA: ReadonlyUint8Array = new Uint8Array([
   98, 97, 108, 97, 110, 99, 97,
 ]);
 
+export const SEED_CARTEIRA: ReadonlyUint8Array = new Uint8Array([
+  99, 97, 114, 116, 101, 105, 114, 97,
+]);
+
+export const SEED_COLETA: ReadonlyUint8Array = new Uint8Array([
+  99, 111, 108, 101, 116, 97,
+]);
+
+export const SEED_DISTRIBUICAO: ReadonlyUint8Array = new Uint8Array([
+  100, 105, 115, 116, 114, 105, 98,
+]);
+
 export const SEED_ENTREGA: ReadonlyUint8Array = new Uint8Array([
   101, 110, 116, 114, 101, 103, 97,
 ]);
@@ -38,4 +50,8 @@ export const SEED_MATERIAL: ReadonlyUint8Array = new Uint8Array([
 
 export const SEED_PARTICIPANTE: ReadonlyUint8Array = new Uint8Array([
   112, 97, 114, 116,
+]);
+
+export const SEED_VARIACAO: ReadonlyUint8Array = new Uint8Array([
+  118, 97, 114, 105, 97, 99, 97, 111,
 ]);

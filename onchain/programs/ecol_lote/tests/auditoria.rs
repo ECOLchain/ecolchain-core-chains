@@ -152,6 +152,7 @@ fn fee_payer_nao_age_como_operador() {
             operador: patrocinador.pubkey(),
             config: config_pda(),
             participante: participante_pda(&sybil),
+            vinculo: carteira_pda(&sybil),
             system_program: anchor_lang::solana_program::system_program::ID,
             event_authority: event_authority(),
             program: ecol_lote::id(),
@@ -328,6 +329,8 @@ fn anuncio_limitado_e_cancelavel() {
         ecol_lote::instruction::CooperativaCancelAnuncio {},
         ecol_lote::accounts::CooperativaListLote {
             cooperativa: coop.pubkey(),
+            cooperativa_assinante: coop.pubkey(),
+            cooperativa_carteira: None,
             cooperativa_part: participante_pda(&coop.pubkey()),
             config: config_pda(),
             lote,

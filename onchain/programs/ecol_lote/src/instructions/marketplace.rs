@@ -1,10 +1,10 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    constants::{DURACAO_LEILAO_MAX_S, SEED_GLOBAL, SEED_LOTE, SEED_PARTICIPANTE},
+    constants::{DURACAO_LEILAO_MAX_S, SEED_CARTEIRA, SEED_GLOBAL, SEED_LOTE, SEED_PARTICIPANTE},
     error::EcolLoteError,
     events::{LoteTransicionado, LoteVendido},
-    state::{GlobalConfig, Lote, Papel, Participante},
+    state::{exigir_assinatura, Carteira, GlobalConfig, Lote, Papel, Participante},
 };
 
 /// Anuncia o lote (a partir de `Criado`) ou o reanuncia (a partir de `SemLance`) com novo preço mínimo.
@@ -12,7 +12,14 @@ use crate::{
 #[event_cpi]
 #[derive(Accounts)]
 pub struct CooperativaListLote<'info> {
-    pub cooperativa: Signer<'info>,
+    /// CHECK: carteira titular da cooperativa; conferida pelo cadastro/lote e pela assinatura.
+    pub cooperativa: UncheckedAccount<'info>,
+    pub cooperativa_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, cooperativa_assinante.key().as_ref()],
+        bump = cooperativa_carteira.bump
+    )]
+    pub cooperativa_carteira: Option<Account<'info, Carteira>>,
     #[account(seeds = [SEED_PARTICIPANTE, cooperativa.key().as_ref()], bump = cooperativa_part.bump)]
     pub cooperativa_part: Account<'info, Participante>,
     #[account(seeds = [SEED_GLOBAL], bump = config.bump)]
@@ -32,8 +39,9 @@ pub fn handle_cooperativa_list_lote(
     preco_minimo_centavos: u64,
 ) -> Result<()> {
     ctx.accounts.config.exigir_modo_normal()?;
+    ctx.accounts.exigir_assinatura()?;
     // Cooperativa desativada não assume novos compromissos comerciais.
-    ctx.accounts.cooperativa_part.exigir(Papel::Cooperativa)?;
+    ctx.accounts.cooperativa_part.exigir_recebedor()?;
     require!(preco_minimo_centavos > 0, EcolLoteError::ParametroInvalido);
     // Só vai a leilão um lote montado com entregas de coletores (base da repartição).
     require!(
@@ -65,6 +73,7 @@ pub fn handle_cooperativa_list_lote(
 /// Retira o anúncio (para reprecificar ou desistir); o lote volta a poder ser anunciado.
 pub fn handle_cooperativa_cancel_anuncio(ctx: Context<CooperativaListLote>) -> Result<()> {
     ctx.accounts.config.exigir_modo_normal()?;
+    ctx.accounts.exigir_assinatura()?;
     let agora = Clock::get()?.unix_timestamp;
     let lote_key = ctx.accounts.lote.key();
     let ator = ctx.accounts.cooperativa.key();
@@ -80,6 +89,16 @@ pub fn handle_cooperativa_cancel_anuncio(ctx: Context<CooperativaListLote>) -> R
         ts: agora
     });
     Ok(())
+}
+
+impl CooperativaListLote<'_> {
+    fn exigir_assinatura(&self) -> Result<()> {
+        exigir_assinatura(
+            &self.cooperativa.key(),
+            &self.cooperativa_assinante.key(),
+            self.cooperativa_carteira.as_deref(),
+        )
+    }
 }
 
 #[event_cpi]
@@ -122,7 +141,14 @@ pub fn handle_operador_close_leilao_sem_lance(
 #[event_cpi]
 #[derive(Accounts)]
 pub struct IndustriaAcceptVenda<'info> {
-    pub industria: Signer<'info>,
+    /// CHECK: carteira titular da indústria; conferida pelo cadastro e pela assinatura.
+    pub industria: UncheckedAccount<'info>,
+    pub industria_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, industria_assinante.key().as_ref()],
+        bump = industria_carteira.bump
+    )]
+    pub industria_carteira: Option<Box<Account<'info, Carteira>>>,
     #[account(seeds = [SEED_PARTICIPANTE, industria.key().as_ref()], bump = industria_part.bump)]
     pub industria_part: Box<Account<'info, Participante>>,
     #[account(seeds = [SEED_PARTICIPANTE, lote.cooperativa.as_ref()], bump = cooperativa_part.bump)]
@@ -152,8 +178,13 @@ pub fn handle_industria_accept_venda(
 ) -> Result<()> {
     let config = &ctx.accounts.config;
     config.exigir_modo_normal()?;
+    exigir_assinatura(
+        &ctx.accounts.industria.key(),
+        &ctx.accounts.industria_assinante.key(),
+        ctx.accounts.industria_carteira.as_deref().map(|c| &**c),
+    )?;
     ctx.accounts.industria_part.exigir(Papel::Industria)?;
-    ctx.accounts.cooperativa_part.exigir(Papel::Cooperativa)?;
+    ctx.accounts.cooperativa_part.exigir_recebedor()?;
     require!(
         !config.eh_chave_de_papel(&ctx.accounts.industria.key()),
         EcolLoteError::CarteiraReservada

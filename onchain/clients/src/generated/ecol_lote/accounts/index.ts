@@ -7,8 +7,12 @@
  */
 
 export * from "./balanca";
+export * from "./carteira";
+export * from "./coleta";
+export * from "./distribuicao";
 export * from "./entrega";
 export * from "./globalConfig";
 export * from "./lote";
 export * from "./material";
+export * from "./materialVariacao";
 export * from "./participante";

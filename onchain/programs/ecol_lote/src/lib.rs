@@ -92,6 +92,22 @@ pub mod ecol_lote {
         instructions::participantes::handle_operador_set_participante_nome(ctx, nome)
     }
 
+    pub fn participante_add_carteira(
+        ctx: Context<ParticipanteAddCarteira>,
+        endereco: Pubkey,
+        nome: String,
+    ) -> Result<()> {
+        instructions::participantes::handle_participante_add_carteira(ctx, endereco, nome)
+    }
+
+    pub fn participante_update_carteira(
+        ctx: Context<ParticipanteUpdateCarteira>,
+        nome: String,
+        ativa: bool,
+    ) -> Result<()> {
+        instructions::participantes::handle_participante_update_carteira(ctx, nome, ativa)
+    }
+
     pub fn operador_register_balanca(
         ctx: Context<OperadorRegisterBalanca>,
         dispositivo: Pubkey,
@@ -128,6 +144,28 @@ pub mod ecol_lote {
         ativo: bool,
     ) -> Result<()> {
         instructions::materiais::handle_operador_update_material(ctx, nome, ativo)
+    }
+
+    pub fn operador_create_variacao(
+        ctx: Context<OperadorCreateVariacao>,
+        nome: String,
+    ) -> Result<()> {
+        instructions::materiais::handle_operador_create_variacao(ctx, nome)
+    }
+
+    pub fn operador_update_variacao(
+        ctx: Context<OperadorUpdateVariacao>,
+        nome: String,
+        ativa: bool,
+    ) -> Result<()> {
+        instructions::materiais::handle_operador_update_variacao(ctx, nome, ativa)
+    }
+
+    pub fn operador_set_material_garrafas(
+        ctx: Context<OperadorSetMaterialGarrafas>,
+        conta_garrafas: bool,
+    ) -> Result<()> {
+        instructions::materiais::handle_operador_set_material_garrafas(ctx, conta_garrafas)
     }
 
     pub fn cooperativa_register_entrega(
@@ -235,6 +273,35 @@ pub mod ecol_lote {
         decisao: DecisaoDisputa,
     ) -> Result<()> {
         instructions::disputa::handle_arbitro_resolve_disputa(ctx, decisao)
+    }
+
+    pub fn importador_create_distribuicao(
+        ctx: Context<ImportadorCreateDistribuicao>,
+        dados: DadosDistribuicao,
+    ) -> Result<()> {
+        instructions::importador::handle_importador_create_distribuicao(ctx, dados)
+    }
+
+    pub fn importador_register_coleta(
+        ctx: Context<ImportadorRegisterColeta>,
+        dados: DadosColeta,
+    ) -> Result<()> {
+        instructions::importador::handle_importador_register_coleta(ctx, dados)
+    }
+
+    pub fn importador_entregar_coleta(ctx: Context<ImportadorEntregarColeta>) -> Result<()> {
+        instructions::importador::handle_importador_entregar_coleta(ctx)
+    }
+
+    pub fn importador_cancelar_entrega(ctx: Context<ImportadorCancelarEntrega>) -> Result<()> {
+        instructions::importador::handle_importador_cancelar_entrega(ctx)
+    }
+
+    pub fn importador_informar_reciclagem(
+        ctx: Context<ImportadorInformarReciclagem>,
+        nf_reciclagem_hash: [u8; 32],
+    ) -> Result<()> {
+        instructions::importador::handle_importador_informar_reciclagem(ctx, nf_reciclagem_hash)
     }
 
     pub fn credito_mark_agregado(ctx: Context<CreditoMarkAgregado>, credito: Pubkey) -> Result<()> {

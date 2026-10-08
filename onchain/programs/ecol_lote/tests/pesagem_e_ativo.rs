@@ -339,8 +339,12 @@ fn asset_de_outro_lote_e_rejeitado() {
         ecol_lote::instruction::TransportadorPickupLote {},
         ecol_lote::accounts::TransportadorPickupLote {
             transportador: amb.transportador.pubkey(),
+            transportador_assinante: amb.transportador.pubkey(),
+            transportador_carteira: None,
             transportador_part: participante_pda(&amb.transportador.pubkey()),
             cooperativa: amb.cooperativa.pubkey(),
+            cooperativa_assinante: amb.cooperativa.pubkey(),
+            cooperativa_carteira: None,
             cooperativa_part: participante_pda(&amb.cooperativa.pubkey()),
             config: config_pda(),
             lote: lote3,

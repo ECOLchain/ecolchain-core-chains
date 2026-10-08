@@ -33,7 +33,10 @@ import {
   type PapelArgs,
 } from ".";
 
-/** Cadastro de uma carteira na EcolChain (PDA `["part", carteira]`). Uma carteira tem um único papel. */
+/**
+ * Cadastro de uma carteira na EcolChain (PDA `["part", carteira]`). Uma carteira tem um único papel;
+ * o ator pode ter outras carteiras vinculadas (`Carteira`), que assinam por ele.
+ */
 export type Participante = {
   carteira: Address;
   papel: Papel;

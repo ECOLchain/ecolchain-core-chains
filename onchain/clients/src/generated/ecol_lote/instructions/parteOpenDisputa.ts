@@ -60,6 +60,8 @@ export function getParteOpenDisputaDiscriminatorBytes(): ReadonlyUint8Array {
 export type ParteOpenDisputaInstruction<
   TProgram extends string = typeof ECOL_LOTE_PROGRAM_ADDRESS,
   TAccountParte extends string | AccountMeta<string> = string,
+  TAccountParteAssinante extends string | AccountMeta<string> = string,
+  TAccountParteCarteira extends string | AccountMeta<string> = string,
   TAccountConfig extends string | AccountMeta<string> = string,
   TAccountLote extends string | AccountMeta<string> = string,
   TAccountEventAuthority extends string | AccountMeta<string> = string,
@@ -70,9 +72,15 @@ export type ParteOpenDisputaInstruction<
   InstructionWithAccounts<
     [
       TAccountParte extends string
-        ? ReadonlySignerAccount<TAccountParte> &
-            AccountSignerMeta<TAccountParte>
+        ? ReadonlyAccount<TAccountParte>
         : TAccountParte,
+      TAccountParteAssinante extends string
+        ? ReadonlySignerAccount<TAccountParteAssinante> &
+            AccountSignerMeta<TAccountParteAssinante>
+        : TAccountParteAssinante,
+      TAccountParteCarteira extends string
+        ? ReadonlyAccount<TAccountParteCarteira>
+        : TAccountParteCarteira,
       TAccountConfig extends string
         ? ReadonlyAccount<TAccountConfig>
         : TAccountConfig,
@@ -124,7 +132,11 @@ export function getParteOpenDisputaInstructionDataCodec(): FixedSizeCodec<
 }
 
 export type ParteOpenDisputaAsyncInput<
-  TAccountParte extends InstructionSignerInput = InstructionSignerInput,
+  TAccountParte extends InstructionAccountInput = InstructionAccountInput,
+  TAccountParteAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountParteCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountLote extends InstructionAccountInput = InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput =
@@ -132,6 +144,8 @@ export type ParteOpenDisputaAsyncInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   parte: TAccountParte;
+  parteAssinante: TAccountParteAssinante;
+  parteCarteira?: TAccountParteCarteira;
   config?: TAccountConfig;
   lote: TAccountLote;
   eventAuthority: TAccountEventAuthority;
@@ -140,7 +154,9 @@ export type ParteOpenDisputaAsyncInput<
 };
 
 export async function getParteOpenDisputaInstructionAsync<
-  TAccountParte extends InstructionSignerInput,
+  TAccountParte extends InstructionAccountInput,
+  TAccountParteAssinante extends InstructionSignerInput,
+  TAccountParteCarteira extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput,
@@ -149,6 +165,8 @@ export async function getParteOpenDisputaInstructionAsync<
 >(
   input: ParteOpenDisputaAsyncInput<
     TAccountParte,
+    TAccountParteAssinante,
+    TAccountParteCarteira,
     TAccountConfig,
     TAccountLote,
     TAccountEventAuthority,
@@ -161,6 +179,14 @@ export async function getParteOpenDisputaInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountParte,
       InstructionAccountInputAddress<TAccountParte>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountParteAssinante,
+      InstructionAccountInputAddress<TAccountParteAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountParteCarteira,
+      InstructionAccountInputAddress<TAccountParteCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountConfig,
@@ -188,7 +214,17 @@ export async function getParteOpenDisputaInstructionAsync<
 
   // Original accounts.
   const originalAccounts = {
-    parte: { value: input.parte ?? null, isSigner: true, isWritable: false },
+    parte: { value: input.parte ?? null, isSigner: false, isWritable: false },
+    parteAssinante: {
+      value: input.parteAssinante ?? null,
+      isSigner: true,
+      isWritable: false,
+    },
+    parteCarteira: {
+      value: input.parteCarteira ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
     config: { value: input.config ?? null, isSigner: false, isWritable: false },
     lote: { value: input.lote ?? null, isSigner: false, isWritable: true },
     eventAuthority: {
@@ -218,6 +254,8 @@ export async function getParteOpenDisputaInstructionAsync<
   return Object.freeze({
     accounts: [
       getAccountMeta("parte", accounts.parte),
+      getAccountMeta("parteAssinante", accounts.parteAssinante),
+      getAccountMeta("parteCarteira", accounts.parteCarteira),
       getAccountMeta("config", accounts.config),
       getAccountMeta("lote", accounts.lote),
       getAccountMeta("eventAuthority", accounts.eventAuthority),
@@ -232,6 +270,14 @@ export async function getParteOpenDisputaInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountParte,
       InstructionAccountInputAddress<TAccountParte>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountParteAssinante,
+      InstructionAccountInputAddress<TAccountParteAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountParteCarteira,
+      InstructionAccountInputAddress<TAccountParteCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountConfig,
@@ -253,7 +299,11 @@ export async function getParteOpenDisputaInstructionAsync<
 }
 
 export type ParteOpenDisputaInput<
-  TAccountParte extends InstructionSignerInput = InstructionSignerInput,
+  TAccountParte extends InstructionAccountInput = InstructionAccountInput,
+  TAccountParteAssinante extends InstructionSignerInput =
+    InstructionSignerInput,
+  TAccountParteCarteira extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput = InstructionAccountInput,
   TAccountLote extends InstructionAccountInput = InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput =
@@ -261,6 +311,8 @@ export type ParteOpenDisputaInput<
   TAccountProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
   parte: TAccountParte;
+  parteAssinante: TAccountParteAssinante;
+  parteCarteira?: TAccountParteCarteira;
   config: TAccountConfig;
   lote: TAccountLote;
   eventAuthority: TAccountEventAuthority;
@@ -269,7 +321,9 @@ export type ParteOpenDisputaInput<
 };
 
 export function getParteOpenDisputaInstruction<
-  TAccountParte extends InstructionSignerInput,
+  TAccountParte extends InstructionAccountInput,
+  TAccountParteAssinante extends InstructionSignerInput,
+  TAccountParteCarteira extends InstructionAccountInput,
   TAccountConfig extends InstructionAccountInput,
   TAccountLote extends InstructionAccountInput,
   TAccountEventAuthority extends InstructionAccountInput,
@@ -278,6 +332,8 @@ export function getParteOpenDisputaInstruction<
 >(
   input: ParteOpenDisputaInput<
     TAccountParte,
+    TAccountParteAssinante,
+    TAccountParteCarteira,
     TAccountConfig,
     TAccountLote,
     TAccountEventAuthority,
@@ -289,6 +345,14 @@ export function getParteOpenDisputaInstruction<
   ResolvedInstructionAccountMeta<
     TAccountParte,
     InstructionAccountInputAddress<TAccountParte>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountParteAssinante,
+    InstructionAccountInputAddress<TAccountParteAssinante>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountParteCarteira,
+    InstructionAccountInputAddress<TAccountParteCarteira>
   >,
   ResolvedInstructionAccountMeta<
     TAccountConfig,
@@ -315,7 +379,17 @@ export function getParteOpenDisputaInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    parte: { value: input.parte ?? null, isSigner: true, isWritable: false },
+    parte: { value: input.parte ?? null, isSigner: false, isWritable: false },
+    parteAssinante: {
+      value: input.parteAssinante ?? null,
+      isSigner: true,
+      isWritable: false,
+    },
+    parteCarteira: {
+      value: input.parteCarteira ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
     config: { value: input.config ?? null, isSigner: false, isWritable: false },
     lote: { value: input.lote ?? null, isSigner: false, isWritable: true },
     eventAuthority: {
@@ -340,6 +414,8 @@ export function getParteOpenDisputaInstruction<
   return Object.freeze({
     accounts: [
       getAccountMeta("parte", accounts.parte),
+      getAccountMeta("parteAssinante", accounts.parteAssinante),
+      getAccountMeta("parteCarteira", accounts.parteCarteira),
       getAccountMeta("config", accounts.config),
       getAccountMeta("lote", accounts.lote),
       getAccountMeta("eventAuthority", accounts.eventAuthority),
@@ -354,6 +430,14 @@ export function getParteOpenDisputaInstruction<
     ResolvedInstructionAccountMeta<
       TAccountParte,
       InstructionAccountInputAddress<TAccountParte>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountParteAssinante,
+      InstructionAccountInputAddress<TAccountParteAssinante>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountParteCarteira,
+      InstructionAccountInputAddress<TAccountParteCarteira>
     >,
     ResolvedInstructionAccountMeta<
       TAccountConfig,
@@ -381,10 +465,12 @@ export type ParsedParteOpenDisputaInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     parte: TAccountMetas[0];
-    config: TAccountMetas[1];
-    lote: TAccountMetas[2];
-    eventAuthority: TAccountMetas[3];
-    program: TAccountMetas[4];
+    parteAssinante: TAccountMetas[1];
+    parteCarteira?: TAccountMetas[2] | undefined;
+    config: TAccountMetas[3];
+    lote: TAccountMetas[4];
+    eventAuthority: TAccountMetas[5];
+    program: TAccountMetas[6];
   };
   data: ParteOpenDisputaInstructionData;
 };
@@ -397,12 +483,12 @@ export function parseParteOpenDisputaInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedParteOpenDisputaInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 5) {
+  if (instruction.accounts.length < 7) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 5,
+        expectedAccountMetas: 7,
       },
     );
   }
@@ -412,10 +498,18 @@ export function parseParteOpenDisputaInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === ECOL_LOTE_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       parte: getNextAccount(),
+      parteAssinante: getNextAccount(),
+      parteCarteira: getNextOptionalAccount(),
       config: getNextAccount(),
       lote: getNextAccount(),
       eventAuthority: getNextAccount(),

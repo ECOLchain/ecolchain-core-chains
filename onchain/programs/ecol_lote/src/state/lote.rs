@@ -282,7 +282,11 @@ pub struct Lote {
     /// O Core asset tem `PermanentBurnDelegate` do programa (lotes fechados desde a ADR 0010) e pode
     /// ser queimado ao desfazer a união.
     pub asset_queimavel: bool,
-    pub _reserved: [u8; 55],
+    /// Variação do material (0 = sem variação); todos os lotes de origem têm a mesma.
+    pub variacao: u8,
+    /// Soma das garrafas aproximadas dos lotes de origem.
+    pub qtd_garrafas: u32,
+    pub _reserved: [u8; 50],
 }
 
 impl Lote {
@@ -489,7 +493,9 @@ mod testes {
             bump: 0,
             peso_sem_coletor_g: 0,
             asset_queimavel: false,
-            _reserved: [0; 55],
+            variacao: 0,
+            qtd_garrafas: 0,
+            _reserved: [0; 50],
         };
         // Tolerância de 2% = 20 kg: exatamente no limite não diverge; 1 g além diverge (para mais ou para menos).
         assert!(!lote.peso_diverge(980_000, 200).unwrap());
@@ -560,7 +566,9 @@ mod propriedades {
             bump: 0,
             peso_sem_coletor_g: 0,
             asset_queimavel: false,
-            _reserved: [0; 55],
+            variacao: 0,
+            qtd_garrafas: 0,
+            _reserved: [0; 50],
         }
     }
 

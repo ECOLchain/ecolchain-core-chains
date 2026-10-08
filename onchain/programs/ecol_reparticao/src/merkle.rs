@@ -14,6 +14,21 @@ pub fn papel_u8(papel: Papel) -> u8 {
         Papel::Cooperativa => 1,
         Papel::Transportador => 2,
         Papel::Industria => 3,
+        // ADR 0011: valores novos só no fim; os de 0 a 3 entram no hash de folhas já publicadas.
+        Papel::Importador => 4,
+        Papel::CleanTech => 5,
+    }
+}
+
+/// Fatia da receita (índice de `total_por_papel`) a que o papel tem direito. A Clean Tech recebe
+/// a fatia da cooperativa; o importador não tem fatia no crédito.
+pub fn balde(papel: Papel) -> Option<usize> {
+    match papel {
+        Papel::Coletor => Some(0),
+        Papel::Cooperativa | Papel::CleanTech => Some(1),
+        Papel::Transportador => Some(2),
+        Papel::Industria => Some(3),
+        Papel::Importador => None,
     }
 }
 

@@ -8,6 +8,7 @@
 
 export * from "./configParams";
 export * from "./decisaoDisputa";
+export * from "./estadoColeta";
 export * from "./estadoLote";
 export * from "./etapaDisputavel";
 export * from "./modoOperacao";

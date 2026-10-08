@@ -20,6 +20,8 @@ export enum Papel {
   Cooperativa,
   Transportador,
   Industria,
+  Importador,
+  CleanTech,
 }
 
 export type PapelArgs = Papel;

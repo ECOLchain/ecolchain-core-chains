@@ -4,7 +4,8 @@ use crate::{
     ativo::{self, ContasAsset},
     constants::{
         BPS_BASE, MAX_ENTREGAS_POR_TX, SEED_ASSET, SEED_AUTORIDADE_ASSET, SEED_BALANCA,
-        SEED_GLOBAL, SEED_LOTE, SEED_MATERIAL, SEED_PARTICIPANTE, URI_MAX_LEN,
+        SEED_CARTEIRA, SEED_GLOBAL, SEED_LOTE, SEED_MATERIAL, SEED_PARTICIPANTE, SEED_VARIACAO,
+        URI_MAX_LEN,
     },
     error::EcolLoteError,
     events::{
@@ -12,7 +13,10 @@ use crate::{
     },
     instructions::entregas::ler_entrega,
     pesagem::{self, TipoPesagem},
-    state::{Balanca, EstadoLote, GlobalConfig, Lote, Material, Papel, Participante},
+    state::{
+        exigir_assinatura, Balanca, Carteira, EstadoLote, GlobalConfig, Lote, Material,
+        MaterialVariacao, Participante,
+    },
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -21,6 +25,8 @@ pub struct DadosLote {
     /// Código do material cadastrado; a conta `material` correspondente deve estar ativa.
     pub material: u16,
     pub evidencias_hash: [u8; 32],
+    /// Índice da variação (0 se o material não tem variações); os lotes de origem têm de ter a mesma.
+    pub variacao: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -41,13 +47,25 @@ pub struct DadosFechamento {
 pub struct CooperativaCreateLote<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub cooperativa: Signer<'info>,
+    /// CHECK: carteira titular da cooperativa; conferida pelo cadastro/lote e pela assinatura.
+    pub cooperativa: UncheckedAccount<'info>,
+    pub cooperativa_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, cooperativa_assinante.key().as_ref()],
+        bump = cooperativa_carteira.bump
+    )]
+    pub cooperativa_carteira: Option<Box<Account<'info, Carteira>>>,
     #[account(seeds = [SEED_PARTICIPANTE, cooperativa.key().as_ref()], bump = cooperativa_part.bump)]
     pub cooperativa_part: Box<Account<'info, Participante>>,
     #[account(seeds = [SEED_GLOBAL], bump = config.bump)]
     pub config: Box<Account<'info, GlobalConfig>>,
     #[account(seeds = [SEED_MATERIAL, &dados.material.to_le_bytes()], bump = material_cadastro.bump)]
     pub material_cadastro: Box<Account<'info, Material>>,
+    #[account(
+        seeds = [SEED_VARIACAO, &dados.material.to_le_bytes(), &[dados.variacao]],
+        bump = variacao_cadastro.bump
+    )]
+    pub variacao_cadastro: Option<Box<Account<'info, MaterialVariacao>>>,
     #[account(
         init,
         payer = payer,
@@ -64,8 +82,17 @@ pub fn handle_cooperativa_create_lote(
     dados: DadosLote,
 ) -> Result<()> {
     ctx.accounts.config.exigir_modo_normal()?;
-    ctx.accounts.cooperativa_part.exigir(Papel::Cooperativa)?;
-    ctx.accounts.material_cadastro.exigir_ativo()?;
+    exigir_assinatura(
+        &ctx.accounts.cooperativa.key(),
+        &ctx.accounts.cooperativa_assinante.key(),
+        ctx.accounts.cooperativa_carteira.as_deref().map(|c| &**c),
+    )?;
+    ctx.accounts.cooperativa_part.exigir_recebedor()?;
+    let material = &ctx.accounts.material_cadastro;
+    material.exigir_ativo()?;
+    let variacao =
+        material.variacao_do_lote(ctx.accounts.variacao_cadastro.as_deref().map(|v| &**v))?;
+    require!(variacao == dados.variacao, EcolLoteError::VariacaoInvalida);
     require!(
         dados.evidencias_hash != [0; 32],
         EcolLoteError::ReferenciaVazia
@@ -78,6 +105,7 @@ pub fn handle_cooperativa_create_lote(
     lote.cooperativa = cooperativa;
     lote.lote_id = dados.lote_id;
     lote.material = dados.material;
+    lote.variacao = dados.variacao;
     lote.evidencias_hash = dados.evidencias_hash;
     lote.estado = EstadoLote::EmMontagem;
     lote.criado_em = agora;
@@ -105,7 +133,14 @@ pub fn handle_cooperativa_create_lote(
 pub struct CooperativaFecharLote<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub cooperativa: Signer<'info>,
+    /// CHECK: carteira titular da cooperativa; conferida pelo cadastro/lote e pela assinatura.
+    pub cooperativa: UncheckedAccount<'info>,
+    pub cooperativa_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, cooperativa_assinante.key().as_ref()],
+        bump = cooperativa_carteira.bump
+    )]
+    pub cooperativa_carteira: Option<Box<Account<'info, Carteira>>>,
     #[account(seeds = [SEED_PARTICIPANTE, cooperativa.key().as_ref()], bump = cooperativa_part.bump)]
     pub cooperativa_part: Box<Account<'info, Participante>>,
     #[account(seeds = [SEED_GLOBAL], bump = config.bump)]
@@ -139,7 +174,12 @@ pub fn handle_cooperativa_fechar_lote(
     dados: DadosFechamento,
 ) -> Result<()> {
     ctx.accounts.config.exigir_modo_normal()?;
-    ctx.accounts.cooperativa_part.exigir(Papel::Cooperativa)?;
+    exigir_assinatura(
+        &ctx.accounts.cooperativa.key(),
+        &ctx.accounts.cooperativa_assinante.key(),
+        ctx.accounts.cooperativa_carteira.as_deref().map(|c| &**c),
+    )?;
+    ctx.accounts.cooperativa_part.exigir_recebedor()?;
     let cooperativa = ctx.accounts.cooperativa.key();
     ctx.accounts.balanca.exigir_ativa_de(&cooperativa)?;
     require!(dados.peso_g > 0, EcolLoteError::PesoInvalido);
@@ -259,7 +299,14 @@ pub fn exigir_peso_na_faixa(
 pub struct CooperativaDesmontarLote<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub cooperativa: Signer<'info>,
+    /// CHECK: carteira titular da cooperativa; conferida pelo cadastro/lote e pela assinatura.
+    pub cooperativa: UncheckedAccount<'info>,
+    pub cooperativa_assinante: Signer<'info>,
+    #[account(
+        seeds = [SEED_CARTEIRA, cooperativa_assinante.key().as_ref()],
+        bump = cooperativa_carteira.bump
+    )]
+    pub cooperativa_carteira: Option<Box<Account<'info, Carteira>>>,
     #[account(seeds = [SEED_GLOBAL], bump = config.bump)]
     pub config: Box<Account<'info, GlobalConfig>>,
     #[account(
@@ -285,6 +332,11 @@ pub fn handle_cooperativa_desmontar_lote<'info>(
     ctx: Context<'info, CooperativaDesmontarLote<'info>>,
 ) -> Result<()> {
     ctx.accounts.config.exigir_modo_normal()?;
+    exigir_assinatura(
+        &ctx.accounts.cooperativa.key(),
+        &ctx.accounts.cooperativa_assinante.key(),
+        ctx.accounts.cooperativa_carteira.as_deref().map(|c| &**c),
+    )?;
     let n = ctx.remaining_accounts.len();
     require!(
         n <= MAX_ENTREGAS_POR_TX,
@@ -325,6 +377,10 @@ pub fn handle_cooperativa_desmontar_lote<'info>(
         lote.peso_entregas_g = lote
             .peso_entregas_g
             .checked_sub(entrega.peso_g)
+            .ok_or(EcolLoteError::Overflow)?;
+        lote.qtd_garrafas = lote
+            .qtd_garrafas
+            .checked_sub(entrega.qtd_garrafas)
             .ok_or(EcolLoteError::Overflow)?;
         if !entrega.com_coletor() {
             lote.peso_sem_coletor_g = lote

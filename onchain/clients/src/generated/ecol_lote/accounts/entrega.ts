@@ -25,6 +25,8 @@ import {
   getStructEncoder,
   getU16Decoder,
   getU16Encoder,
+  getU32Decoder,
+  getU32Encoder,
   getU64Decoder,
   getU64Encoder,
   getU8Decoder,
@@ -78,6 +80,10 @@ export type Entrega = {
   bump: number;
   /** Ocupa o primeiro byte do antigo espaço reservado (layout inalterado). */
   origem: OrigemEntrega;
+  /** Índice da `MaterialVariacao` (0 = material sem variações ou registro anterior à ADR 0011). */
+  variacao: number;
+  /** Quantidade aproximada de garrafas (0 quando o material não conta garrafas). */
+  qtdGarrafas: number;
   reserved: ReadonlyUint8Array;
 };
 
@@ -101,6 +107,10 @@ export type EntregaArgs = {
   bump: number;
   /** Ocupa o primeiro byte do antigo espaço reservado (layout inalterado). */
   origem: OrigemEntregaArgs;
+  /** Índice da `MaterialVariacao` (0 = material sem variações ou registro anterior à ADR 0011). */
+  variacao: number;
+  /** Quantidade aproximada de garrafas (0 quando o material não conta garrafas). */
+  qtdGarrafas: number;
   reserved: ReadonlyUint8Array;
 };
 
@@ -120,7 +130,9 @@ export function getEntregaEncoder(): FixedSizeEncoder<EntregaArgs> {
       ["criadoEm", getI64Encoder()],
       ["bump", getU8Encoder()],
       ["origem", getOrigemEntregaEncoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 31)],
+      ["variacao", getU8Encoder()],
+      ["qtdGarrafas", getU32Encoder()],
+      ["reserved", fixEncoderSize(getBytesEncoder(), 26)],
     ]),
     (value) => ({ ...value, discriminator: ENTREGA_DISCRIMINATOR }),
   );
@@ -141,7 +153,9 @@ export function getEntregaDecoder(): FixedSizeDecoder<Entrega> {
     ["criadoEm", getI64Decoder()],
     ["bump", getU8Decoder()],
     ["origem", getOrigemEntregaDecoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 31)],
+    ["variacao", getU8Decoder()],
+    ["qtdGarrafas", getU32Decoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 26)],
   ]);
 }
 

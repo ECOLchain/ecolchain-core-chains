@@ -67,6 +67,7 @@ Exemplo do diagrama: um crédito vendido por US$ 50,00 (5.000 centavos) com a in
 | Direito on-chain, Zupy resgata (ADR 0007) | Os direitos de cada participante são publicados como **árvore Merkle**. A Zupy só registra os resgates, e cada resgate fica on-chain. |
 | Governança da EcolChain (ADR 0009, substitui a 0008) | Upgrade, configs e árbitro ficam num **Squads multisig 3 de 5**, com as 5 chaves da própria EcolChain. Timelock 0 na devnet e 24 h na mainnet. |
 | Lote de origem e lote de venda (ADR 0010) | Cada pesagem na cooperativa é um **lote de origem**, com ou sem coletor. Vários lotes de origem do mesmo material formam um **lote de venda**, pesado de novo e só então anunciado. A união pode ser desfeita antes da venda. O teto dos coletores na repartição vale só sobre o peso que veio de coletores. |
+| Importador, Clean Tech, carteiras e variações (ADR 0011) | **Importador de vinhos** registra garrafas postas no mercado (`Distribuicao`) e coletas (`Coleta`) que entrega a uma cooperativa ou **Clean Tech** (papel que opera como a cooperativa); a coleta vira lote de origem `Importador` e, com o lote reciclado, recebe o hash da NF. Cada participante pode ter **várias carteiras com nome** (`Carteira`, PDA `["carteira", endereço]`) que assinam por ele; a identidade continua sendo a carteira titular. Materiais ganham **variações** (`MaterialVariacao`: Transparente, Verde, Marrom no vidro) e **garrafas aproximadas**; o lote de venda não mistura cores. |
 
 **LGPD:** nenhum dado pessoal vai on-chain. A origem de cada lote aparece como `origem_ref` (hash da carteira do coletor, ou do texto da nota, recibo ou CNPJ), o cadastro como `kyc_hash`, e as fotos, tickets e notas do lote de venda como `evidencias_hash`, com os arquivos off-chain. O **nome** do participante e da balança é público (até 32 bytes): para coletores, use apelido ou código.
 
@@ -338,7 +339,7 @@ A soma sempre fecha exatamente com a receita. Isso é verificado por testes de p
 | **registrador** | `CreditoConfig` | atesta o que aconteceu no registro oficial: emissão, rejeição, aposentadoria |
 | **zupy** | `ReparticaoConfig` | plataforma de cupons: co-assina os resgates |
 | **credito_autoridade** | `GlobalConfig` | PDA `["autoridade_credito"]` do `ecol_credito` |
-| Coletor, Cooperativa, Transportador, Indústria | `Participante` | participantes cadastrados, cada um com carteira própria |
+| Coletor, Cooperativa, Clean Tech, Transportador, Indústria, Importador | `Participante` | participantes cadastrados, identificados pela carteira titular; outras carteiras (`Carteira`, com nome) podem assinar por eles (ADR 0011) |
 | Balança | `Balanca` | equipamento com keypair Ed25519 próprio, que assina cada pesagem |
 | payer | — | paga taxas e rent; separado de quem assina o ato (a EcolChain pode pagar por todos) |
 
@@ -523,7 +524,7 @@ Os testes LiteSVM carregam os `.so` de `target/deploy` e o `tests/fixtures/mpl_c
 | TS | `clients/test/` | gerador da árvore (vetor compartilhado com o Rust) |
 | E2E | `clients/e2e/` | ciclo completo no Surfpool, com time travel e crank |
 
-Total atual: **129 testes Rust, 6 TS e 2 E2E**.
+Total atual: **146 testes Rust, 6 TS e 2 E2E**.
 
 ---
 

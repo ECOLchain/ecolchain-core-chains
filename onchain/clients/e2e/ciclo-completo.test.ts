@@ -185,7 +185,8 @@ async function registrarEVincular(lotePda: Address, entregaId: bigint, pesoG: bi
         await instrucaoPesagem(k.balancaCoop, TipoPesagem.Entrega, entregaPda, pesoG, ts),
         await lote.getCooperativaRegisterEntregaInstructionAsync({
             payer: client.payer,
-            cooperativa: k.cooperativa,
+            cooperativa: k.cooperativa.address,
+            cooperativaAssinante: k.cooperativa,
             balanca: await pdas.lote.balanca(k.balancaCoop.address),
             materialCadastro: await pdas.lote.material(PLASTICO),
             entrega: entregaPda,
@@ -197,12 +198,15 @@ async function registrarEVincular(lotePda: Address, entregaId: bigint, pesoG: bi
             material: PLASTICO,
             pesoG,
             tsPesagem: ts,
+            variacao: 0,
+            qtdGarrafas: 0,
         }),
     );
     await enviar(
         comContasGravaveis(
             await lote.getCooperativaAddEntregasInstructionAsync({
-                cooperativa: k.cooperativa,
+                cooperativa: k.cooperativa.address,
+                cooperativaAssinante: k.cooperativa,
                 lote: lotePda,
                 eventAuthority: ev.lote,
                 program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
@@ -218,7 +222,8 @@ async function montarEFechar(loteId: bigint, pesoG: bigint): Promise<Address> {
     await enviar(
         await lote.getCooperativaCreateLoteInstructionAsync({
             payer: client.payer,
-            cooperativa: k.cooperativa,
+            cooperativa: k.cooperativa.address,
+            cooperativaAssinante: k.cooperativa,
             materialCadastro: await pdas.lote.material(PLASTICO),
             lote: lotePda,
             eventAuthority: ev.lote,
@@ -226,6 +231,7 @@ async function montarEFechar(loteId: bigint, pesoG: bigint): Promise<Address> {
             loteId,
             material: PLASTICO,
             evidenciasHash: h(`fotos:${loteId}`),
+            variacao: 0,
         }),
     );
     // Montagem: a entrega do coletor, pesada e assinada pela balança, vinculada ao lote.
@@ -235,7 +241,8 @@ async function montarEFechar(loteId: bigint, pesoG: bigint): Promise<Address> {
         await instrucaoPesagem(k.balancaCoop, TipoPesagem.Origem, lotePda, pesoG, ts),
         await lote.getCooperativaFecharLoteInstructionAsync({
             payer: client.payer,
-            cooperativa: k.cooperativa,
+            cooperativa: k.cooperativa.address,
+            cooperativaAssinante: k.cooperativa,
             balanca: await pdas.lote.balanca(k.balancaCoop.address),
             lote: lotePda,
             eventAuthority: ev.lote,
@@ -256,7 +263,8 @@ async function loteAteReciclado(loteId: bigint, pesoG: bigint): Promise<Address>
     let ts = await agora();
     await enviar(
         await lote.getCooperativaListLoteInstructionAsync({
-            cooperativa: k.cooperativa,
+            cooperativa: k.cooperativa.address,
+            cooperativaAssinante: k.cooperativa,
             lote: lotePda,
             eventAuthority: ev.lote,
             program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
@@ -266,7 +274,8 @@ async function loteAteReciclado(loteId: bigint, pesoG: bigint): Promise<Address>
     );
     await enviar(
         await lote.getIndustriaAcceptVendaInstructionAsync({
-            industria: k.industria,
+            industria: k.industria.address,
+            industriaAssinante: k.industria,
             cooperativaPart: await pdas.lote.participante(k.cooperativa.address),
             operador: k.operador,
             intermediador: k.intermediador,
@@ -280,8 +289,10 @@ async function loteAteReciclado(loteId: bigint, pesoG: bigint): Promise<Address>
     );
     await enviar(
         await lote.getTransportadorPickupLoteInstructionAsync({
-            transportador: k.transportador,
-            cooperativa: k.cooperativa,
+            transportador: k.transportador.address,
+            transportadorAssinante: k.transportador,
+            cooperativa: k.cooperativa.address,
+            cooperativaAssinante: k.cooperativa,
             lote: lotePda,
             payer: client.payer,
             asset,
@@ -293,7 +304,8 @@ async function loteAteReciclado(loteId: bigint, pesoG: bigint): Promise<Address>
     await enviar(
         await instrucaoPesagem(k.balancaInd, TipoPesagem.Recebimento, lotePda, pesoG, ts),
         await lote.getIndustriaConfirmRecebimentoInstructionAsync({
-            industria: k.industria,
+            industria: k.industria.address,
+            industriaAssinante: k.industria,
             balanca: await pdas.lote.balanca(k.balancaInd.address),
             lote: lotePda,
             payer: client.payer,
@@ -465,7 +477,8 @@ test('prazo de entrega vencido: time travel no surfnet + crank público', async 
     const ts = await agora();
     await enviar(
         await lote.getCooperativaListLoteInstructionAsync({
-            cooperativa: k.cooperativa,
+            cooperativa: k.cooperativa.address,
+            cooperativaAssinante: k.cooperativa,
             lote: lotePda,
             eventAuthority: ev.lote,
             program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
@@ -475,7 +488,8 @@ test('prazo de entrega vencido: time travel no surfnet + crank público', async 
     );
     await enviar(
         await lote.getIndustriaAcceptVendaInstructionAsync({
-            industria: k.industria,
+            industria: k.industria.address,
+            industriaAssinante: k.industria,
             cooperativaPart: await pdas.lote.participante(k.cooperativa.address),
             operador: k.operador,
             intermediador: k.intermediador,

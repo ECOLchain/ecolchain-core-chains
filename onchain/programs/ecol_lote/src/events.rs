@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{EstadoLote, ModoOperacao, OrigemEntrega, Papel};
+use crate::state::{EstadoColeta, EstadoLote, ModoOperacao, OrigemEntrega, Papel};
 
 /// Todo evento de lote carrega `seq`, sequencial por lote, para o indexador detectar lacunas ou reordenação.
 ///
@@ -139,6 +139,8 @@ pub struct EntregaRegistrada {
     pub peso_g: u64,
     pub balanca: Pubkey,
     pub ts_pesagem: i64,
+    pub variacao: u8,
+    pub qtd_garrafas: u32,
 }
 
 /// Um evento por entrega vinculada, em ordem: reconstrói `entregas_hash` do lote.
@@ -159,4 +161,61 @@ pub struct EntregaDevolvida {
     pub seq: u64,
     pub entrega: Pubkey,
     pub peso_g: u64,
+}
+
+#[event]
+pub struct VariacaoAtualizada {
+    pub variacao: Pubkey,
+    pub material: u16,
+    pub indice: u8,
+    pub nome: [u8; 32],
+    pub ativa: bool,
+}
+
+#[event]
+pub struct MaterialGarrafasAtualizado {
+    pub material: Pubkey,
+    pub codigo: u16,
+    pub conta_garrafas: bool,
+}
+
+/// Carteira vinculada, renomeada, ativada ou desativada.
+#[event]
+pub struct CarteiraAtualizada {
+    pub endereco: Pubkey,
+    pub participante: Pubkey,
+    pub nome: [u8; 32],
+    pub ativa: bool,
+    /// Quem fez a alteração (operador ou titular).
+    pub ator: Pubkey,
+}
+
+/// Garrafas postas no mercado pelo importador.
+#[event]
+pub struct DistribuicaoRegistrada {
+    pub distribuicao: Pubkey,
+    pub importador: Pubkey,
+    pub distrib_id: u64,
+    pub material: u16,
+    pub variacao: u8,
+    pub qtd_garrafas: u32,
+    pub peso_estimado_g: u64,
+    pub doc_hash: [u8; 32],
+    pub emitido_em: i64,
+    pub ts: i64,
+}
+
+/// Coleta do importador criada ou mudando de etapa.
+#[event]
+pub struct ColetaAtualizada {
+    pub coleta: Pubkey,
+    pub importador: Pubkey,
+    pub de: Option<EstadoColeta>,
+    pub para: EstadoColeta,
+    pub destino: Pubkey,
+    pub entrega: Pubkey,
+    pub nf_reciclagem_hash: [u8; 32],
+    /// Carteira que assinou.
+    pub ator: Pubkey,
+    pub ts: i64,
 }

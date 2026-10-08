@@ -7,7 +7,10 @@
  */
 
 export * from "./balancaAtualizada";
+export * from "./carteiraAtualizada";
+export * from "./coletaAtualizada";
 export * from "./configAtualizada";
+export * from "./distribuicaoRegistrada";
 export * from "./entregaDevolvida";
 export * from "./entregaNoLote";
 export * from "./entregaRegistrada";
@@ -18,5 +21,7 @@ export * from "./lotePesoAlterado";
 export * from "./loteTransicionado";
 export * from "./loteVendido";
 export * from "./materialAtualizado";
+export * from "./materialGarrafasAtualizado";
 export * from "./participanteAtualizado";
 export * from "./pesagemAtestada";
+export * from "./variacaoAtualizada";

@@ -13,10 +13,12 @@ use {
     ecol_lote::{
         accounts as ctas, instruction as ixs,
         pesagem::{mensagem, TipoPesagem},
-        ConfigParams, DadosEntrega, DadosFechamento, DadosLote, DecisaoDisputa, EstadoLote,
-        GlobalConfig, Lote, Material, ModoOperacao, MotivoDisputa, OrigemEntrega, Papel,
-        Participante, SEED_ASSET, SEED_AUTORIDADE_ASSET, SEED_BALANCA, SEED_ENTREGA, SEED_GLOBAL,
-        SEED_LOTE, SEED_MATERIAL, SEED_PARTICIPANTE,
+        Carteira, Coleta, ConfigParams, DadosColeta, DadosDistribuicao, DadosEntrega,
+        DadosFechamento, DadosLote, DecisaoDisputa, Distribuicao, Entrega, EstadoLote,
+        GlobalConfig, Lote, Material, MaterialVariacao, ModoOperacao, MotivoDisputa, OrigemEntrega,
+        Papel, Participante, SEED_ASSET, SEED_AUTORIDADE_ASSET, SEED_BALANCA, SEED_CARTEIRA,
+        SEED_COLETA, SEED_DISTRIBUICAO, SEED_ENTREGA, SEED_GLOBAL, SEED_LOTE, SEED_MATERIAL,
+        SEED_PARTICIPANTE, SEED_VARIACAO,
     },
     litesvm::{types::TransactionMetadata, LiteSVM},
     solana_keypair::Keypair,
@@ -32,6 +34,11 @@ pub const T0: i64 = 1_790_000_000;
 pub const PESO_G: u64 = 1_000_000; // 1 t
 /// Material cadastrado no `novo()` e usado nos lotes de teste.
 pub const PLASTICO: u16 = 1;
+/// Material com variações de cor e garrafas, criado por `preparar_vidro` (ADR 0011).
+pub const VIDRO: u16 = 3;
+pub const TRANSPARENTE: u8 = 1;
+pub const VERDE: u8 = 2;
+pub const MARROM: u8 = 3;
 
 pub struct Ambiente {
     pub svm: LiteSVM,
@@ -78,6 +85,22 @@ pub fn entrega_pda(cooperativa: &Pubkey, entrega_id: u64) -> Pubkey {
 
 pub fn material_pda(codigo: u16) -> Pubkey {
     pda(&[SEED_MATERIAL, &codigo.to_le_bytes()])
+}
+
+pub fn variacao_pda(codigo: u16, indice: u8) -> Pubkey {
+    pda(&[SEED_VARIACAO, &codigo.to_le_bytes(), &[indice]])
+}
+
+pub fn carteira_pda(endereco: &Pubkey) -> Pubkey {
+    pda(&[SEED_CARTEIRA, endereco.as_ref()])
+}
+
+pub fn distribuicao_pda(importador: &Pubkey, id: u64) -> Pubkey {
+    pda(&[SEED_DISTRIBUICAO, importador.as_ref(), &id.to_le_bytes()])
+}
+
+pub fn coleta_pda(importador: &Pubkey, id: u64) -> Pubkey {
+    pda(&[SEED_COLETA, importador.as_ref(), &id.to_le_bytes()])
 }
 
 pub fn balanca_pda(dispositivo: &Pubkey) -> Pubkey {
@@ -330,6 +353,7 @@ impl Ambiente {
             lote_id,
             material: PLASTICO,
             evidencias_hash: h("fotos+ticket"),
+            variacao: 0,
         }
     }
 
@@ -345,14 +369,18 @@ impl Ambiente {
     pub fn ix_criar_lote(&self, cooperativa: &Pubkey, dados: DadosLote) -> Instruction {
         let lote = lote_pda(cooperativa, dados.lote_id);
         let material_cadastro = material_pda(dados.material);
+        let variacao = (dados.variacao > 0).then(|| variacao_pda(dados.material, dados.variacao));
         self.ix(
             ixs::CooperativaCreateLote { dados },
             ctas::CooperativaCreateLote {
                 payer: self.patrocinador.pubkey(),
                 cooperativa: *cooperativa,
+                cooperativa_assinante: *cooperativa,
+                cooperativa_carteira: None,
                 cooperativa_part: participante_pda(cooperativa),
                 config: config_pda(),
                 material_cadastro,
+                variacao_cadastro: variacao,
                 lote,
                 system_program: system_program::ID,
                 event_authority: event_authority(),
@@ -374,6 +402,8 @@ impl Ambiente {
             ctas::CooperativaFecharLote {
                 payer: self.patrocinador.pubkey(),
                 cooperativa: *cooperativa,
+                cooperativa_assinante: *cooperativa,
+                cooperativa_carteira: None,
                 cooperativa_part: participante_pda(cooperativa),
                 config: config_pda(),
                 balanca,
@@ -434,6 +464,8 @@ impl Ambiente {
             ctas::CooperativaDesmontarLote {
                 payer: self.patrocinador.pubkey(),
                 cooperativa: cooperativa.pubkey(),
+                cooperativa_assinante: cooperativa.pubkey(),
+                cooperativa_carteira: None,
                 config: config_pda(),
                 lote,
                 asset: asset_pda(&lote),
@@ -596,6 +628,7 @@ impl Ambiente {
                 operador: operador.pubkey(),
                 config: config_pda(),
                 participante: participante_pda(&carteira),
+                vinculo: carteira_pda(&carteira),
                 system_program: system_program::ID,
                 event_authority: event_authority(),
                 program: ecol_lote::id(),
@@ -688,6 +721,8 @@ impl Ambiente {
             material,
             peso_g,
             ts_pesagem: self.agora(),
+            variacao: 0,
+            qtd_garrafas: 0,
         }
     }
 
@@ -697,17 +732,35 @@ impl Ambiente {
         balanca: Pubkey,
         dados: DadosEntrega,
     ) -> Instruction {
+        self.ix_registrar_entrega_por(cooperativa, cooperativa, None, balanca, dados, None)
+    }
+
+    /// Registro do lote de origem com assinante, carteira vinculada e coleta explícitos.
+    pub fn ix_registrar_entrega_por(
+        &self,
+        cooperativa: &Pubkey,
+        assinante: &Pubkey,
+        carteira: Option<Pubkey>,
+        balanca: Pubkey,
+        dados: DadosEntrega,
+        coleta: Option<Pubkey>,
+    ) -> Instruction {
         let entrega = entrega_pda(cooperativa, dados.entrega_id);
         let material_cadastro = material_pda(dados.material);
+        let variacao = (dados.variacao > 0).then(|| variacao_pda(dados.material, dados.variacao));
         self.ix(
             ixs::CooperativaRegisterEntrega { dados },
             ctas::CooperativaRegisterEntrega {
                 payer: self.patrocinador.pubkey(),
                 cooperativa: *cooperativa,
+                cooperativa_assinante: *assinante,
+                cooperativa_carteira: carteira,
                 cooperativa_part: participante_pda(cooperativa),
                 config: config_pda(),
                 balanca,
                 material_cadastro,
+                variacao_cadastro: variacao,
+                coleta,
                 entrega,
                 instrucoes_sysvar: solana_instructions_sysvar::ID,
                 system_program: system_program::ID,
@@ -750,6 +803,8 @@ impl Ambiente {
             ixs::CooperativaAddEntregas {},
             ctas::CooperativaAddEntregas {
                 cooperativa: cooperativa.pubkey(),
+                cooperativa_assinante: cooperativa.pubkey(),
+                cooperativa_carteira: None,
                 config: config_pda(),
                 lote,
                 event_authority: event_authority(),
@@ -791,6 +846,8 @@ impl Ambiente {
             },
             ctas::CooperativaListLote {
                 cooperativa: cooperativa.pubkey(),
+                cooperativa_assinante: cooperativa.pubkey(),
+                cooperativa_carteira: None,
                 cooperativa_part: participante_pda(&cooperativa.pubkey()),
                 config: config_pda(),
                 lote,
@@ -852,6 +909,8 @@ impl Ambiente {
             },
             ctas::IndustriaAcceptVenda {
                 industria: industria.pubkey(),
+                industria_assinante: industria.pubkey(),
+                industria_carteira: None,
                 industria_part: participante_pda(&industria.pubkey()),
                 cooperativa_part: participante_pda(&cooperativa),
                 operador: operador.pubkey(),
@@ -883,8 +942,12 @@ impl Ambiente {
             ixs::TransportadorPickupLote {},
             ctas::TransportadorPickupLote {
                 transportador: transportador.pubkey(),
+                transportador_assinante: transportador.pubkey(),
+                transportador_carteira: None,
                 transportador_part: participante_pda(&transportador.pubkey()),
                 cooperativa: cooperativa.pubkey(),
+                cooperativa_assinante: cooperativa.pubkey(),
+                cooperativa_carteira: None,
                 cooperativa_part: participante_pda(&cooperativa.pubkey()),
                 config: config_pda(),
                 lote,
@@ -919,6 +982,8 @@ impl Ambiente {
             },
             ctas::IndustriaConfirmRecebimento {
                 industria: *industria,
+                industria_assinante: *industria,
+                industria_carteira: None,
                 balanca,
                 instrucoes_sysvar: solana_instructions_sysvar::ID,
                 config: config_pda(),
@@ -985,6 +1050,8 @@ impl Ambiente {
             ixs::ParteOpenDisputa { motivo },
             ctas::ParteOpenDisputa {
                 parte: parte.pubkey(),
+                parte_assinante: parte.pubkey(),
+                parte_carteira: None,
                 config: config_pda(),
                 lote,
                 event_authority: event_authority(),
@@ -1117,6 +1184,343 @@ impl Ambiente {
         assert_eq!(self.lote(lote).estado, EstadoLote::Recebido);
         lote
     }
+
+    // ---- ADR 0011: variações, carteiras vinculadas e importador ----
+
+    pub fn criar_variacao(
+        &mut self,
+        codigo: u16,
+        nome: &str,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let operador = self.operador.insecure_clone();
+        let indice = self.material(codigo).qtd_variacoes + 1;
+        let ix = self.ix(
+            ixs::OperadorCreateVariacao { nome: nome.into() },
+            ctas::OperadorCreateVariacao {
+                payer: self.patrocinador.pubkey(),
+                operador: operador.pubkey(),
+                config: config_pda(),
+                material: material_pda(codigo),
+                variacao: variacao_pda(codigo, indice),
+                system_program: system_program::ID,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[&operador])
+    }
+
+    pub fn atualizar_variacao(
+        &mut self,
+        codigo: u16,
+        indice: u8,
+        nome: &str,
+        ativa: bool,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let operador = self.operador.insecure_clone();
+        let ix = self.ix(
+            ixs::OperadorUpdateVariacao {
+                nome: nome.into(),
+                ativa,
+            },
+            ctas::OperadorUpdateVariacao {
+                operador: operador.pubkey(),
+                config: config_pda(),
+                variacao: variacao_pda(codigo, indice),
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[&operador])
+    }
+
+    pub fn set_garrafas(
+        &mut self,
+        codigo: u16,
+        conta_garrafas: bool,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let operador = self.operador.insecure_clone();
+        let ix = self.ix(
+            ixs::OperadorSetMaterialGarrafas { conta_garrafas },
+            ctas::OperadorSetMaterialGarrafas {
+                operador: operador.pubkey(),
+                config: config_pda(),
+                material: material_pda(codigo),
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[&operador])
+    }
+
+    pub fn variacao(&self, codigo: u16, indice: u8) -> MaterialVariacao {
+        let conta = self.svm.get_account(&variacao_pda(codigo, indice)).unwrap();
+        MaterialVariacao::try_deserialize(&mut conta.data.as_slice()).unwrap()
+    }
+
+    /// Vidro (código `VIDRO`) com Transparente, Verde e Marrom e contagem de garrafas.
+    pub fn preparar_vidro(&mut self) {
+        self.criar_material(VIDRO, "Vidro").unwrap();
+        for cor in ["Transparente", "Verde", "Marrom"] {
+            self.criar_variacao(VIDRO, cor).unwrap();
+        }
+        self.set_garrafas(VIDRO, true).unwrap();
+    }
+
+    pub fn add_carteira_por(
+        &mut self,
+        autoridade: &Keypair,
+        titular: Pubkey,
+        endereco: Pubkey,
+        nome: &str,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix(
+            ixs::ParticipanteAddCarteira {
+                endereco,
+                nome: nome.into(),
+            },
+            ctas::ParticipanteAddCarteira {
+                payer: self.patrocinador.pubkey(),
+                autoridade: autoridade.pubkey(),
+                config: config_pda(),
+                participante: participante_pda(&titular),
+                endereco_part: participante_pda(&endereco),
+                carteira: carteira_pda(&endereco),
+                system_program: system_program::ID,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[autoridade])
+    }
+
+    pub fn update_carteira_por(
+        &mut self,
+        autoridade: &Keypair,
+        titular: Pubkey,
+        endereco: Pubkey,
+        nome: &str,
+        ativa: bool,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix(
+            ixs::ParticipanteUpdateCarteira {
+                nome: nome.into(),
+                ativa,
+            },
+            ctas::ParticipanteUpdateCarteira {
+                autoridade: autoridade.pubkey(),
+                config: config_pda(),
+                participante: participante_pda(&titular),
+                carteira: carteira_pda(&endereco),
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[autoridade])
+    }
+
+    pub fn carteira(&self, endereco: &Pubkey) -> Carteira {
+        let conta = self.svm.get_account(&carteira_pda(endereco)).unwrap();
+        Carteira::try_deserialize(&mut conta.data.as_slice()).unwrap()
+    }
+
+    /// Lote de origem pesado pela `balanca`, assinado por `assinante` em nome de `titular`.
+    /// `carteira`: passa a conta `["carteira", assinante]` (quando o assinante não é o titular).
+    pub fn registrar_entrega_com(
+        &mut self,
+        titular: &Pubkey,
+        assinante: &Keypair,
+        carteira: bool,
+        balanca: &Keypair,
+        dados: DadosEntrega,
+        coleta: Option<Pubkey>,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let entrega = entrega_pda(titular, dados.entrega_id);
+        let pesagem = ix_pesagem(
+            balanca,
+            TipoPesagem::Entrega,
+            &entrega,
+            dados.peso_g,
+            dados.ts_pesagem,
+        );
+        let ix = self.ix_registrar_entrega_por(
+            titular,
+            &assinante.pubkey(),
+            carteira.then(|| carteira_pda(&assinante.pubkey())),
+            balanca_pda(&balanca.pubkey()),
+            dados,
+            coleta,
+        );
+        self.enviar_varias(&[pesagem, ix], &[assinante])
+    }
+
+    /// Dados de um lote de origem de vidro (coletor) com a cor e as garrafas.
+    pub fn dados_entrega_vidro(
+        &self,
+        entrega_id: u64,
+        peso_g: u64,
+        cor: u8,
+        garrafas: u32,
+    ) -> DadosEntrega {
+        let mut d = self.dados_entrega(entrega_id, peso_g, VIDRO);
+        d.variacao = cor;
+        d.qtd_garrafas = garrafas;
+        d
+    }
+
+    pub fn entrega(&self, cooperativa: &Pubkey, entrega_id: u64) -> Entrega {
+        let conta = self
+            .svm
+            .get_account(&entrega_pda(cooperativa, entrega_id))
+            .unwrap();
+        Entrega::try_deserialize(&mut conta.data.as_slice()).unwrap()
+    }
+
+    pub fn criar_distribuicao_por(
+        &mut self,
+        importador: &Pubkey,
+        assinante: &Keypair,
+        carteira: bool,
+        dados: DadosDistribuicao,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let variacao = (dados.variacao > 0).then(|| variacao_pda(dados.material, dados.variacao));
+        let ix = self.ix(
+            ixs::ImportadorCreateDistribuicao {
+                dados: dados.clone(),
+            },
+            ctas::ImportadorCreateDistribuicao {
+                payer: self.patrocinador.pubkey(),
+                importador: *importador,
+                importador_assinante: assinante.pubkey(),
+                importador_carteira: carteira.then(|| carteira_pda(&assinante.pubkey())),
+                importador_part: participante_pda(importador),
+                config: config_pda(),
+                material_cadastro: material_pda(dados.material),
+                variacao_cadastro: variacao,
+                distribuicao: distribuicao_pda(importador, dados.distrib_id),
+                system_program: system_program::ID,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[assinante])
+    }
+
+    pub fn registrar_coleta_por(
+        &mut self,
+        importador: &Pubkey,
+        assinante: &Keypair,
+        dados: DadosColeta,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let variacao = (dados.variacao > 0).then(|| variacao_pda(dados.material, dados.variacao));
+        let ix = self.ix(
+            ixs::ImportadorRegisterColeta {
+                dados: dados.clone(),
+            },
+            ctas::ImportadorRegisterColeta {
+                payer: self.patrocinador.pubkey(),
+                importador: *importador,
+                importador_assinante: assinante.pubkey(),
+                importador_carteira: (assinante.pubkey() != *importador)
+                    .then(|| carteira_pda(&assinante.pubkey())),
+                importador_part: participante_pda(importador),
+                config: config_pda(),
+                material_cadastro: material_pda(dados.material),
+                variacao_cadastro: variacao,
+                coleta: coleta_pda(importador, dados.coleta_id),
+                system_program: system_program::ID,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[assinante])
+    }
+
+    pub fn entregar_coleta(
+        &mut self,
+        importador: &Keypair,
+        coleta_id: u64,
+        destino: Pubkey,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix(
+            ixs::ImportadorEntregarColeta {},
+            ctas::ImportadorEntregarColeta {
+                importador: importador.pubkey(),
+                importador_assinante: importador.pubkey(),
+                importador_carteira: None,
+                importador_part: participante_pda(&importador.pubkey()),
+                config: config_pda(),
+                coleta: coleta_pda(&importador.pubkey(), coleta_id),
+                destino_part: participante_pda(&destino),
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[importador])
+    }
+
+    pub fn cancelar_entrega_coleta(
+        &mut self,
+        importador: &Keypair,
+        coleta_id: u64,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix(
+            ixs::ImportadorCancelarEntrega {},
+            ctas::ImportadorCancelarEntrega {
+                importador: importador.pubkey(),
+                importador_assinante: importador.pubkey(),
+                importador_carteira: None,
+                config: config_pda(),
+                coleta: coleta_pda(&importador.pubkey(), coleta_id),
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[importador])
+    }
+
+    pub fn informar_reciclagem(
+        &mut self,
+        importador: &Keypair,
+        coleta_id: u64,
+        entrega: Pubkey,
+        lote: Pubkey,
+        nf: [u8; 32],
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix(
+            ixs::ImportadorInformarReciclagem {
+                nf_reciclagem_hash: nf,
+            },
+            ctas::ImportadorInformarReciclagem {
+                importador: importador.pubkey(),
+                importador_assinante: importador.pubkey(),
+                importador_carteira: None,
+                config: config_pda(),
+                coleta: coleta_pda(&importador.pubkey(), coleta_id),
+                entrega,
+                lote,
+                event_authority: event_authority(),
+                program: ecol_lote::id(),
+            },
+        );
+        self.enviar(ix, &[importador])
+    }
+
+    pub fn coleta(&self, importador: &Pubkey, coleta_id: u64) -> Coleta {
+        let conta = self
+            .svm
+            .get_account(&coleta_pda(importador, coleta_id))
+            .unwrap();
+        Coleta::try_deserialize(&mut conta.data.as_slice()).unwrap()
+    }
+
+    pub fn distribuicao(&self, importador: &Pubkey, id: u64) -> Distribuicao {
+        let conta = self
+            .svm
+            .get_account(&distribuicao_pda(importador, id))
+            .unwrap();
+        Distribuicao::try_deserialize(&mut conta.data.as_slice()).unwrap()
+    }
 }
 
 /// Afirma que a transação falhou com o erro `esperado` do programa.
@@ -1135,5 +1539,20 @@ pub fn assert_erro(
             )
         }
         outro => panic!("esperava {esperado_nome}, veio {outro:?}"),
+    }
+}
+
+/// Afirma que a transação falhou com um erro do próprio Anchor (conta, seeds, discriminador).
+#[track_caller]
+pub fn assert_erro_anchor(
+    res: Result<TransactionMetadata, TransactionError>,
+    esperado: anchor_lang::error::ErrorCode,
+) {
+    let codigo_esperado: u32 = esperado.into();
+    match res {
+        Err(TransactionError::InstructionError(_, InstructionError::Custom(c))) => {
+            assert_eq!(c, codigo_esperado, "esperava {esperado:?}, veio {c}")
+        }
+        outro => panic!("esperava {esperado:?}, veio {outro:?}"),
     }
 }
