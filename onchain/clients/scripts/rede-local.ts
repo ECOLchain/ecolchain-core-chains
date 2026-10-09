@@ -2,6 +2,7 @@
 // uma cooperativa, dois coletores, um transportador, uma indústria, materiais e a balança de teste da cooperativa já
 // cadastrados (com a balança da indústria), e quatro lotes de venda: #1 vendido (esperando a retirada), #2 em leilão,
 // #3 em transporte (esperando o recebimento) e #4 recebido (esperando a liberação do escrow).
+// Contestações: lote #10 recebido e contestado pela indústria (divergência de peso), à espera do árbitro.
 // ADR 0012: lotes #5 e #6 à venda por preço fixo, #7 e #8 comprados direto e #9 vendido fora da plataforma.
 // ADR 0011: vidro com três cores e garrafas, um importador com duas carteiras (seis meses de distribuições e
 // coletas em todas as etapas) e uma Clean Tech com balança e um lote de vidro verde já reciclado.
@@ -44,7 +45,7 @@ const client = await createClient().use(surfpool({ transactionConfig: { version:
 const enviar = (...ixs: Instruction[]) => client.sendTransaction(ixs);
 const semente = () => crypto.getRandomValues(new Uint8Array(32));
 
-const [upgrade, admin, arbitro, registrador, zupy] = await Promise.all(Array.from({ length: 5 }, () => generateKeyPairSigner()));
+const [upgrade, admin, registrador, zupy] = await Promise.all(Array.from({ length: 4 }, () => generateKeyPairSigner()));
 const sementes = {
     cooperativa: semente(),
     balanca: semente(),
@@ -59,9 +60,12 @@ const sementes = {
     importadorLoja: semente(),
     cleantech: semente(),
     balancaCleantech: semente(),
+    arbitro: semente(),
 };
 const operador = await createKeyPairSignerFromPrivateKeyBytes(sementes.operador);
 const intermediador = await createKeyPairSignerFromPrivateKeyBytes(sementes.intermediador);
+// Árbitro com chave comum (na devnet é o cofre 1 do Squads), para testar a tela Arbitragem.
+const arbitro = await createKeyPairSignerFromPrivateKeyBytes(sementes.arbitro);
 const cooperativa = await createKeyPairSignerFromPrivateKeyBytes(sementes.cooperativa);
 const balanca = await createKeyPairSignerFromPrivateKeyBytes(sementes.balanca);
 const coletores = await Promise.all([sementes.coletor1, sementes.coletor2].map((s) => createKeyPairSignerFromPrivateKeyBytes(s)));
@@ -87,6 +91,8 @@ client.surfnet.fundSol(operador.address, 10_000_000_000);
 client.surfnet.fundSol(industria.address, 1_000_000_000);
 // O intermediador paga a taxa da liberação do escrow.
 client.surfnet.fundSol(intermediador.address, 1_000_000_000);
+// O árbitro paga a taxa das decisões.
+client.surfnet.fundSol(arbitro.address, 1_000_000_000);
 // Importador (titular e a carteira da loja) e Clean Tech pagam as próprias transações na interface.
 for (const c of [importador, importadorLoja, cleantech]) client.surfnet.fundSol(c.address, 2_000_000_000);
 
@@ -378,6 +384,18 @@ await loteDemo(6n, 2, 95_000n, coletores[1].address, 'anunciado', { preco: 61_75
 await loteDemo(7n, 1, 160_000n, coletores[0].address, 'vendido', { preco: 128_000n, modo: lote.ModoRetirada.Propria });
 await loteDemo(8n, 2, 140_000n, coletores[1].address, 'recebido', { preco: 91_000n, modo: lote.ModoRetirada.Terceiro });
 await loteDemo(9n, 1, 75_000n, coletores[0].address, 'vendidoFora');
+// Contestações: o lote #10 foi recebido e a indústria contestou o peso; o árbitro decide.
+await loteDemo(10n, 1, 200_000n, coletores[1].address, 'recebido');
+await enviar(
+    await lote.getParteOpenDisputaInstructionAsync({
+        parte: industria.address,
+        parteAssinante: industria,
+        lote: await pLote.lote(cooperativa.address, 10n),
+        eventAuthority: await eventAuthority(lote.ECOL_LOTE_PROGRAM_ADDRESS),
+        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+        motivo: lote.MotivoDisputa.DivergenciaPeso,
+    }),
+);
 
 // ---- ADR 0011: vidro com cores e garrafas, importador com duas carteiras e Clean Tech ----
 const VIDRO = 3;
@@ -715,6 +733,7 @@ writeFileSync(
             importadorLoja: { endereco: importadorLoja.address, semente: hex(sementes.importadorLoja) },
             cleantech: { endereco: cleantech.address, semente: hex(sementes.cleantech) },
             balancaCleantech: { endereco: balancaCleantech.address, semente: hex(sementes.balancaCleantech) },
+            arbitro: { endereco: arbitro.address, semente: hex(sementes.arbitro) },
         },
         null,
         2,
