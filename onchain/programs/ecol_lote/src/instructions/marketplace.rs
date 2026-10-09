@@ -59,6 +59,8 @@ pub fn handle_cooperativa_list_lote(
     let para = lote.estado.anunciar(agora, prazo_leilao)?;
     lote.preco_minimo_centavos = preco_minimo_centavos;
     lote.venda_direta = false;
+    // Nova rodada: os lances de um anúncio anterior não valem mais (ADR 0013).
+    lote.zerar_lances();
     let (de, seq) = lote.transicionar(para, agora)?;
     emit_cpi!(LoteTransicionado {
         lote: lote_key,
@@ -79,8 +81,16 @@ pub fn handle_cooperativa_cancel_anuncio(ctx: Context<CooperativaListLote>) -> R
     let lote_key = ctx.accounts.lote.key();
     let ator = ctx.accounts.cooperativa.key();
     let lote = &mut ctx.accounts.lote;
+    // Com lances, o leilão não é retirado antes do prazo; depois dele, sim (o vencedor pode desistir).
+    if lote.qtd_lances > 0 {
+        require!(
+            agora >= lote.prazo_do_leilao()?,
+            EcolLoteError::LeilaoComLances
+        );
+    }
     let para = lote.estado.cancelar_anuncio()?;
     lote.venda_direta = false;
+    lote.zerar_lances();
     let (de, seq) = lote.transicionar(para, agora)?;
     emit_cpi!(LoteTransicionado {
         lote: lote_key,
@@ -115,6 +125,7 @@ pub fn handle_cooperativa_anunciar_venda(
     let para = lote.estado.anunciar(agora, i64::MAX)?;
     lote.preco_minimo_centavos = preco_centavos;
     lote.venda_direta = true;
+    lote.zerar_lances();
     lote.modo_retirada = ModoRetirada::Indefinido;
     let (de, seq) = lote.transicionar(para, agora)?;
     emit_cpi!(LoteTransicionado {
@@ -229,6 +240,8 @@ pub fn handle_operador_close_leilao_sem_lance(
     let lote_key = ctx.accounts.lote.key();
     let ator = ctx.accounts.operador.key();
     let lote = &mut ctx.accounts.lote;
+    // Com lances on-chain, o leilão termina com a venda ao vencedor (ou a cooperativa o retira).
+    require!(lote.qtd_lances == 0, EcolLoteError::LeilaoComLances);
     let para = lote.estado.encerrar_sem_lance(agora)?;
     let (de, seq) = lote.transicionar(para, agora)?;
     emit_cpi!(LoteTransicionado {
@@ -312,6 +325,18 @@ pub fn handle_industria_accept_venda(
         valor_centavos >= lote.preco_minimo_centavos,
         EcolLoteError::ValorAbaixoDoMinimo
     );
+    // Leilão com lances on-chain (ADR 0013): só depois do prazo, ao líder e pelo valor do lance.
+    // Sem lances on-chain, vale a apuração off-chain atestada pelo operador.
+    if lote.qtd_lances > 0 {
+        require!(
+            agora >= lote.prazo_do_leilao()?,
+            EcolLoteError::LeilaoEmAndamento
+        );
+        require!(
+            lote.lance_lider == industria && lote.maior_lance_centavos == valor_centavos,
+            EcolLoteError::NaoEhLanceVencedor
+        );
+    }
     let para = lote.estado.vender()?;
     lote.industria = industria;
     lote.valor_centavos = valor_centavos;

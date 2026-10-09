@@ -40,6 +40,10 @@ export const SEED_GLOBAL: ReadonlyUint8Array = new Uint8Array([
   103, 108, 111, 98, 97, 108,
 ]);
 
+export const SEED_LANCE: ReadonlyUint8Array = new Uint8Array([
+  108, 97, 110, 99, 101,
+]);
+
 export const SEED_LOTE: ReadonlyUint8Array = new Uint8Array([
   108, 111, 116, 101,
 ]);

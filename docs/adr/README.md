@@ -14,3 +14,4 @@ Decisões de 2026-09-28. Formato: contexto, decisão, consequências.
 - [0010 — Lote de origem (com ou sem coletor) e lote de venda](0010-lote-de-origem-e-lote-de-venda.md)
 - [0011 — Importador de vinhos, Clean Tech, várias carteiras por ator e variações do material](0011-importador-cleantech-carteiras-variacoes.md)
 - [0012 — Venda direta (preço fixo), lote vendido fora da plataforma e modo de retirada](0012-venda-direta-e-vendido-fora.md)
+- [0013 — Lances on-chain no leilão](0013-lances-on-chain-no-leilao.md)

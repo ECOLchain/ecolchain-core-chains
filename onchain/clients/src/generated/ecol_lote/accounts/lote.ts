@@ -142,6 +142,12 @@ export type Lote = {
   vendaDireta: boolean;
   /** Como a indústria retira o lote comprado direto. */
   modoRetirada: ModoRetirada;
+  /** Leilão com lances on-chain (ADR 0013): indústria (titular) com o maior lance da rodada. */
+  lanceLider: Address;
+  /** Maior lance da rodada, em centavos de R$ (zero sem lances). */
+  maiorLanceCentavos: bigint;
+  /** Lances dados na rodada (cada aumento conta). Zero: a venda segue a apuração off-chain. */
+  qtdLances: number;
   reserved: ReadonlyUint8Array;
 };
 
@@ -213,6 +219,12 @@ export type LoteArgs = {
   vendaDireta: boolean;
   /** Como a indústria retira o lote comprado direto. */
   modoRetirada: ModoRetiradaArgs;
+  /** Leilão com lances on-chain (ADR 0013): indústria (titular) com o maior lance da rodada. */
+  lanceLider: Address;
+  /** Maior lance da rodada, em centavos de R$ (zero sem lances). */
+  maiorLanceCentavos: number | bigint;
+  /** Lances dados na rodada (cada aumento conta). Zero: a venda segue a apuração off-chain. */
+  qtdLances: number;
   reserved: ReadonlyUint8Array;
 };
 
@@ -256,7 +268,10 @@ export function getLoteEncoder(): Encoder<LoteArgs> {
       ["qtdGarrafas", getU32Encoder()],
       ["vendaDireta", getBooleanEncoder()],
       ["modoRetirada", getModoRetiradaEncoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 48)],
+      ["lanceLider", getAddressEncoder()],
+      ["maiorLanceCentavos", getU64Encoder()],
+      ["qtdLances", getU32Encoder()],
+      ["reserved", fixEncoderSize(getBytesEncoder(), 4)],
     ]),
     (value) => ({ ...value, discriminator: LOTE_DISCRIMINATOR }),
   );
@@ -301,7 +316,10 @@ export function getLoteDecoder(): Decoder<Lote> {
     ["qtdGarrafas", getU32Decoder()],
     ["vendaDireta", getBooleanDecoder()],
     ["modoRetirada", getModoRetiradaDecoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 48)],
+    ["lanceLider", getAddressDecoder()],
+    ["maiorLanceCentavos", getU64Decoder()],
+    ["qtdLances", getU32Decoder()],
+    ["reserved", fixDecoderSize(getBytesDecoder(), 4)],
   ]);
 }
 

@@ -246,6 +246,24 @@ pub mod ecol_lote {
         instructions::marketplace::handle_industria_comprar_lote(ctx, valor_centavos, modo_retirada)
     }
 
+    /// Primeiro lance da indústria num leilão (ADR 0013).
+    pub fn industria_dar_lance(ctx: Context<IndustriaDarLance>, valor_centavos: u64) -> Result<()> {
+        instructions::lances::handle_industria_dar_lance(ctx, valor_centavos)
+    }
+
+    /// Aumenta o lance da indústria (ou dá lance de novo numa nova rodada do leilão).
+    pub fn industria_aumentar_lance(
+        ctx: Context<IndustriaAumentarLance>,
+        valor_centavos: u64,
+    ) -> Result<()> {
+        instructions::lances::handle_industria_aumentar_lance(ctx, valor_centavos)
+    }
+
+    /// Crank público: fecha o lance de uma rodada encerrada e devolve o rent.
+    pub fn public_close_lance(ctx: Context<PublicCloseLance>) -> Result<()> {
+        instructions::lances::handle_public_close_lance(ctx)
+    }
+
     pub fn operador_close_leilao_sem_lance(
         ctx: Context<OperadorCloseLeilaoSemLance>,
     ) -> Result<()> {

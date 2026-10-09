@@ -138,4 +138,16 @@ pub enum EcolLoteError {
     ModoRetiradaInvalido,
     #[msg("Retirada não confere com o modo escolhido na compra")]
     RetiradaDeOutroModo,
+    #[msg("Lote não está em leilão")]
+    LoteNaoEstaEmLeilao,
+    #[msg("O prazo do leilão terminou")]
+    LeilaoEncerrado,
+    #[msg("O lance precisa superar o maior lance do leilão")]
+    LanceAbaixoDoMaior,
+    #[msg("O leilão tem lances: espere o prazo e registre a venda ao vencedor")]
+    LeilaoComLances,
+    #[msg("A venda do leilão com lances é do vencedor, pelo valor do lance")]
+    NaoEhLanceVencedor,
+    #[msg("O lance ainda vale nesta rodada do leilão")]
+    LanceEmVigor,
 }

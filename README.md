@@ -69,6 +69,7 @@ Exemplo do diagrama: um crédito vendido por US$ 50,00 (5.000 centavos) com a in
 | Lote de origem e lote de venda (ADR 0010) | Cada pesagem na cooperativa é um **lote de origem**, com ou sem coletor. Vários lotes de origem do mesmo material formam um **lote de venda**, pesado de novo e só então anunciado. A união pode ser desfeita antes da venda. O teto dos coletores na repartição vale só sobre o peso que veio de coletores. |
 | Importador, Clean Tech, carteiras e variações (ADR 0011) | **Importador de vinhos** registra garrafas postas no mercado (`Distribuicao`) e coletas (`Coleta`) que entrega a uma cooperativa ou **Clean Tech** (papel que opera como a cooperativa); a coleta vira lote de origem `Importador` e, com o lote reciclado, recebe o hash da NF. Cada participante pode ter **várias carteiras com nome** (`Carteira`, PDA `["carteira", endereço]`) que assinam por ele; a identidade continua sendo a carteira titular. Materiais ganham **variações** (`MaterialVariacao`: Transparente, Verde, Marrom no vidro) e **garrafas aproximadas**; o lote de venda não mistura cores. |
 | Venda direta e lote vendido fora (ADR 0012) | A cooperativa põe o lote **à venda por preço fixo** (`cooperativa_anunciar_venda`, `Anunciado` sem prazo) ou o marca como **vendido fora da plataforma** (`VendidoFora`). A indústria compra sozinha pelo preço ou mais (`industria_comprar_lote`), escolhendo **retirada por transportador terceiro ou própria** (a indústria assina a retirada). Depois do recebimento, a cooperativa confirma o pagamento com o hash do comprovante (`cooperativa_confirmar_pagamento`) e o lote vai a `Reciclado`. O leilão de três assinaturas continua valendo. |
+| Lances on-chain no leilão (ADR 0013) | A indústria dá lance no leilão pela própria carteira (`industria_dar_lance`, depois `industria_aumentar_lance`): conta `Lance` por indústria e lote, valor ≥ mínimo e acima do maior lance, até o prazo. O lote guarda o líder e o maior lance. Com lances on-chain, a venda de três assinaturas só vai ao líder, pelo valor dele, depois do prazo; sem eles, vale a apuração off-chain. O crank `public_close_lance` devolve o rent no fim da rodada. |
 
 **LGPD:** nenhum dado pessoal vai on-chain. A origem de cada lote aparece como `origem_ref` (hash da carteira do coletor, ou do texto da nota, recibo ou CNPJ), o cadastro como `kyc_hash`, e as fotos, tickets e notas do lote de venda como `evidencias_hash`, com os arquivos off-chain. O **nome** do participante e da balança é público (até 32 bytes): para coletores, use apelido ou código.
 
@@ -525,7 +526,7 @@ Os testes LiteSVM carregam os `.so` de `target/deploy` e o `tests/fixtures/mpl_c
 | TS | `clients/test/` | gerador da árvore (vetor compartilhado com o Rust) |
 | E2E | `clients/e2e/` | ciclo completo no Surfpool, com time travel e crank |
 
-Total atual: **155 testes Rust, 6 TS e 2 E2E**.
+Total atual: **162 testes Rust, 6 TS e 2 E2E**.
 
 ---
 
@@ -618,7 +619,7 @@ A primeira execução baixa a imagem Docker (alguns GB) e leva de 5 a 15 minutos
 
 ## 12. Implantação atual na devnet
 
-Deploy inicial em **2026-09-28**; upgrades pelo Squads no mesmo dia (materiais, guardião, entregas, nomes de participante e balança, a ADR 0010 nas propostas #15 a #17, a ADR 0011 na #18, em 2026-10-07, e a ADR 0012 na #19, em 2026-10-08), todos com build verificável e hashes conferidos.
+Deploy inicial em **2026-09-28**; upgrades pelo Squads no mesmo dia (materiais, guardião, entregas, nomes de participante e balança, a ADR 0010 nas propostas #15 a #17, a ADR 0011 na #18, em 2026-10-07, a ADR 0012 na #19, em 2026-10-08, e a ADR 0013 na #20, em 2026-10-09), todos com build verificável e hashes conferidos.
 
 ### Programas
 

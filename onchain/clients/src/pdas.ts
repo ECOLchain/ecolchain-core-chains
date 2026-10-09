@@ -43,6 +43,9 @@ export const lote = {
         pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('distrib'), addr(importador), u64(distribId)]),
     coleta: (importador: Address, coletaId: bigint) =>
         pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('coleta'), addr(importador), u64(coletaId)]),
+    /** Lance de uma indústria num leilão (ADR 0013). */
+    lance: (lotePda: Address, industria: Address) =>
+        pda(ECOL_LOTE_PROGRAM_ADDRESS, [utf8('lance'), addr(lotePda), addr(industria)]),
 };
 
 export const credito = {

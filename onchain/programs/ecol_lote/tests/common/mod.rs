@@ -17,8 +17,8 @@ use {
         DadosFechamento, DadosLote, DecisaoDisputa, Distribuicao, Entrega, EstadoLote,
         GlobalConfig, Lote, Material, MaterialVariacao, ModoOperacao, ModoRetirada, MotivoDisputa,
         OrigemEntrega, Papel, Participante, SEED_ASSET, SEED_AUTORIDADE_ASSET, SEED_BALANCA,
-        SEED_CARTEIRA, SEED_COLETA, SEED_DISTRIBUICAO, SEED_ENTREGA, SEED_GLOBAL, SEED_LOTE,
-        SEED_MATERIAL, SEED_PARTICIPANTE, SEED_VARIACAO,
+        SEED_CARTEIRA, SEED_COLETA, SEED_DISTRIBUICAO, SEED_ENTREGA, SEED_GLOBAL, SEED_LANCE,
+        SEED_LOTE, SEED_MATERIAL, SEED_PARTICIPANTE, SEED_VARIACAO,
     },
     litesvm::{types::TransactionMetadata, LiteSVM},
     solana_keypair::Keypair,
@@ -101,6 +101,10 @@ pub fn distribuicao_pda(importador: &Pubkey, id: u64) -> Pubkey {
 
 pub fn coleta_pda(importador: &Pubkey, id: u64) -> Pubkey {
     pda(&[SEED_COLETA, importador.as_ref(), &id.to_le_bytes()])
+}
+
+pub fn lance_pda(lote: &Pubkey, industria: &Pubkey) -> Pubkey {
+    pda(&[SEED_LANCE, lote.as_ref(), industria.as_ref()])
 }
 
 pub fn balanca_pda(dispositivo: &Pubkey) -> Pubkey {
@@ -1259,6 +1263,73 @@ impl Ambiente {
             },
         );
         self.enviar(ix, &[cooperativa])
+    }
+
+    /// Primeiro lance (cria a conta `Lance`) ou aumento, conforme `primeiro`.
+    pub fn lance_por(
+        &mut self,
+        industria: &Keypair,
+        lote: Pubkey,
+        valor_centavos: u64,
+        primeiro: bool,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let lance = lance_pda(&lote, &industria.pubkey());
+        let ix = if primeiro {
+            self.ix(
+                ixs::IndustriaDarLance { valor_centavos },
+                ctas::IndustriaDarLance {
+                    payer: self.patrocinador.pubkey(),
+                    industria: industria.pubkey(),
+                    industria_assinante: industria.pubkey(),
+                    industria_carteira: None,
+                    industria_part: participante_pda(&industria.pubkey()),
+                    config: config_pda(),
+                    lote,
+                    lance,
+                    system_program: system_program::ID,
+                    event_authority: event_authority(),
+                    program: ecol_lote::id(),
+                },
+            )
+        } else {
+            self.ix(
+                ixs::IndustriaAumentarLance { valor_centavos },
+                ctas::IndustriaAumentarLance {
+                    industria: industria.pubkey(),
+                    industria_assinante: industria.pubkey(),
+                    industria_carteira: None,
+                    industria_part: participante_pda(&industria.pubkey()),
+                    config: config_pda(),
+                    lote,
+                    lance,
+                    event_authority: event_authority(),
+                    program: ecol_lote::id(),
+                },
+            )
+        };
+        self.enviar(ix, &[industria])
+    }
+
+    pub fn fechar_lance(
+        &mut self,
+        lote: Pubkey,
+        industria: &Pubkey,
+    ) -> Result<TransactionMetadata, TransactionError> {
+        let ix = self.ix(
+            ixs::PublicCloseLance {},
+            ctas::PublicCloseLance {
+                config: config_pda(),
+                lote,
+                lance: lance_pda(&lote, industria),
+                pagador: self.patrocinador.pubkey(),
+            },
+        );
+        self.enviar(ix, &[])
+    }
+
+    pub fn lance(&self, lote: Pubkey, industria: &Pubkey) -> Option<ecol_lote::Lance> {
+        let conta = self.svm.get_account(&lance_pda(&lote, industria))?;
+        ecol_lote::Lance::try_deserialize(&mut conta.data.as_slice()).ok()
     }
 
     pub fn comprar_por(

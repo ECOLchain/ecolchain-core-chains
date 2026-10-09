@@ -15,6 +15,7 @@ export * from "./entregaDevolvida";
 export * from "./entregaNoLote";
 export * from "./entregaRegistrada";
 export * from "./escrowMovimentado";
+export * from "./lanceDado";
 export * from "./loteCriado";
 export * from "./loteMontagemIniciada";
 export * from "./lotePesoAlterado";

@@ -12,6 +12,7 @@ export * from "./coleta";
 export * from "./distribuicao";
 export * from "./entrega";
 export * from "./globalConfig";
+export * from "./lance";
 export * from "./lote";
 export * from "./material";
 export * from "./materialVariacao";

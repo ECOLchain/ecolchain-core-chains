@@ -318,10 +318,59 @@ pub struct Lote {
     pub venda_direta: bool,
     /// Como a indústria retira o lote comprado direto.
     pub modo_retirada: ModoRetirada,
-    pub _reserved: [u8; 48],
+    /// Leilão com lances on-chain (ADR 0013): indústria (titular) com o maior lance da rodada.
+    pub lance_lider: Pubkey,
+    /// Maior lance da rodada, em centavos de R$ (zero sem lances).
+    pub maior_lance_centavos: u64,
+    /// Lances dados na rodada (cada aumento conta). Zero: a venda segue a apuração off-chain.
+    pub qtd_lances: u32,
+    pub _reserved: [u8; 4],
 }
 
 impl Lote {
+    /// Zera os lances on-chain: começa outra rodada (novo anúncio) ou o leilão foi retirado.
+    pub fn zerar_lances(&mut self) {
+        self.lance_lider = Pubkey::default();
+        self.maior_lance_centavos = 0;
+        self.qtd_lances = 0;
+    }
+
+    /// Prazo do leilão em andamento ou encerrado (lote anunciado sem venda direta).
+    pub fn prazo_do_leilao(&self) -> Result<i64> {
+        require!(!self.venda_direta, EcolLoteError::LoteEmVendaDireta);
+        match self.estado {
+            EstadoLote::Anunciado { prazo_leilao } => Ok(prazo_leilao),
+            _ => err!(EcolLoteError::LoteNaoEstaEmLeilao),
+        }
+    }
+
+    /// Aplica um lance (ADR 0013): só antes do prazo, pelo mínimo ou mais e acima do maior lance.
+    /// A indústria passa a liderar. Devolve o prazo, que identifica a rodada do lance.
+    pub fn aplicar_lance(
+        &mut self,
+        industria: Pubkey,
+        valor_centavos: u64,
+        agora: i64,
+    ) -> Result<i64> {
+        let prazo = self.prazo_do_leilao()?;
+        require!(agora < prazo, EcolLoteError::LeilaoEncerrado);
+        require!(
+            valor_centavos >= self.preco_minimo_centavos,
+            EcolLoteError::ValorAbaixoDoMinimo
+        );
+        require!(
+            valor_centavos > self.maior_lance_centavos,
+            EcolLoteError::LanceAbaixoDoMaior
+        );
+        self.lance_lider = industria;
+        self.maior_lance_centavos = valor_centavos;
+        self.qtd_lances = self
+            .qtd_lances
+            .checked_add(1)
+            .ok_or(EcolLoteError::Overflow)?;
+        Ok(prazo)
+    }
+
     pub fn proximo_seq(&mut self) -> Result<u64> {
         self.seq = self.seq.checked_add(1).ok_or(EcolLoteError::Overflow)?;
         Ok(self.seq)
@@ -533,7 +582,10 @@ mod testes {
             qtd_garrafas: 0,
             venda_direta: false,
             modo_retirada: ModoRetirada::Indefinido,
-            _reserved: [0; 48],
+            lance_lider: Pubkey::default(),
+            maior_lance_centavos: 0,
+            qtd_lances: 0,
+            _reserved: [0; 4],
         };
         // Tolerância de 2% = 20 kg: exatamente no limite não diverge; 1 g além diverge (para mais ou para menos).
         assert!(!lote.peso_diverge(980_000, 200).unwrap());
@@ -610,7 +662,10 @@ mod propriedades {
             qtd_garrafas: 0,
             venda_direta: false,
             modo_retirada: ModoRetirada::Indefinido,
-            _reserved: [0; 48],
+            lance_lider: Pubkey::default(),
+            maior_lance_centavos: 0,
+            qtd_lances: 0,
+            _reserved: [0; 4],
         }
     }
 

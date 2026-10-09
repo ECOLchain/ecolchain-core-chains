@@ -150,6 +150,18 @@ export const ECOL_LOTE_ERROR__LOTE_EM_VENDA_DIRETA = 0x17b1; // 6065
 export const ECOL_LOTE_ERROR__MODO_RETIRADA_INVALIDO = 0x17b2; // 6066
 /** RetiradaDeOutroModo: Retirada não confere com o modo escolhido na compra */
 export const ECOL_LOTE_ERROR__RETIRADA_DE_OUTRO_MODO = 0x17b3; // 6067
+/** LoteNaoEstaEmLeilao: Lote não está em leilão */
+export const ECOL_LOTE_ERROR__LOTE_NAO_ESTA_EM_LEILAO = 0x17b4; // 6068
+/** LeilaoEncerrado: O prazo do leilão terminou */
+export const ECOL_LOTE_ERROR__LEILAO_ENCERRADO = 0x17b5; // 6069
+/** LanceAbaixoDoMaior: O lance precisa superar o maior lance do leilão */
+export const ECOL_LOTE_ERROR__LANCE_ABAIXO_DO_MAIOR = 0x17b6; // 6070
+/** LeilaoComLances: O leilão tem lances: espere o prazo e registre a venda ao vencedor */
+export const ECOL_LOTE_ERROR__LEILAO_COM_LANCES = 0x17b7; // 6071
+/** NaoEhLanceVencedor: A venda do leilão com lances é do vencedor, pelo valor do lance */
+export const ECOL_LOTE_ERROR__NAO_EH_LANCE_VENCEDOR = 0x17b8; // 6072
+/** LanceEmVigor: O lance ainda vale nesta rodada do leilão */
+export const ECOL_LOTE_ERROR__LANCE_EM_VIGOR = 0x17b9; // 6073
 
 export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__ASSET_INCORRETO
@@ -175,11 +187,16 @@ export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__ENTREGA_JA_VINCULADA
   | typeof ECOL_LOTE_ERROR__GARRAFAS_INVALIDAS
   | typeof ECOL_LOTE_ERROR__GUARDIAO_SO_RESTRINGE
+  | typeof ECOL_LOTE_ERROR__LANCE_ABAIXO_DO_MAIOR
+  | typeof ECOL_LOTE_ERROR__LANCE_EM_VIGOR
+  | typeof ECOL_LOTE_ERROR__LEILAO_COM_LANCES
   | typeof ECOL_LOTE_ERROR__LEILAO_EM_ANDAMENTO
+  | typeof ECOL_LOTE_ERROR__LEILAO_ENCERRADO
   | typeof ECOL_LOTE_ERROR__LIMITE_DE_VARIACOES
   | typeof ECOL_LOTE_ERROR__LOTE_DE_OUTRO_CREDITO
   | typeof ECOL_LOTE_ERROR__LOTE_EM_VENDA_DIRETA
   | typeof ECOL_LOTE_ERROR__LOTE_NAO_EH_VENDA_DIRETA
+  | typeof ECOL_LOTE_ERROR__LOTE_NAO_ESTA_EM_LEILAO
   | typeof ECOL_LOTE_ERROR__LOTE_NAO_RECICLADO
   | typeof ECOL_LOTE_ERROR__LOTE_SEM_ENTREGAS
   | typeof ECOL_LOTE_ERROR__MATERIAL_DIFERENTE
@@ -193,6 +210,7 @@ export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__NAO_EH_GUARDIAO
   | typeof ECOL_LOTE_ERROR__NAO_EH_INDUSTRIA_DO_LOTE
   | typeof ECOL_LOTE_ERROR__NAO_EH_INTERMEDIADOR
+  | typeof ECOL_LOTE_ERROR__NAO_EH_LANCE_VENCEDOR
   | typeof ECOL_LOTE_ERROR__NAO_EH_OPERADOR
   | typeof ECOL_LOTE_ERROR__NAO_EH_PARTE_DO_LOTE
   | typeof ECOL_LOTE_ERROR__NAO_EH_UPGRADE_AUTHORITY
@@ -247,11 +265,16 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_LOTE_ERROR__ENTREGA_JA_VINCULADA]: `Entrega já vinculada a um lote`,
     [ECOL_LOTE_ERROR__GARRAFAS_INVALIDAS]: `Quantidade de garrafas inválida`,
     [ECOL_LOTE_ERROR__GUARDIAO_SO_RESTRINGE]: `O guardião só pode deixar o modo mais restritivo`,
+    [ECOL_LOTE_ERROR__LANCE_ABAIXO_DO_MAIOR]: `O lance precisa superar o maior lance do leilão`,
+    [ECOL_LOTE_ERROR__LANCE_EM_VIGOR]: `O lance ainda vale nesta rodada do leilão`,
+    [ECOL_LOTE_ERROR__LEILAO_COM_LANCES]: `O leilão tem lances: espere o prazo e registre a venda ao vencedor`,
     [ECOL_LOTE_ERROR__LEILAO_EM_ANDAMENTO]: `Leilão ainda em andamento`,
+    [ECOL_LOTE_ERROR__LEILAO_ENCERRADO]: `O prazo do leilão terminou`,
     [ECOL_LOTE_ERROR__LIMITE_DE_VARIACOES]: `Limite de variações do material atingido`,
     [ECOL_LOTE_ERROR__LOTE_DE_OUTRO_CREDITO]: `Lote não está agregado a este crédito`,
     [ECOL_LOTE_ERROR__LOTE_EM_VENDA_DIRETA]: `Lote em venda direta: a indústria compra sem leilão`,
     [ECOL_LOTE_ERROR__LOTE_NAO_EH_VENDA_DIRETA]: `Lote não está em venda direta`,
+    [ECOL_LOTE_ERROR__LOTE_NAO_ESTA_EM_LEILAO]: `Lote não está em leilão`,
     [ECOL_LOTE_ERROR__LOTE_NAO_RECICLADO]: `O lote da coleta ainda não foi reciclado`,
     [ECOL_LOTE_ERROR__LOTE_SEM_ENTREGAS]: `Lote sem entregas vinculadas`,
     [ECOL_LOTE_ERROR__MATERIAL_DIFERENTE]: `Material da entrega difere do material do lote`,
@@ -265,6 +288,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_LOTE_ERROR__NAO_EH_GUARDIAO]: `Assinante não é o guardião`,
     [ECOL_LOTE_ERROR__NAO_EH_INDUSTRIA_DO_LOTE]: `Assinante não é a indústria compradora do lote`,
     [ECOL_LOTE_ERROR__NAO_EH_INTERMEDIADOR]: `Assinante não é o intermediador de pagamento`,
+    [ECOL_LOTE_ERROR__NAO_EH_LANCE_VENCEDOR]: `A venda do leilão com lances é do vencedor, pelo valor do lance`,
     [ECOL_LOTE_ERROR__NAO_EH_OPERADOR]: `Assinante não é o operador`,
     [ECOL_LOTE_ERROR__NAO_EH_PARTE_DO_LOTE]: `Assinante não é parte do lote`,
     [ECOL_LOTE_ERROR__NAO_EH_UPGRADE_AUTHORITY]: `Somente a upgrade authority do programa pode inicializar a configuração`,

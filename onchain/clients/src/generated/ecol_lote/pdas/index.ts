@@ -18,6 +18,7 @@ export * from "./importadorCarteira";
 export * from "./importadorPart";
 export * from "./industriaCarteira";
 export * from "./industriaPart";
+export * from "./lance";
 export * from "./material";
 export * from "./parteCarteira";
 export * from "./participante";

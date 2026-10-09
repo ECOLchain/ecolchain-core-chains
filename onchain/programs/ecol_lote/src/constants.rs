@@ -39,6 +39,10 @@ pub const SEED_DISTRIBUICAO: &[u8] = b"distrib";
 #[constant]
 pub const SEED_COLETA: &[u8] = b"coleta";
 
+/// Lance de uma indústria num leilão: `["lance", lote, industria]` (ADR 0013).
+#[constant]
+pub const SEED_LANCE: &[u8] = b"lance";
+
 /// Tamanho máximo do nome de um material, em bytes UTF-8.
 pub const MATERIAL_NOME_MAX: usize = 32;
 /// Nome de exibição de participantes e balanças, em bytes UTF-8 (ocupa o antigo espaço reservado das contas).

@@ -41,6 +41,7 @@ import {
   getDistribuicaoCodec,
   getEntregaCodec,
   getGlobalConfigCodec,
+  getLanceCodec,
   getLoteCodec,
   getMaterialCodec,
   getMaterialVariacaoCodec,
@@ -57,6 +58,8 @@ import {
   type EntregaArgs,
   type GlobalConfig,
   type GlobalConfigArgs,
+  type Lance,
+  type LanceArgs,
   type Lote,
   type LoteArgs,
   type Material,
@@ -94,8 +97,10 @@ import {
   getImportadorInformarReciclagemInstructionAsync,
   getImportadorRegisterColetaInstructionAsync,
   getIndustriaAcceptVendaInstructionAsync,
+  getIndustriaAumentarLanceInstructionAsync,
   getIndustriaComprarLoteInstructionAsync,
   getIndustriaConfirmRecebimentoInstructionAsync,
+  getIndustriaDarLanceInstructionAsync,
   getIntermediadorConfirmLiberacaoInstructionAsync,
   getOperadorCloseLeilaoSemLanceInstructionAsync,
   getOperadorCreateMaterialInstructionAsync,
@@ -112,6 +117,7 @@ import {
   getParteOpenDisputaInstructionAsync,
   getParticipanteAddCarteiraInstructionAsync,
   getParticipanteUpdateCarteiraInstructionAsync,
+  getPublicCloseLanceInstructionAsync,
   getPublicCrankPrazoExpiradoInstructionAsync,
   getTransportadorPickupLoteInstructionAsync,
   parseAdminAcceptAdminInstruction,
@@ -141,8 +147,10 @@ import {
   parseImportadorInformarReciclagemInstruction,
   parseImportadorRegisterColetaInstruction,
   parseIndustriaAcceptVendaInstruction,
+  parseIndustriaAumentarLanceInstruction,
   parseIndustriaComprarLoteInstruction,
   parseIndustriaConfirmRecebimentoInstruction,
+  parseIndustriaDarLanceInstruction,
   parseIntermediadorConfirmLiberacaoInstruction,
   parseOperadorCloseLeilaoSemLanceInstruction,
   parseOperadorCreateMaterialInstruction,
@@ -159,6 +167,7 @@ import {
   parseParteOpenDisputaInstruction,
   parseParticipanteAddCarteiraInstruction,
   parseParticipanteUpdateCarteiraInstruction,
+  parsePublicCloseLanceInstruction,
   parsePublicCrankPrazoExpiradoInstruction,
   parseTransportadorPickupLoteInstruction,
   type AdminAcceptAdminAsyncInput,
@@ -188,8 +197,10 @@ import {
   type ImportadorInformarReciclagemAsyncInput,
   type ImportadorRegisterColetaAsyncInput,
   type IndustriaAcceptVendaAsyncInput,
+  type IndustriaAumentarLanceAsyncInput,
   type IndustriaComprarLoteAsyncInput,
   type IndustriaConfirmRecebimentoAsyncInput,
+  type IndustriaDarLanceAsyncInput,
   type IntermediadorConfirmLiberacaoAsyncInput,
   type OperadorCloseLeilaoSemLanceAsyncInput,
   type OperadorCreateMaterialAsyncInput,
@@ -230,8 +241,10 @@ import {
   type ParsedImportadorInformarReciclagemInstruction,
   type ParsedImportadorRegisterColetaInstruction,
   type ParsedIndustriaAcceptVendaInstruction,
+  type ParsedIndustriaAumentarLanceInstruction,
   type ParsedIndustriaComprarLoteInstruction,
   type ParsedIndustriaConfirmRecebimentoInstruction,
+  type ParsedIndustriaDarLanceInstruction,
   type ParsedIntermediadorConfirmLiberacaoInstruction,
   type ParsedOperadorCloseLeilaoSemLanceInstruction,
   type ParsedOperadorCreateMaterialInstruction,
@@ -248,11 +261,13 @@ import {
   type ParsedParteOpenDisputaInstruction,
   type ParsedParticipanteAddCarteiraInstruction,
   type ParsedParticipanteUpdateCarteiraInstruction,
+  type ParsedPublicCloseLanceInstruction,
   type ParsedPublicCrankPrazoExpiradoInstruction,
   type ParsedTransportadorPickupLoteInstruction,
   type ParteOpenDisputaAsyncInput,
   type ParticipanteAddCarteiraAsyncInput,
   type ParticipanteUpdateCarteiraAsyncInput,
+  type PublicCloseLanceAsyncInput,
   type PublicCrankPrazoExpiradoAsyncInput,
   type TransportadorPickupLoteAsyncInput,
 } from "../instructions";
@@ -269,6 +284,7 @@ import {
   findImportadorPartPda,
   findIndustriaCarteiraPda,
   findIndustriaPartPda,
+  findLancePda,
   findMaterialPda,
   findParteCarteiraPda,
   findParticipantePda,
@@ -287,6 +303,7 @@ export enum EcolLoteAccount {
   Distribuicao,
   Entrega,
   GlobalConfig,
+  Lance,
   Lote,
   Material,
   MaterialVariacao,
@@ -367,6 +384,17 @@ export function identifyEcolLoteAccount(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([140, 196, 124, 59, 69, 60, 182, 212]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteAccount.Lance;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([102, 214, 221, 133, 27, 202, 68, 78]),
       ),
       0,
@@ -423,6 +451,7 @@ export enum EcolLoteEvent {
   EntregaNoLote,
   EntregaRegistrada,
   EscrowMovimentado,
+  LanceDado,
   LoteCriado,
   LoteMontagemIniciada,
   LotePesoAlterado,
@@ -537,6 +566,17 @@ export function identifyEcolLoteEvent(
     )
   ) {
     return EcolLoteEvent.EscrowMovimentado;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([197, 186, 91, 54, 209, 206, 244, 57]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteEvent.LanceDado;
   }
   if (
     containsBytes(
@@ -681,8 +721,10 @@ export enum EcolLoteInstruction {
   ImportadorInformarReciclagem,
   ImportadorRegisterColeta,
   IndustriaAcceptVenda,
+  IndustriaAumentarLance,
   IndustriaComprarLote,
   IndustriaConfirmRecebimento,
+  IndustriaDarLance,
   IntermediadorConfirmLiberacao,
   OperadorCloseLeilaoSemLance,
   OperadorCreateMaterial,
@@ -699,6 +741,7 @@ export enum EcolLoteInstruction {
   ParteOpenDisputa,
   ParticipanteAddCarteira,
   ParticipanteUpdateCarteira,
+  PublicCloseLance,
   PublicCrankPrazoExpirado,
   TransportadorPickupLote,
 }
@@ -1008,6 +1051,17 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([150, 129, 226, 144, 231, 70, 102, 234]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.IndustriaAumentarLance;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([13, 22, 192, 67, 235, 93, 62, 75]),
       ),
       0,
@@ -1025,6 +1079,17 @@ export function identifyEcolLoteInstruction(
     )
   ) {
     return EcolLoteInstruction.IndustriaConfirmRecebimento;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([74, 241, 127, 70, 163, 108, 5, 157]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.IndustriaDarLance;
   }
   if (
     containsBytes(
@@ -1206,6 +1271,17 @@ export function identifyEcolLoteInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([90, 61, 167, 138, 68, 139, 60, 239]),
+      ),
+      0,
+    )
+  ) {
+    return EcolLoteInstruction.PublicCloseLance;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([85, 59, 136, 15, 155, 170, 144, 102]),
       ),
       0,
@@ -1315,11 +1391,17 @@ export type ParsedEcolLoteInstruction<
       instructionType: EcolLoteInstruction.IndustriaAcceptVenda;
     } & ParsedIndustriaAcceptVendaInstruction<TProgram>)
   | ({
+      instructionType: EcolLoteInstruction.IndustriaAumentarLance;
+    } & ParsedIndustriaAumentarLanceInstruction<TProgram>)
+  | ({
       instructionType: EcolLoteInstruction.IndustriaComprarLote;
     } & ParsedIndustriaComprarLoteInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.IndustriaConfirmRecebimento;
     } & ParsedIndustriaConfirmRecebimentoInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.IndustriaDarLance;
+    } & ParsedIndustriaDarLanceInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.IntermediadorConfirmLiberacao;
     } & ParsedIntermediadorConfirmLiberacaoInstruction<TProgram>)
@@ -1368,6 +1450,9 @@ export type ParsedEcolLoteInstruction<
   | ({
       instructionType: EcolLoteInstruction.ParticipanteUpdateCarteira;
     } & ParsedParticipanteUpdateCarteiraInstruction<TProgram>)
+  | ({
+      instructionType: EcolLoteInstruction.PublicCloseLance;
+    } & ParsedPublicCloseLanceInstruction<TProgram>)
   | ({
       instructionType: EcolLoteInstruction.PublicCrankPrazoExpirado;
     } & ParsedPublicCrankPrazoExpiradoInstruction<TProgram>)
@@ -1569,6 +1654,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseIndustriaAcceptVendaInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.IndustriaAumentarLance: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.IndustriaAumentarLance,
+        ...parseIndustriaAumentarLanceInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.IndustriaComprarLote: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -1581,6 +1673,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
       return {
         instructionType: EcolLoteInstruction.IndustriaConfirmRecebimento,
         ...parseIndustriaConfirmRecebimentoInstruction(instruction),
+      };
+    }
+    case EcolLoteInstruction.IndustriaDarLance: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.IndustriaDarLance,
+        ...parseIndustriaDarLanceInstruction(instruction),
       };
     }
     case EcolLoteInstruction.IntermediadorConfirmLiberacao: {
@@ -1695,6 +1794,13 @@ export function parseEcolLoteInstruction<TProgram extends string>(
         ...parseParticipanteUpdateCarteiraInstruction(instruction),
       };
     }
+    case EcolLoteInstruction.PublicCloseLance: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: EcolLoteInstruction.PublicCloseLance,
+        ...parsePublicCloseLanceInstruction(instruction),
+      };
+    }
     case EcolLoteInstruction.PublicCrankPrazoExpirado: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -1739,6 +1845,8 @@ export type EcolLotePluginAccounts = {
     SelfFetchFunctions<EntregaArgs, Entrega>;
   globalConfig: ReturnType<typeof getGlobalConfigCodec> &
     SelfFetchFunctions<GlobalConfigArgs, GlobalConfig>;
+  lance: ReturnType<typeof getLanceCodec> &
+    SelfFetchFunctions<LanceArgs, Lance>;
   lote: ReturnType<typeof getLoteCodec> & SelfFetchFunctions<LoteArgs, Lote>;
   material: ReturnType<typeof getMaterialCodec> &
     SelfFetchFunctions<MaterialArgs, Material>;
@@ -1857,6 +1965,10 @@ export type EcolLotePluginInstructions = {
     input: IndustriaAcceptVendaAsyncInput,
   ) => ReturnType<typeof getIndustriaAcceptVendaInstructionAsync> &
     SelfPlanAndSendFunctions;
+  industriaAumentarLance: (
+    input: IndustriaAumentarLanceAsyncInput,
+  ) => ReturnType<typeof getIndustriaAumentarLanceInstructionAsync> &
+    SelfPlanAndSendFunctions;
   industriaComprarLote: (
     input: IndustriaComprarLoteAsyncInput,
   ) => ReturnType<typeof getIndustriaComprarLoteInstructionAsync> &
@@ -1864,6 +1976,10 @@ export type EcolLotePluginInstructions = {
   industriaConfirmRecebimento: (
     input: MakeOptional<IndustriaConfirmRecebimentoAsyncInput, "payer">,
   ) => ReturnType<typeof getIndustriaConfirmRecebimentoInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  industriaDarLance: (
+    input: MakeOptional<IndustriaDarLanceAsyncInput, "payer">,
+  ) => ReturnType<typeof getIndustriaDarLanceInstructionAsync> &
     SelfPlanAndSendFunctions;
   intermediadorConfirmLiberacao: (
     input: IntermediadorConfirmLiberacaoAsyncInput,
@@ -1929,6 +2045,10 @@ export type EcolLotePluginInstructions = {
     input: ParticipanteUpdateCarteiraAsyncInput,
   ) => ReturnType<typeof getParticipanteUpdateCarteiraInstructionAsync> &
     SelfPlanAndSendFunctions;
+  publicCloseLance: (
+    input: PublicCloseLanceAsyncInput,
+  ) => ReturnType<typeof getPublicCloseLanceInstructionAsync> &
+    SelfPlanAndSendFunctions;
   publicCrankPrazoExpirado: (
     input: PublicCrankPrazoExpiradoAsyncInput,
   ) => ReturnType<typeof getPublicCrankPrazoExpiradoInstructionAsync> &
@@ -1949,6 +2069,7 @@ export type EcolLotePluginPdas = {
   importadorPart: typeof findImportadorPartPda;
   industriaCarteira: typeof findIndustriaCarteiraPda;
   industriaPart: typeof findIndustriaPartPda;
+  lance: typeof findLancePda;
   material: typeof findMaterialPda;
   balanca: typeof findBalancaPda;
   participante: typeof findParticipantePda;
@@ -1980,6 +2101,7 @@ export function ecolLoteProgram() {
           distribuicao: addSelfFetchFunctions(client, getDistribuicaoCodec()),
           entrega: addSelfFetchFunctions(client, getEntregaCodec()),
           globalConfig: addSelfFetchFunctions(client, getGlobalConfigCodec()),
+          lance: addSelfFetchFunctions(client, getLanceCodec()),
           lote: addSelfFetchFunctions(client, getLoteCodec()),
           material: addSelfFetchFunctions(client, getMaterialCodec()),
           materialVariacao: addSelfFetchFunctions(
@@ -2145,6 +2267,11 @@ export function ecolLoteProgram() {
               client,
               getIndustriaAcceptVendaInstructionAsync(input),
             ),
+          industriaAumentarLance: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getIndustriaAumentarLanceInstructionAsync(input),
+            ),
           industriaComprarLote: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -2154,6 +2281,14 @@ export function ecolLoteProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getIndustriaConfirmRecebimentoInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              }),
+            ),
+          industriaDarLance: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getIndustriaDarLanceInstructionAsync({
                 ...input,
                 payer: input.payer ?? client.payer,
               }),
@@ -2253,6 +2388,11 @@ export function ecolLoteProgram() {
               client,
               getParticipanteUpdateCarteiraInstructionAsync(input),
             ),
+          publicCloseLance: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getPublicCloseLanceInstructionAsync(input),
+            ),
           publicCrankPrazoExpirado: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -2277,6 +2417,7 @@ export function ecolLoteProgram() {
           importadorPart: findImportadorPartPda,
           industriaCarteira: findIndustriaCarteiraPda,
           industriaPart: findIndustriaPartPda,
+          lance: findLancePda,
           material: findMaterialPda,
           balanca: findBalancaPda,
           participante: findParticipantePda,

@@ -49,6 +49,17 @@ pub struct LoteVendido {
     pub lances_root: [u8; 32],
 }
 
+/// Lance dado ou aumentado num leilão (ADR 0013).
+#[event]
+pub struct LanceDado {
+    pub lote: Pubkey,
+    pub seq: u64,
+    pub industria: Pubkey,
+    pub valor_centavos: u64,
+    pub prazo_leilao: i64,
+    pub ts: i64,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum MovimentoEscrow {
     Liberacao,
