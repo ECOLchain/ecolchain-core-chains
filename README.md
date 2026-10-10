@@ -620,7 +620,7 @@ A primeira execução baixa a imagem Docker (alguns GB) e leva de 5 a 15 minutos
 
 ## 12. Implantação atual na devnet
 
-Deploy inicial em **2026-09-28**; upgrades pelo Squads no mesmo dia (materiais, guardião, entregas, nomes de participante e balança, a ADR 0010 nas propostas #15 a #17, a ADR 0011 na #18, em 2026-10-07, a ADR 0012 na #19, em 2026-10-08, e a ADR 0013 na #20, em 2026-10-09), todos com build verificável e hashes conferidos.
+Deploy inicial em **2026-09-28**; upgrades pelo Squads no mesmo dia (materiais, guardião, entregas, nomes de participante e balança, a ADR 0010 nas propostas #15 a #17, a ADR 0011 na #18, em 2026-10-07, a ADR 0012 na #19, em 2026-10-08, a ADR 0013 na #20 e a ADR 0014 na #21, ambas em 2026-10-09), todos com build verificável e hashes conferidos.
 
 ### Programas
 

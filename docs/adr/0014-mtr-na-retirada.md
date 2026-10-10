@@ -1,6 +1,6 @@
 # ADR 0014 — Número do MTR na retirada do lote
 
-- **Status:** aceita e implementada na rede local (2026-10-09); upgrade da devnet pendente
+- **Status:** aceita e implementada (2026-10-09); na devnet pela proposta Squads #21
 - **Data:** 2026-10-09
 
 ## Contexto
