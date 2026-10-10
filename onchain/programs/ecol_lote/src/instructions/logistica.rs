@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     ativo::{self, ContasAsset},
     constants::{
-        SEED_AUTORIDADE_ASSET, SEED_BALANCA, SEED_CARTEIRA, SEED_GLOBAL, SEED_LOTE,
+        MTR_MAXIMO, SEED_AUTORIDADE_ASSET, SEED_BALANCA, SEED_CARTEIRA, SEED_GLOBAL, SEED_LOTE,
         SEED_PARTICIPANTE,
     },
     error::EcolLoteError,
@@ -50,7 +50,8 @@ impl<'info> ContasCustodia<'info> {
     }
 }
 
-/// Retirada do lote: transportador e cooperativa assinam juntos a passagem de custódia.
+/// Retirada do lote: transportador e cooperativa assinam juntos a passagem de custódia. Quem retira
+/// informa o número do MTR (Manifesto de Transporte de Resíduos), gravado no lote.
 #[event_cpi]
 #[derive(Accounts)]
 pub struct TransportadorPickupLote<'info> {
@@ -86,8 +87,9 @@ pub struct TransportadorPickupLote<'info> {
     pub custodia: ContasCustodia<'info>,
 }
 
-pub fn handle_transportador_pickup_lote(ctx: Context<TransportadorPickupLote>) -> Result<()> {
+pub fn handle_transportador_pickup_lote(ctx: Context<TransportadorPickupLote>, mtr: u32) -> Result<()> {
     ctx.accounts.config.exigir_modo_normal()?;
+    require!((1..=MTR_MAXIMO).contains(&mtr), EcolLoteError::MtrInvalido);
     exigir_assinatura(
         &ctx.accounts.transportador.key(),
         &ctx.accounts.transportador_assinante.key(),
@@ -118,6 +120,7 @@ pub fn handle_transportador_pickup_lote(ctx: Context<TransportadorPickupLote>) -
     let lote = &mut ctx.accounts.lote;
     let para = lote.estado.iniciar_transporte()?;
     lote.transportador = ator;
+    lote.mtr = mtr;
     let (de, seq) = lote.transicionar(para, agora)?;
     ctx.accounts.custodia.transferir_para(
         &ctx.accounts.lote,

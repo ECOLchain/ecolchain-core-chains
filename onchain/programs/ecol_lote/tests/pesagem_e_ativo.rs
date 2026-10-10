@@ -336,7 +336,7 @@ fn asset_de_outro_lote_e_rejeitado() {
     amb.anunciar(lote3).unwrap();
     amb.vender(lote3).unwrap();
     let mut ix = amb.ix(
-        ecol_lote::instruction::TransportadorPickupLote {},
+        ecol_lote::instruction::TransportadorPickupLote { mtr: 123_456 },
         ecol_lote::accounts::TransportadorPickupLote {
             transportador: amb.transportador.pubkey(),
             transportador_assinante: amb.transportador.pubkey(),

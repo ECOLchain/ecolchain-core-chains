@@ -324,7 +324,9 @@ pub struct Lote {
     pub maior_lance_centavos: u64,
     /// Lances dados na rodada (cada aumento conta). Zero: a venda segue a apuração off-chain.
     pub qtd_lances: u32,
-    pub _reserved: [u8; 4],
+    /// Número do MTR (Manifesto de Transporte de Resíduos) informado por quem retira, de 1 a
+    /// 999.999. Zero antes da retirada e nos lotes retirados antes deste campo existir.
+    pub mtr: u32,
 }
 
 impl Lote {
@@ -585,7 +587,7 @@ mod testes {
             lance_lider: Pubkey::default(),
             maior_lance_centavos: 0,
             qtd_lances: 0,
-            _reserved: [0; 4],
+            mtr: 0,
         };
         // Tolerância de 2% = 20 kg: exatamente no limite não diverge; 1 g além diverge (para mais ou para menos).
         assert!(!lote.peso_diverge(980_000, 200).unwrap());
@@ -665,7 +667,7 @@ mod propriedades {
             lance_lider: Pubkey::default(),
             maior_lance_centavos: 0,
             qtd_lances: 0,
-            _reserved: [0; 4],
+            mtr: 0,
         }
     }
 

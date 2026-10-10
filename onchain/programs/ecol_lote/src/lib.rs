@@ -284,8 +284,8 @@ pub mod ecol_lote {
         )
     }
 
-    pub fn transportador_pickup_lote(ctx: Context<TransportadorPickupLote>) -> Result<()> {
-        instructions::logistica::handle_transportador_pickup_lote(ctx)
+    pub fn transportador_pickup_lote(ctx: Context<TransportadorPickupLote>, mtr: u32) -> Result<()> {
+        instructions::logistica::handle_transportador_pickup_lote(ctx, mtr)
     }
 
     pub fn industria_confirm_recebimento(

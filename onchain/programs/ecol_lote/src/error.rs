@@ -150,4 +150,6 @@ pub enum EcolLoteError {
     NaoEhLanceVencedor,
     #[msg("O lance ainda vale nesta rodada do leilão")]
     LanceEmVigor,
+    #[msg("Número do MTR inválido: de 1 a 999999")]
+    MtrInvalido,
 }

@@ -14,6 +14,8 @@ import {
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU32Decoder,
+  getU32Encoder,
   SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
   SolanaError,
   transformEncoder,
@@ -144,13 +146,17 @@ export type TransportadorPickupLoteInstruction<
 
 export type TransportadorPickupLoteInstructionData = {
   discriminator: ReadonlyUint8Array;
+  mtr: number;
 };
 
-export type TransportadorPickupLoteInstructionDataArgs = {};
+export type TransportadorPickupLoteInstructionDataArgs = { mtr: number };
 
 export function getTransportadorPickupLoteInstructionDataEncoder(): FixedSizeEncoder<TransportadorPickupLoteInstructionDataArgs> {
   return transformEncoder(
-    getStructEncoder([["discriminator", fixEncoderSize(getBytesEncoder(), 8)]]),
+    getStructEncoder([
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["mtr", getU32Encoder()],
+    ]),
     (value) => ({
       ...value,
       discriminator: TRANSPORTADOR_PICKUP_LOTE_DISCRIMINATOR,
@@ -161,6 +167,7 @@ export function getTransportadorPickupLoteInstructionDataEncoder(): FixedSizeEnc
 export function getTransportadorPickupLoteInstructionDataDecoder(): FixedSizeDecoder<TransportadorPickupLoteInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["mtr", getU32Decoder()],
   ]);
 }
 
@@ -221,6 +228,7 @@ export type TransportadorPickupLoteAsyncInput<
   systemProgram?: TAccountSystemProgram;
   eventAuthority: TAccountEventAuthority;
   program: TAccountProgram;
+  mtr: TransportadorPickupLoteInstructionDataArgs["mtr"];
 };
 
 export async function getTransportadorPickupLoteInstructionAsync<
@@ -419,6 +427,9 @@ export async function getTransportadorPickupLoteInstructionAsync<
     ResolvedInstructionAccount
   >;
 
+  // Original args.
+  const args = { ...input };
+
   // Resolve default values.
   if (!accounts.transportadorPart.value) {
     accounts.transportadorPart.value = await findTransportadorPartPda(
@@ -479,7 +490,9 @@ export async function getTransportadorPickupLoteInstructionAsync<
       getAccountMeta("eventAuthority", accounts.eventAuthority),
       getAccountMeta("program", accounts.program),
     ],
-    data: getTransportadorPickupLoteInstructionDataEncoder().encode({}),
+    data: getTransportadorPickupLoteInstructionDataEncoder().encode(
+      args as TransportadorPickupLoteInstructionDataArgs,
+    ),
     programAddress,
   } as TransportadorPickupLoteInstruction<
     TProgramAddress,
@@ -601,6 +614,7 @@ export type TransportadorPickupLoteInput<
   systemProgram?: TAccountSystemProgram;
   eventAuthority: TAccountEventAuthority;
   program: TAccountProgram;
+  mtr: TransportadorPickupLoteInstructionDataArgs["mtr"];
 };
 
 export function getTransportadorPickupLoteInstruction<
@@ -797,6 +811,9 @@ export function getTransportadorPickupLoteInstruction<
     ResolvedInstructionAccount
   >;
 
+  // Original args.
+  const args = { ...input };
+
   // Resolve default values.
   if (!accounts.mplCoreProgram.value) {
     accounts.mplCoreProgram.value =
@@ -827,7 +844,9 @@ export function getTransportadorPickupLoteInstruction<
       getAccountMeta("eventAuthority", accounts.eventAuthority),
       getAccountMeta("program", accounts.program),
     ],
-    data: getTransportadorPickupLoteInstructionDataEncoder().encode({}),
+    data: getTransportadorPickupLoteInstructionDataEncoder().encode(
+      args as TransportadorPickupLoteInstructionDataArgs,
+    ),
     programAddress,
   } as TransportadorPickupLoteInstruction<
     TProgramAddress,

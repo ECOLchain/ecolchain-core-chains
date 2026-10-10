@@ -298,6 +298,7 @@ async function loteAteReciclado(loteId: bigint, pesoG: bigint): Promise<Address>
             asset,
             eventAuthority: ev.lote,
             program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            mtr: 123_456,
         }),
     );
     ts = await agora();

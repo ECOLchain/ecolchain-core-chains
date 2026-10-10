@@ -32,6 +32,7 @@ pub const PRAZO_ENTREGA_S: i64 = 7 * 24 * 3600;
 pub const TOLERANCIA_BPS: u16 = 200; // 2%
 pub const T0: i64 = 1_790_000_000;
 pub const PESO_G: u64 = 1_000_000; // 1 t
+pub const MTR_TESTE: u32 = 123_456;
 /// Material cadastrado no `novo()` e usado nos lotes de teste.
 pub const PLASTICO: u16 = 1;
 /// Material com variações de cor e garrafas, criado por `preparar_vidro` (ADR 0011).
@@ -942,8 +943,18 @@ impl Ambiente {
         cooperativa: &Keypair,
         lote: Pubkey,
     ) -> Result<TransactionMetadata, TransactionError> {
+        self.retirar_com_mtr(transportador, cooperativa, lote, MTR_TESTE)
+    }
+
+    pub fn retirar_com_mtr(
+        &mut self,
+        transportador: &Keypair,
+        cooperativa: &Keypair,
+        lote: Pubkey,
+        mtr: u32,
+    ) -> Result<TransactionMetadata, TransactionError> {
         let ix = self.ix(
-            ixs::TransportadorPickupLote {},
+            ixs::TransportadorPickupLote { mtr },
             ctas::TransportadorPickupLote {
                 transportador: transportador.pubkey(),
                 transportador_assinante: transportador.pubkey(),

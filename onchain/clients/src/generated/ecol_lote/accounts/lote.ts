@@ -148,7 +148,11 @@ export type Lote = {
   maiorLanceCentavos: bigint;
   /** Lances dados na rodada (cada aumento conta). Zero: a venda segue a apuração off-chain. */
   qtdLances: number;
-  reserved: ReadonlyUint8Array;
+  /**
+   * Número do MTR (Manifesto de Transporte de Resíduos) informado por quem retira, de 1 a
+   * 999.999. Zero antes da retirada e nos lotes retirados antes deste campo existir.
+   */
+  mtr: number;
 };
 
 export type LoteArgs = {
@@ -225,7 +229,11 @@ export type LoteArgs = {
   maiorLanceCentavos: number | bigint;
   /** Lances dados na rodada (cada aumento conta). Zero: a venda segue a apuração off-chain. */
   qtdLances: number;
-  reserved: ReadonlyUint8Array;
+  /**
+   * Número do MTR (Manifesto de Transporte de Resíduos) informado por quem retira, de 1 a
+   * 999.999. Zero antes da retirada e nos lotes retirados antes deste campo existir.
+   */
+  mtr: number;
 };
 
 /** Gets the encoder for {@link LoteArgs} account data. */
@@ -271,7 +279,7 @@ export function getLoteEncoder(): Encoder<LoteArgs> {
       ["lanceLider", getAddressEncoder()],
       ["maiorLanceCentavos", getU64Encoder()],
       ["qtdLances", getU32Encoder()],
-      ["reserved", fixEncoderSize(getBytesEncoder(), 4)],
+      ["mtr", getU32Encoder()],
     ]),
     (value) => ({ ...value, discriminator: LOTE_DISCRIMINATOR }),
   );
@@ -319,7 +327,7 @@ export function getLoteDecoder(): Decoder<Lote> {
     ["lanceLider", getAddressDecoder()],
     ["maiorLanceCentavos", getU64Decoder()],
     ["qtdLances", getU32Decoder()],
-    ["reserved", fixDecoderSize(getBytesDecoder(), 4)],
+    ["mtr", getU32Decoder()],
   ]);
 }
 

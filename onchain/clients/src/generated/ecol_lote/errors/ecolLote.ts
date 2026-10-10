@@ -162,6 +162,8 @@ export const ECOL_LOTE_ERROR__LEILAO_COM_LANCES = 0x17b7; // 6071
 export const ECOL_LOTE_ERROR__NAO_EH_LANCE_VENCEDOR = 0x17b8; // 6072
 /** LanceEmVigor: O lance ainda vale nesta rodada do leilão */
 export const ECOL_LOTE_ERROR__LANCE_EM_VIGOR = 0x17b9; // 6073
+/** MtrInvalido: Número do MTR inválido: de 1 a 999999 */
+export const ECOL_LOTE_ERROR__MTR_INVALIDO = 0x17ba; // 6074
 
 export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__ASSET_INCORRETO
@@ -203,6 +205,7 @@ export type EcolLoteError =
   | typeof ECOL_LOTE_ERROR__MATERIAL_INATIVO
   | typeof ECOL_LOTE_ERROR__MATERIAL_SEM_GARRAFAS
   | typeof ECOL_LOTE_ERROR__MODO_RETIRADA_INVALIDO
+  | typeof ECOL_LOTE_ERROR__MTR_INVALIDO
   | typeof ECOL_LOTE_ERROR__NAO_EH_ADMIN
   | typeof ECOL_LOTE_ERROR__NAO_EH_ARBITRO
   | typeof ECOL_LOTE_ERROR__NAO_EH_AUTORIDADE_CREDITO
@@ -281,6 +284,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [ECOL_LOTE_ERROR__MATERIAL_INATIVO]: `Material inativo`,
     [ECOL_LOTE_ERROR__MATERIAL_SEM_GARRAFAS]: `Este material não conta garrafas`,
     [ECOL_LOTE_ERROR__MODO_RETIRADA_INVALIDO]: `Modo de retirada inválido`,
+    [ECOL_LOTE_ERROR__MTR_INVALIDO]: `Número do MTR inválido: de 1 a 999999`,
     [ECOL_LOTE_ERROR__NAO_EH_ADMIN]: `Assinante não é o admin`,
     [ECOL_LOTE_ERROR__NAO_EH_ARBITRO]: `Assinante não é o árbitro`,
     [ECOL_LOTE_ERROR__NAO_EH_AUTORIDADE_CREDITO]: `Assinante não é a autoridade do programa de créditos`,

@@ -162,7 +162,7 @@ fn retirada_e_recebimento_com_carteiras_vinculadas() {
         .unwrap();
 
     let ix = amb.ix(
-        ecol_lote::instruction::TransportadorPickupLote {},
+        ecol_lote::instruction::TransportadorPickupLote { mtr: 123_456 },
         ecol_lote::accounts::TransportadorPickupLote {
             transportador: transp.pubkey(),
             transportador_assinante: motorista.pubkey(),

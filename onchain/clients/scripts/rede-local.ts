@@ -13,7 +13,7 @@
 //   Grava no arquivo: rpcUrl, wsUrl, e as chaves de teste (cooperativa, balança, coletores e transportador; semente do coletor 1).
 //   Na interface: VITE_RPC_LOCALNET=<rpcUrl> VITE_WS_LOCALNET=<wsUrl> npm run dev, rede "Localnet".
 import { createHash } from 'node:crypto';
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -22,6 +22,7 @@ import {
     createClient,
     createKeyPairSignerFromPrivateKeyBytes,
     generateKeyPairSigner,
+    type KeyPairSigner,
     getAddressEncoder,
     getProgramDerivedAddress,
     type Instruction,
@@ -43,24 +44,32 @@ const saida = process.argv[2] ?? join(raiz, '.surfpool-demo.json');
 
 const client = await createClient().use(surfpool({ transactionConfig: { version: 0 } }));
 const enviar = (...ixs: Instruction[]) => client.sendTransaction(ixs);
-const semente = () => crypto.getRandomValues(new Uint8Array(32));
+// Reaproveita as chaves do arquivo de uma execução anterior: as carteiras importadas no navegador
+// continuam valendo depois de reiniciar a rede. NOVAS_CHAVES=1 gera tudo de novo.
+const anteriores: Record<string, { semente?: string }> =
+    !process.env.NOVAS_CHAVES && existsSync(saida) ? JSON.parse(readFileSync(saida, 'utf8')) : {};
+const semente = (nome: string) => {
+    const salva = anteriores[nome]?.semente;
+    return salva && /^[0-9a-f]{64}$/.test(salva) ? Uint8Array.from(Buffer.from(salva, 'hex')) : crypto.getRandomValues(new Uint8Array(32));
+};
 
 const [upgrade, admin, registrador, zupy] = await Promise.all(Array.from({ length: 4 }, () => generateKeyPairSigner()));
 const sementes = {
-    cooperativa: semente(),
-    balanca: semente(),
-    coletor1: semente(),
-    coletor2: semente(),
-    transportador: semente(),
-    industria: semente(),
-    operador: semente(),
-    balancaIndustria: semente(),
-    intermediador: semente(),
-    importador: semente(),
-    importadorLoja: semente(),
-    cleantech: semente(),
-    balancaCleantech: semente(),
-    arbitro: semente(),
+    cooperativa: semente('cooperativa'),
+    balanca: semente('balanca'),
+    coletor1: semente('coletor'),
+    coletor2: semente('coletor2'),
+    transportador: semente('transportador'),
+    industria: semente('industria'),
+    industria2: semente('industria2'),
+    operador: semente('operador'),
+    balancaIndustria: semente('balancaIndustria'),
+    intermediador: semente('intermediador'),
+    importador: semente('importador'),
+    importadorLoja: semente('importadorLoja'),
+    cleantech: semente('cleantech'),
+    balancaCleantech: semente('balancaCleantech'),
+    arbitro: semente('arbitro'),
 };
 const operador = await createKeyPairSignerFromPrivateKeyBytes(sementes.operador);
 const intermediador = await createKeyPairSignerFromPrivateKeyBytes(sementes.intermediador);
@@ -71,6 +80,8 @@ const balanca = await createKeyPairSignerFromPrivateKeyBytes(sementes.balanca);
 const coletores = await Promise.all([sementes.coletor1, sementes.coletor2].map((s) => createKeyPairSignerFromPrivateKeyBytes(s)));
 const transportador = await createKeyPairSignerFromPrivateKeyBytes(sementes.transportador);
 const industria = await createKeyPairSignerFromPrivateKeyBytes(sementes.industria);
+// Segunda indústria: concorre nos lances do leilão #2.
+const industria2 = await createKeyPairSignerFromPrivateKeyBytes(sementes.industria2);
 const importador = await createKeyPairSignerFromPrivateKeyBytes(sementes.importador);
 const importadorLoja = await createKeyPairSignerFromPrivateKeyBytes(sementes.importadorLoja);
 const cleantech = await createKeyPairSignerFromPrivateKeyBytes(sementes.cleantech);
@@ -89,6 +100,7 @@ client.surfnet.fundSol(cooperativa.address, 10_000_000_000);
 client.surfnet.fundSol(operador.address, 10_000_000_000);
 // A indústria paga a taxa do recebimento.
 client.surfnet.fundSol(industria.address, 1_000_000_000);
+client.surfnet.fundSol(industria2.address, 1_000_000_000);
 // O intermediador paga a taxa da liberação do escrow.
 client.surfnet.fundSol(intermediador.address, 1_000_000_000);
 // O árbitro paga a taxa das decisões.
@@ -149,6 +161,7 @@ for (const [carteira, papel, nome] of [
     ...coletores.map((c, i) => [c.address, lote.Papel.Coletor, `Coletor ${i + 1}`] as const),
     [transportador.address, lote.Papel.Transportador, 'Transportador Demo'],
     [industria.address, lote.Papel.Industria, 'Indústria Demo'],
+    [industria2.address, lote.Papel.Industria, 'Recicla Sul'],
     [importador.address, lote.Papel.Importador, 'Importadora de Vinhos Demo'],
     [cleantech.address, lote.Papel.CleanTech, 'Clean Tech Demo'],
 ] as const) {
@@ -353,6 +366,8 @@ async function loteDemo(
             asset: await pLote.asset(lotePda),
             eventAuthority: ev,
             program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            // MTR de demonstração: 100000 + número do lote.
+            mtr: 100_000 + Number(id),
         }),
     );
     if (ate === 'emTransporte') return;
@@ -375,6 +390,30 @@ async function loteDemo(
 }
 await loteDemo(1n, 1, 250_000n, coletores[0].address, 'vendido');
 await loteDemo(2n, 2, 180_000n, coletores[1].address, 'anunciado');
+// Lances no leilão #2 (ADR 0013): Recicla Sul abre, a Indústria Demo cobre e a Recicla Sul aumenta.
+async function lanceDemo(quem: KeyPairSigner, id: bigint, valorCentavos: bigint) {
+    const lotePda = await pLote.lote(cooperativa.address, id);
+    const conta = await pLote.lance(lotePda, quem.address);
+    const comum = {
+        industria: quem.address,
+        industriaAssinante: quem,
+        industriaPart: await pLote.participante(quem.address),
+        lote: lotePda,
+        lance: conta,
+        eventAuthority: ev,
+        program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+        valorCentavos,
+    };
+    const existe = (await lote.fetchMaybeLance(client.rpc, conta)).exists;
+    await enviar(
+        existe
+            ? await lote.getIndustriaAumentarLanceInstructionAsync(comum)
+            : await lote.getIndustriaDarLanceInstructionAsync({ ...comum, payer: client.payer }),
+    );
+}
+await lanceDemo(industria2, 2n, 95_000n);
+await lanceDemo(industria, 2n, 100_000n);
+await lanceDemo(industria2, 2n, 105_000n);
 await loteDemo(3n, 1, 120_000n, coletores[0].address, 'emTransporte');
 await loteDemo(4n, 2, 300_000n, coletores[1].address, 'recebido');
 // ADR 0012: venda direta. #5 e #6 à venda (Disputa), #7 comprado com retirada própria (Retiradas da indústria),
@@ -665,6 +704,7 @@ await coletaDemo(6n, VERDE, 1_500, 2, 'coletada');
             asset,
             eventAuthority: ev,
             program: lote.ECOL_LOTE_PROGRAM_ADDRESS,
+            mtr: 200_001,
         }),
     );
     ts = await agora();
@@ -723,8 +763,10 @@ writeFileSync(
             coletores: coletores.map((c) => c.address),
             // Para entrar na interface como coletor (tela Meus lotes).
             coletor: { endereco: coletores[0].address, semente: hex(sementes.coletor1) },
+            coletor2: { endereco: coletores[1].address, semente: hex(sementes.coletor2) },
             transportador: { endereco: transportador.address, semente: hex(sementes.transportador) },
             industria: { endereco: industria.address, semente: hex(sementes.industria) },
+            industria2: { endereco: industria2.address, semente: hex(sementes.industria2) },
             balancaIndustria: { endereco: balancaIndustria.address, semente: hex(sementes.balancaIndustria) },
             operador: { endereco: operador.address, semente: hex(sementes.operador) },
             intermediador: { endereco: intermediador.address, semente: hex(sementes.intermediador) },

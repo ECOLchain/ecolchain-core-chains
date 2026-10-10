@@ -87,3 +87,6 @@ pub const DURACAO_LEILAO_MAX_S: i64 = 90 * 24 * 3600;
 
 /// Depois de voltar ao modo Normal, o crank de prazo espera esta carência para as partes retomarem.
 pub const CARENCIA_RETOMADA_S: i64 = 48 * 3600;
+
+/// Maior número de MTR aceito na retirada (seis dígitos).
+pub const MTR_MAXIMO: u32 = 999_999;
