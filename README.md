@@ -498,7 +498,7 @@ web/                            interface web: repositório próprio (FORA DESTE
 
 **Carteira local:** `~/.config/solana/id.json` (crie com `solana-keygen new` se não existir). Para ver o endereço, use `solana address`.
 
-**Carteira dos participantes (interface web): use a [Solflare](https://solflare.com).** Ela assina sem alterar a transação e permite assinar sem enviar, o que a retirada do lote exige: a cooperativa e o transportador assinam a mesma transação em aparelhos diferentes. Carteiras que acrescentam instruções ao assinar invalidam a assinatura da outra parte. Detalhes no README do [repositório da web](https://github.com/ECOLchain/ecolchain-core-web).
+**Carteira dos participantes (interface web): use a [Solflare](https://solflare.com).** Ela assina sem alterar a transação e permite assinar sem enviar, o que a retirada do lote exige: a cooperativa e o transportador assinam a mesma transação em aparelhos diferentes. Carteiras que acrescentam instruções ao assinar invalidam a assinatura da outra parte. Detalhes no README do [repositório da web](https://github.com/ECOLchain/ecolchain-core-web3).
 
 A variável `NO_DNA=1` usada nos comandos do Anchor só desliga a telemetria e as mensagens interativas do CLI.
 

@@ -5,7 +5,7 @@ Documento vivo para retomar o trabalho entre sessões. Atualizar ao fim de cada 
 
 - **Diagrama de referência:** `docs/Proposta_04.excalidraw` (v04, com as decisões de 2026-09-28; `Proposta_03` mantido como original)
 - **Última atualização:** 2026-10-09 (sessão 18)
-- **Repositórios:** blockchain https://github.com/ECOLchain/ecolchain-core-chains · web https://github.com/ECOLchain/ecolchain-core-web (clonado em `web/`)
+- **Repositórios:** blockchain https://github.com/ECOLchain/ecolchain-core-chains · web https://github.com/ECOLchain/ecolchain-core-web3 (clonado em `web/`; antes `ecolchain-core-web`, renomeado em 2026-10-11)
 
 ---
 
@@ -54,7 +54,7 @@ Indústria + EcolChain negociam entre si a fatia de 80%. Exemplo do diagrama: 1 
 
 **Estado atual do `ecol_lote`:** 50 instruções (ADR 0012: 47; **ADR 0013 na sessão 17**: lances on-chain); antes, 43 (materiais, guardião e entregas desde a sessão 10; nomes de participante e balança e a ADR 0010 na sessão 12; **ADR 0011 na sessão 15**: carteiras vinculadas, variações do material, garrafas, importador e Clean Tech); workspace com 146 testes Rust + 6 TS + 2 E2E; clippy estrito limpo. **ADR 0011 na devnet desde 2026-10-07** (proposta Squads #18) e **ADR 0012 desde 2026-10-08** (proposta #19) e **ADR 0013 desde 2026-10-09** (proposta #20, build verificável; hashes `3fbe5947…f1e1` lote, `c654ae1a…c13e` crédito, `3c98f240…5bc9` repartição sem mudança). Custo medido ≈ 0,0084 SOL/lote (ver ADR 0003).
 
-**Interface web (estado em 2026-09-29, repositório `ecolchain-core-web`):** o fluxo do lote está completo, da origem até `Reciclado`.
+**Interface web (estado em 2026-09-29, repositório `ecolchain-core-web3`):** o fluxo do lote está completo, da origem até `Reciclado`.
 
 | Papel | Telas funcionais |
 |---|---|
