@@ -1,654 +1,654 @@
 # EcolChain
 
-Reciclagem rastreável na Solana, com repartição da receita dos créditos de carbono entre quem participou da cadeia.
+Traceable recycling on Solana, with the revenue from carbon credits split among everyone who took part in the chain.
 
-- **Estado:** 3 programas Anchor publicados na **devnet** com build verificável, governados por um Squads multisig 3 de 5.
-- **Repositório:** https://github.com/ECOLchain/ecolchain-core-chains (programas Solana e clientes TypeScript). A interface web fica num repositório próprio.
-- **Contexto e histórico:** [`CONTINUATION.md`](CONTINUATION.md)
-- **Decisões de arquitetura:** [`docs/adr/`](docs/adr/README.md)
-- **Auditoria:** [`docs/security-audit-2026-09-28.md`](docs/security-audit-2026-09-28.md)
+- **Status:** 3 Anchor programs deployed on **devnet** with a verifiable build, governed by a 3-of-5 Squads multisig.
+- **Repository:** https://github.com/ECOLchain/ecolchain-core-chains (Solana programs and TypeScript clients). The web interface lives in its own repository.
+- **Context and history:** [`CONTINUATION.md`](CONTINUATION.md)
+- **Architecture decisions:** [`docs/adr/`](docs/adr/README.md)
+- **Audit:** [`docs/security-audit-2026-09-28.md`](docs/security-audit-2026-09-28.md)
 
 ---
 
-## Sumário
+## Contents
 
-1. [Visão geral](#1-visão-geral)
-2. [Arquitetura](#2-arquitetura)
-3. [Programas](#3-programas)
+1. [Overview](#1-overview)
+2. [Architecture](#2-architecture)
+3. [Programs](#3-programs)
    - [ecol_lote](#31-ecol_lote)
    - [ecol_credito](#32-ecol_credito)
    - [ecol_reparticao](#33-ecol_reparticao)
-4. [Papéis e chaves](#4-papéis-e-chaves)
-5. [Fluxo completo, passo a passo](#5-fluxo-completo-passo-a-passo)
-6. [Formatos off-chain que precisam bater com o on-chain](#6-formatos-off-chain-que-precisam-bater-com-o-on-chain)
-7. [Estrutura do repositório](#7-estrutura-do-repositório)
-8. [Ambiente de desenvolvimento](#8-ambiente-de-desenvolvimento)
-9. [Build e testes](#9-build-e-testes)
-10. [Clientes TypeScript](#10-clientes-typescript)
-11. [Deploy na devnet](#11-deploy-na-devnet)
-12. [Implantação atual na devnet](#12-implantação-atual-na-devnet)
-13. [Governança e operação com o Squads](#13-governança-e-operação-com-o-squads)
-14. [Verificação independente (auditores)](#14-verificação-independente-auditores)
-15. [Custos](#15-custos)
-16. [Segurança](#16-segurança)
-17. [Solução de problemas](#17-solução-de-problemas)
-18. [Pendências antes da mainnet](#18-pendências-antes-da-mainnet)
+4. [Roles and keys](#4-roles-and-keys)
+5. [Complete flow, step by step](#5-complete-flow-step-by-step)
+6. [Off-chain formats that must match on-chain](#6-off-chain-formats-that-must-match-on-chain)
+7. [Repository structure](#7-repository-structure)
+8. [Development environment](#8-development-environment)
+9. [Build and tests](#9-build-and-tests)
+10. [TypeScript clients](#10-typescript-clients)
+11. [Devnet deploy](#11-devnet-deploy)
+12. [Current devnet deployment](#12-current-devnet-deployment)
+13. [Governance and operation with Squads](#13-governance-and-operation-with-squads)
+14. [Independent verification (auditors)](#14-independent-verification-auditors)
+15. [Costs](#15-costs)
+16. [Security](#16-security)
+17. [Troubleshooting](#17-troubleshooting)
+18. [Open items before mainnet](#18-open-items-before-mainnet)
 
 ---
 
-## 1. Visão geral
+## 1. Overview
 
-**Fluxo físico:** origem do material (coletor, triagem própria, doação, compra ou catador avulso) → Cooperativa (pesa cada **lote de origem**, junta vários num **lote de venda** e pesa de novo) → Transportador → Indústria.
+**Physical flow:** material origin (collector, the cooperative's own sorting, donation, purchase or independent waste picker) → Cooperative (weighs each **source lot**, combines several into a **sale lot** and weighs it again) → Carrier → Industry.
 
-**Marketplace de lotes:** a cooperativa anuncia o lote, as indústrias dão lances e o pagamento fica retido em escrow até a entrega.
+**Lot marketplace:** the cooperative lists the lot, industries place bids, and the payment is held in escrow until delivery.
 
-**Crédito de carbono:** vários lotes reciclados são agregados num crédito. O crédito é validado e emitido no registro oficial (Verra ou Gold Standard) e depois vendido. A receita da venda é repartida entre os participantes.
+**Carbon credit:** several recycled lots are aggregated into a credit. The credit is validated and issued in the official registry (Verra or Gold Standard) and then sold. The sale revenue is split among the participants.
 
-| Participante | Parte da receita do crédito | Forma de pagamento |
+| Participant | Share of the credit revenue | Form of payment |
 |---|---|---|
-| Coletor | 5% (fixo) | cupons Zupy; além disso recebe R$ via Pix na entrega à cooperativa |
-| Cooperativa | 10% (fixo) | cupons Zupy |
-| Transportador | 5% (fixo) | cupons Zupy |
-| Indústria | 65% a 79% (negociado por crédito) | cupons Zupy |
-| EcolChain | o restante: 1% a 15%, mais o resíduo de arredondamento | R$ / stablecoin |
+| Collector | 5% (fixed) | Zupy coupons; also receives R$ via Pix on delivery to the cooperative |
+| Cooperative | 10% (fixed) | Zupy coupons |
+| Carrier | 5% (fixed) | Zupy coupons |
+| Industry | 65% to 79% (negotiated per credit) | Zupy coupons |
+| EcolChain | the remainder: 1% to 15%, plus the rounding residue | R$ / stablecoin |
 
-Exemplo do diagrama: um crédito vendido por US$ 50,00 (5.000 centavos) com a indústria em 65% dá **250 / 500 / 250 / 3.250** em cupons e **750** para a EcolChain. Com a indústria em 79%, a indústria recebe 3.950 e a EcolChain 50.
+Example from the diagram: a credit sold for US$ 50.00 (5,000 cents) with the industry at 65% yields **250 / 500 / 250 / 3,250** in coupons and **750** for EcolChain. With the industry at 79%, the industry receives 3,950 and EcolChain 50.
 
-### Princípios de projeto (resumo dos ADRs)
+### Design principles (summary of the ADRs)
 
-| Decisão | O que significa na prática |
+| Decision | What it means in practice |
 |---|---|
-| Escrow em R$ off-chain (ADR 0001) | O dinheiro fica com um **intermediador** (Pix / conta garantia). On-chain ficam só as atestações do intermediador (hash da referência do depósito, da liberação e do reembolso). |
-| Sem token próprio (ADR 0002) | A parte da EcolChain é paga em R$ / stablecoin. Não há mint, o que evita questões de CVM. |
-| Core asset + PDA de estado (ADR 0003) | Cada lote tem uma PDA `Lote` (a máquina de estados, fonte da verdade) e um **Metaplex Core asset** congelado que serve de recibo visível em carteiras. |
-| Carteira embutida + fee payer (ADR 0004) | Cada participante assina com a própria carteira (embutida/MPC). A EcolChain paga as taxas (`payer` separado de quem assina o ato). |
-| Crédito só como registro (ADR 0005) | O crédito **não é tokenizado**. On-chain ficam o número de série, os lotes que o originaram, a venda e a prova de aposentadoria. |
-| Coletor recebe R$ na entrega (ADR 0006) | Pagamento imediato via Pix, fora da blockchain, mais os 5% em cupons depois. |
-| Direito on-chain, Zupy resgata (ADR 0007) | Os direitos de cada participante são publicados como **árvore Merkle**. A Zupy só registra os resgates, e cada resgate fica on-chain. |
-| Governança da EcolChain (ADR 0009, substitui a 0008) | Upgrade, configs e árbitro ficam num **Squads multisig 3 de 5**, com as 5 chaves da própria EcolChain. Timelock 0 na devnet e 24 h na mainnet. |
-| Lote de origem e lote de venda (ADR 0010) | Cada pesagem na cooperativa é um **lote de origem**, com ou sem coletor. Vários lotes de origem do mesmo material formam um **lote de venda**, pesado de novo e só então anunciado. A união pode ser desfeita antes da venda. O teto dos coletores na repartição vale só sobre o peso que veio de coletores. |
-| Importador, Clean Tech, carteiras e variações (ADR 0011) | **Importador de vinhos** registra garrafas postas no mercado (`Distribuicao`) e coletas (`Coleta`) que entrega a uma cooperativa ou **Clean Tech** (papel que opera como a cooperativa); a coleta vira lote de origem `Importador` e, com o lote reciclado, recebe o hash da NF. Cada participante pode ter **várias carteiras com nome** (`Carteira`, PDA `["carteira", endereço]`) que assinam por ele; a identidade continua sendo a carteira titular. Materiais ganham **variações** (`MaterialVariacao`: Transparente, Verde, Marrom no vidro) e **garrafas aproximadas**; o lote de venda não mistura cores. |
-| Venda direta e lote vendido fora (ADR 0012) | A cooperativa põe o lote **à venda por preço fixo** (`cooperativa_anunciar_venda`, `Anunciado` sem prazo) ou o marca como **vendido fora da plataforma** (`VendidoFora`). A indústria compra sozinha pelo preço ou mais (`industria_comprar_lote`), escolhendo **retirada por transportador terceiro ou própria** (a indústria assina a retirada). Depois do recebimento, a cooperativa confirma o pagamento com o hash do comprovante (`cooperativa_confirmar_pagamento`) e o lote vai a `Reciclado`. O leilão de três assinaturas continua valendo. |
-| Lances on-chain no leilão (ADR 0013) | A indústria dá lance no leilão pela própria carteira (`industria_dar_lance`, depois `industria_aumentar_lance`): conta `Lance` por indústria e lote, valor ≥ mínimo e acima do maior lance, até o prazo. O lote guarda o líder e o maior lance. Com lances on-chain, a venda de três assinaturas só vai ao líder, pelo valor dele, depois do prazo; sem eles, vale a apuração off-chain. O crank `public_close_lance` devolve o rent no fim da rodada. |
-| MTR na retirada (ADR 0014) | Quem retira (transportador, ou a indústria na retirada própria) informa o número do MTR (1 a 999.999) num código que a cooperativa lê antes de assinar; `transportador_pickup_lote(mtr)` exige o número e grava em `Lote.mtr` (os últimos 4 bytes reservados). |
+| Off-chain R$ escrow (ADR 0001) | The money is held by a **payment intermediary** (Pix / escrow account). Only the intermediary's attestations go on-chain (hashes of the deposit, release and refund references). |
+| No native token (ADR 0002) | EcolChain's share is paid in R$ / stablecoin. There is no mint, which avoids CVM (Brazilian securities regulator) issues. |
+| Core asset + state PDA (ADR 0003) | Each lot has a `Lote` PDA (the state machine, source of truth) and a frozen **Metaplex Core asset** that serves as a receipt visible in wallets. |
+| Embedded wallet + fee payer (ADR 0004) | Each participant signs with their own wallet (embedded/MPC). EcolChain pays the fees (`payer` separate from whoever signs the action). |
+| Credit as a record only (ADR 0005) | The credit is **not tokenized**. What goes on-chain is the serial number, the lots that originated it, the sale and the proof of retirement. |
+| Collector receives R$ on delivery (ADR 0006) | Immediate payment via Pix, off the blockchain, plus the 5% in coupons later. |
+| Entitlement on-chain, Zupy redeems (ADR 0007) | Each participant's entitlements are published as a **Merkle tree**. Zupy only records the redemptions, and each redemption is on-chain. |
+| EcolChain governance (ADR 0009, supersedes 0008) | Upgrades, configs and the arbiter sit in a **3-of-5 Squads multisig**, with all 5 keys held by EcolChain itself. Timelock 0 on devnet and 24 h on mainnet. |
+| Source lot and sale lot (ADR 0010) | Each weighing at the cooperative is a **source lot**, with or without a collector. Several source lots of the same material form a **sale lot**, which is weighed again and only then listed. The combination can be undone before the sale. The collectors' cap in the revenue split applies only to the weight that came from collectors. |
+| Importer, Clean Tech, wallets and variations (ADR 0011) | A **wine Importer** records bottles placed on the market (`Distribuicao`) and collections (`Coleta`) that it delivers to a cooperative or **Clean Tech** (a role that operates like the cooperative); the collection becomes an `Importador` source lot and, once the lot is recycled, receives the invoice (NF) hash. Each participant can have **several named wallets** (`Carteira`, PDA `["carteira", endereço]`) that sign on their behalf; the identity remains the holder wallet. Materials gain **variations** (`MaterialVariacao`: Transparente, Verde, Marrom for glass) and **approximate bottle counts**; a sale lot does not mix colors. |
+| Direct sale and lot sold elsewhere (ADR 0012) | The cooperative puts the lot **up for sale at a fixed price** (`cooperativa_anunciar_venda`, `Anunciado` with no deadline) or marks it as **sold outside the platform** (`VendidoFora`). The industry buys on its own at the price or higher (`industria_comprar_lote`), choosing **pickup by a third-party carrier or its own pickup** (the industry signs the pickup). After receipt, the cooperative confirms the payment with the hash of the payment proof (`cooperativa_confirmar_pagamento`) and the lot moves to `Reciclado`. The three-signature auction remains valid. |
+| On-chain bids in the auction (ADR 0013) | The industry bids in the auction from its own wallet (`industria_dar_lance`, then `industria_aumentar_lance`): one `Lance` account per industry and lot, amount ≥ minimum and above the highest bid, until the deadline. The lot stores the leader and the highest bid. With on-chain bids, the three-signature sale can go only to the leader, at the leader's amount, after the deadline; without them, the off-chain tally applies. The `public_close_lance` crank returns the rent at the end of the round. |
+| MTR at pickup (ADR 0014) | Whoever picks up (the carrier, or the industry on its own pickup) provides the MTR number (1 to 999,999) in a code that the cooperative reads before signing; `transportador_pickup_lote(mtr)` requires the number and writes it to `Lote.mtr` (the last 4 reserved bytes). |
 
-**LGPD:** nenhum dado pessoal vai on-chain. A origem de cada lote aparece como `origem_ref` (hash da carteira do coletor, ou do texto da nota, recibo ou CNPJ), o cadastro como `kyc_hash`, e as fotos, tickets e notas do lote de venda como `evidencias_hash`, com os arquivos off-chain. O **nome** do participante e da balança é público (até 32 bytes): para coletores, use apelido ou código.
+**LGPD:** no personal data goes on-chain. The origin of each lot appears as `origem_ref` (hash of the collector's wallet, or of the text of the invoice, receipt or CNPJ), the registration as `kyc_hash`, and the photos, tickets and invoices of the sale lot as `evidencias_hash`, with the files kept off-chain. The **name** of the participant and of the scale is public (up to 32 bytes): for collectors, use a nickname or code.
 
 ---
 
-## 2. Arquitetura
+## 2. Architecture
 
-### Camadas
+### Layers
 
 ```
  ┌──────────────────────────────┐   ┌──────────────────────────────┐   ┌─────────────────────────────┐
- │ Interface web (repo próprio) │   │ Backend / scripts EcolChain  │   │ Balanças (keypair Ed25519)  │
- │ React 19, carteira do        │   │ operador, árvore de direitos,│   │ assinam cada pesagem        │
- │ participante, trilha pública │   │ ops do Squads (onchain/ops)  │   │                             │
+ │ Web interface (own repo)     │   │ EcolChain backend / scripts  │   │ Scales (Ed25519 keypair)    │
+ │ React 19, participant        │   │ operator, entitlements tree, │   │ sign each weighing          │
+ │ wallet, public trail         │   │ Squads ops (onchain/ops)     │   │                             │
  └──────────────┬───────────────┘   └──────────────┬───────────────┘   └──────────────┬──────────────┘
                 └───────────────┬──────────────────┴───────────────────────────────────┘
                                 ▼
                ┌────────────────────────────────────┐
-               │ onchain/clients (TypeScript)       │  clientes Codama (@solana/kit 8), PDAs,
-               │                                    │  pesagem Ed25519, referências, árvore Merkle
+               │ onchain/clients (TypeScript)       │  Codama clients (@solana/kit 8), PDAs,
+               │                                    │  Ed25519 weighing, references, Merkle tree
                └────────────────┬───────────────────┘
-                                ▼  RPC Solana
+                                ▼  Solana RPC
  ┌──────────────────────────────────────────────────────────────────────────────────────────────┐
- │                                   Programas Anchor (este repo)                               │
+ │                                 Anchor programs (this repo)                                  │
  └──────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-A interface web importa os clientes deste repositório (`onchain/clients/src`, alias `@clientes`). Na mesma máquina, as duas pastas ficam lado a lado.
+The web interface imports the clients from this repository (`onchain/clients/src`, alias `@clientes`). On the same machine, the two folders sit side by side.
 
-### Programas
+### Programs
 
 ```
                     ┌─────────────────────────────────────────────────────────┐
-                    │                 Squads multisig (3 de 5)                │
-                    │   vault 0 = upgrade authority + admin    vault 1 = árbitro│
+                    │                 Squads multisig (3 of 5)                │
+                    │   vault 0 = upgrade authority + admin    vault 1 = arbiter│
                     └──────────────┬───────────────────────────────┬──────────┘
-                                   │ admin                          │ árbitro
+                                   │ admin                          │ arbiter
        ┌───────────────────────────▼──────┐                         │
        │            ecol_lote             │◄────────────────────────┘
        │  GlobalConfig, Participante,     │
        │  Balanca, Material,              │
-       │  Entrega (lote de origem),       │
-       │  Lote (lote de venda, + asset)   │
+       │  Entrega (source lot),           │
+       │  Lote (sale lot, + asset)        │
        └───────────────▲──────────────────┘
                        │ CPI credito_mark_agregado / _desagregado
-                       │ (assinada pela PDA ["autoridade_credito"])
+                       │ (signed by the PDA ["autoridade_credito"])
        ┌───────────────┴──────────────────┐
        │           ecol_credito           │
        │  CreditoConfig, Credito,         │
        │  SerialRegistro                  │
        └───────────────▲──────────────────┘
-                       │ lê o Credito vendido (valor e pesos)
+                       │ reads the sold Credito (amount and weights)
        ┌───────────────┴──────────────────┐
        │          ecol_reparticao         │
-       │  ReparticaoConfig, Distribuicao  │──► lê Participante do ecol_lote no resgate
+       │  ReparticaoConfig, Distribuicao  │──► reads ecol_lote's Participante on redemption
        └──────────────────────────────────┘
 
-  Off-chain: backend EcolChain (operador), intermediador de pagamento, registrador
-  (Verra / GS), Zupy, balanças com keypair próprio, armazenamento de evidências.
+  Off-chain: EcolChain backend (operator), payment intermediary, registrar
+  (Verra / GS), Zupy, scales with their own keypair, evidence storage.
 ```
 
-### Do material ao crédito
+### From material to credit
 
 ```
- Lote de origem (Entrega)          Lote de venda (Lote)                              Crédito
+ Source lot (Entrega)              Sale lot (Lote)                                   Credit
  ┌───────────────────────┐
- │ Coletor | Triagem     │  união  ┌──────────────────────────┐  leilão, venda,  ┌───────────────┐
- │ Doação | Compra |     ├────────►│ EmMontagem ─► pesagem do │  retirada,       │ Credito       │
- │ Avulso; pesado pela   │ (mesma  │ consolidado ─► Criado    ├─────────────────►│ (vários lotes │
- │ balança da cooperativa│  coop., │ (Core asset nasce aqui)  │  recebimento,    │  do mesmo     │
- └───────────────────────┘ mesmo   └──────────────────────────┘  reciclado       │  material)    │
-                           material)        │ desfazer antes da venda             └───────────────┘
+ │ Collector | Sorting   │ combine ┌──────────────────────────┐  auction, sale,  ┌───────────────┐
+ │ Donation | Purchase | ├────────►│ EmMontagem ─► weighing of│  pickup,         │ Credito       │
+ │ Independent; weighed  │ (same   │ consolidated ─► Criado   ├─────────────────►│ (several lots │
+ │ by cooperative scale  │  coop., │ (Core asset born here)   │  receipt,        │  of the same  │
+ └───────────────────────┘ same    └──────────────────────────┘  recycled        │  material)    │
+                           material)        │ undo before the sale                └───────────────┘
                                             ▼
-                                  EmDesmontagem ─► Desfeito (origens voltam a ficar disponíveis)
+                                  EmDesmontagem ─► Desfeito (sources become available again)
 ```
 
-A trilha é navegável nos dois sentidos: do crédito aos lotes de venda (`lotes_hash`), deles aos lotes de origem (`Entrega.lote`, `entregas_hash`) e à origem (`origem_ref`); e de um lote de origem até o crédito (`Lote.credito`).
+The trail can be navigated in both directions: from the credit to the sale lots (`lotes_hash`), from them to the source lots (`Entrega.lote`, `entregas_hash`) and to the origin (`origem_ref`); and from a source lot up to the credit (`Lote.credito`).
 
-- **Estado canônico em PDAs.** O Core asset é derivado do lote (`["asset", lote]`) e não carrega estado.
-- **Todo evento tem número de sequência** (`seq`) por lote, crédito ou distribuição. Uma lacuna na sequência é detectável por auditores.
-- **Cada chave de config tem um único papel.** Os programas rejeitam configs em que a mesma chave acumula dois papéis ou é nula, e uma chave de papel não pode ser cadastrada como participante.
-- **Layout compatível.** Campos novos ocupam o espaço reservado das contas (zero significa o comportamento antigo) e variantes de enum só são acrescentadas no fim, para que contas existentes continuem legíveis depois de um upgrade.
+- **Canonical state in PDAs.** The Core asset is derived from the lot (`["asset", lote]`) and carries no state.
+- **Every event has a sequence number** (`seq`) per lot, credit or distribution. A gap in the sequence is detectable by auditors.
+- **Each config key has a single role.** The programs reject configs in which the same key holds two roles or is null, and a role key cannot be registered as a participant.
+- **Compatible layout.** New fields occupy the accounts' reserved space (zero means the old behavior) and enum variants are only appended at the end, so that existing accounts remain readable after an upgrade.
 
 ---
 
-## 3. Programas
+## 3. Programs
 
-| Programa | Program ID | Instruções |
+| Program | Program ID | Instructions |
 |---|---|---|
 | `ecol_lote` | `AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD` | 33 |
 | `ecol_credito` | `FZtf8txpz79i4dcXcwP1NqqSMJUoZJKwjJSfjD3Y1doQ` | 15 |
 | `ecol_reparticao` | `HTLtLauuXt9PqBzJfHaWPpeJUdtWpDcAa5ZsMSnP8k8K` | 10 |
 
-**Convenção de nomes:** `<papel>_<ação>`. O prefixo indica quem assina: `admin_`, `operador_`, `cooperativa_`, `industria_`, `transportador_`, `intermediador_`, `arbitro_`, `registrador_`, `zupy_`, `parte_` (qualquer parte do lote), `credito_` (só via CPI do `ecol_credito`) e `public_` (cranks que qualquer um pode chamar).
+**Naming convention:** `<papel>_<ação>` (`<role>_<action>`). The prefix indicates who signs: `admin_`, `operador_`, `cooperativa_`, `industria_`, `transportador_`, `intermediador_`, `arbitro_`, `registrador_`, `zupy_`, `parte_` (any party to the lot), `credito_` (only via CPI from `ecol_credito`) and `public_` (cranks anyone can call).
 
-**Inicialização protegida:** `admin_init_*` exige a assinatura da **upgrade authority** do programa, para ninguém se adiantar ao deploy e criar a config.
+**Protected initialization:** `admin_init_*` requires the signature of the program's **upgrade authority**, so nobody can front-run the deploy and create the config.
 
-**Guardião (nos 3 programas):** `admin_set_guardiao(guardiao)` define quem pode pausar sem timelock; `guardiao_pausar` só **restringe** (no `ecol_lote`: Normal → SomenteDisputas → Pausado; nos outros: pausado = true). Voltar ao normal é sempre do admin. Detalhes na seção 13.
+**Guardian (in all 3 programs):** `admin_set_guardiao(guardiao)` sets who can pause without a timelock; `guardiao_pausar` only **restricts** (in `ecol_lote`: `Normal` → `SomenteDisputas` → `Pausado`; in the others: paused = true). Returning to normal is always up to the admin. Details in section 13.
 
-**Troca de admin em dois passos:** `admin_propose_admin(novo)` e depois `admin_accept_admin` assinado pelo novo admin. Propor `Pubkey::default()` cancela uma proposta pendente.
+**Two-step admin change:** `admin_propose_admin(novo)` followed by `admin_accept_admin` signed by the new admin. Proposing `Pubkey::default()` cancels a pending proposal.
 
 ### 3.1 `ecol_lote`
 
-Registra o material desde a origem: os lotes de origem pesados na cooperativa, a união deles em lotes de venda e cada etapa da venda, da logística e do consumo, com quem assinou.
+Records the material from its origin: the source lots weighed at the cooperative, their combination into sale lots, and every stage of the sale, logistics and consumption, along with who signed each one.
 
-#### Contas (PDAs)
+#### Accounts (PDAs)
 
-| Conta | Seeds | Conteúdo |
+| Account | Seeds | Contents |
 |---|---|---|
-| `GlobalConfig` | `["global"]` | admin, árbitro, operador, intermediador, guardião, `credito_autoridade`, prazo de entrega, tolerância de peso, faixa de peso da montagem (`perda_montagem_bps`, `excesso_montagem_bps`; zero = padrão −10% / +2%), modo, admin pendente |
-| `Participante` | `["part", carteira]` | papel (Coletor, Cooperativa, Transportador, Indústria), ativo, `kyc_hash`, nome (até 32 bytes UTF-8, público). **Uma carteira tem um único papel, que não muda.** |
-| `Balanca` | `["balanca", dispositivo]` | dono (cooperativa ou indústria), chave Ed25519 do equipamento, ativa, nome (até 32 bytes) |
-| `Material` | `["material", codigo (u16 LE)]` | código, nome (até 32 bytes), ativo. **Cadastrado pelo operador**; lotes e créditos guardam só o código |
-| `Entrega` | `["entrega", cooperativa, entrega_id]` | **lote de origem**: `origem` (Coletor, TriagemPropria, Doacao, Compra, Avulso; contas antigas = Coletor), `origem_ref` (hash, LGPD), material, peso assinado pela balança, balança, horário e o lote de venda em que entrou (vazio enquanto disponível) |
-| `Lote` | `["lote", cooperativa, lote_id]` | **lote de venda**: material, peso consolidado, lotes de origem vinculados (quantidade, soma dos pesos, `peso_sem_coletor_g`, hash encadeado), evidências (nota ou recibo), partes, valor, hashes do escrow, prazo, estado, `asset_queimavel`, `seq`... |
-| Core asset | `["asset", lote]` | recibo do lote de venda (Metaplex Core), criado no fechamento |
-| Autoridade do asset | `["autoridade_asset"]` | PDA sem dados; é update authority e dona dos plugins permanentes do asset |
+| `GlobalConfig` | `["global"]` | admin, arbiter, operator, payment intermediary, guardian, `credito_autoridade`, delivery deadline, weight tolerance, assembly weight range (`perda_montagem_bps`, `excesso_montagem_bps`; zero = default −10% / +2%), mode, pending admin |
+| `Participante` | `["part", carteira]` | role (Collector, Cooperative, Carrier, Industry), active, `kyc_hash`, name (up to 32 bytes UTF-8, public). **A wallet has a single role, which never changes.** |
+| `Balanca` | `["balanca", dispositivo]` | owner (cooperative or industry), the device's Ed25519 key, active, name (up to 32 bytes) |
+| `Material` | `["material", codigo (u16 LE)]` | code, name (up to 32 bytes), active. **Registered by the operator**; lots and credits store only the code |
+| `Entrega` | `["entrega", cooperativa, entrega_id]` | **source lot**: `origem` (`Coletor`, `TriagemPropria`, `Doacao`, `Compra`, `Avulso`; old accounts = `Coletor`), `origem_ref` (hash, LGPD), material, weight signed by the scale, scale, timestamp, and the sale lot it went into (empty while available) |
+| `Lote` | `["lote", cooperativa, lote_id]` | **sale lot**: material, consolidated weight, linked source lots (count, sum of weights, `peso_sem_coletor_g`, chained hash), evidence (invoice or receipt), parties, amount, escrow hashes, deadline, state, `asset_queimavel`, `seq`... |
+| Core asset | `["asset", lote]` | receipt for the sale lot (Metaplex Core), created at closing |
+| Asset authority | `["autoridade_asset"]` | data-less PDA; it is the update authority and owner of the asset's permanent plugins |
 
-**Materiais:** cadastro on-chain feito pelo operador (`operador_create_material`), sem lista fixa no código. Material inativo não entra em lotes nem créditos novos; lotes existentes não são afetados.
+**Materials:** on-chain registry maintained by the operator (`operador_create_material`), with no fixed list in the code. An inactive material cannot be used in new lots or credits; existing lots are not affected.
 
-#### Máquina de estados do lote
+#### Lot state machine
 
 ```
 EmMontagem ──► Criado ──► Anunciado ──► Vendido ──► EmTransporte ──► Recebido ──► Reciclado ──► Agregado
     │            │          │   ▲          │             │               │                        │
     │            │          ▼   │          └─────────────┴───────┬───────┘                        │
     │            │        SemLance                               ▼                                ▼
-    │            │          │                               EmDisputa ──► (etapa de origem)    Reciclado
-    ▼            ▼          ▼                                    │   ──► Reciclado (só se origem = Recebido)
+    │            │          │                               EmDisputa ──► (prior stage)        Reciclado
+    ▼            ▼          ▼                                    │   ──► Reciclado (only if prior stage = Recebido)
     └──────► EmDesmontagem ─► Desfeito (terminal)                └─────► Reembolsado (terminal)
 ```
 
-| Transição | Instrução | Quem assina | Condições |
+| Transition | Instruction | Who signs | Conditions |
 |---|---|---|---|
-| (lote de origem) | `cooperativa_register_entrega(dados)` | cooperativa + payer | `dados`: `entrega_id`, `origem`, `origem_ref` (não nulo), material ativo, `peso_g`, `ts_pesagem`. A balança **ativa da própria cooperativa** assina `(domínio, Entrega, entrega, peso, ts)` na instrução Ed25519 anterior. |
-| → `EmMontagem` | `cooperativa_create_lote(lote_id, material, evidencias_hash)` | cooperativa + payer | material cadastrado e **ativo**; sem pesagem e sem asset ainda |
-| (montagem, em `EmMontagem`) | `cooperativa_add_entregas` | cooperativa | até 10 lotes de origem por transação em `remaining_accounts` (graváveis): da mesma cooperativa, do mesmo material e ainda não vinculados. Atualiza a quantidade, a soma dos pesos, `peso_sem_coletor_g` e `entregas_hash = sha256(h ‖ entrega ‖ peso_g)`. |
-| `EmMontagem` → `Criado` | `cooperativa_fechar_lote(peso_g, ts_pesagem, uri)` | cooperativa + payer | pelo menos um lote de origem; pesagem Ed25519 do **consolidado** pela balança ativa da cooperativa (timestamp a no máximo 15 min); peso entre **soma − 10%** e **soma + 2%** (`PesoConsolidadoForaDaFaixa`; limites no `GlobalConfig`). Cria o Core asset congelado e queimável em nome da cooperativa. |
-| `EmMontagem`/`Criado`/`SemLance` → `EmDesmontagem` → `Desfeito` | `cooperativa_desmontar_lote` | cooperativa | até 10 lotes de origem por transação em `remaining_accounts`, que voltam a ficar disponíveis. Com o último, o lote vai a `Desfeito` e o Core asset é queimado. Nunca depois da venda. |
-| `Criado`/`SemLance` → `Anunciado` | `cooperativa_list_lote(prazo_leilao, preco_minimo_centavos)` | cooperativa | preço > 0; prazo no futuro e no máximo 90 dias |
-| `Anunciado` → `SemLance` | `cooperativa_cancel_anuncio` | cooperativa | a qualquer momento (reprecificar ou desistir) |
-| `Anunciado` → `SemLance` | `operador_close_leilao_sem_lance` | operador | só depois do `prazo_leilao` |
-| `Anunciado` → `Vendido` | `industria_accept_venda(valor_centavos, escrow_ref_hash, lances_root)` | **indústria + operador + intermediador** | valor ≥ preço mínimo; o operador atesta o vencedor e a raiz Merkle dos lances; o intermediador atesta o depósito do escrow. Fixa o prazo de entrega e a tolerância de peso vigentes. |
-| `Vendido` → `EmTransporte` | `transportador_pickup_lote` | **transportador + cooperativa** | passagem de custódia; o Core asset vai para o transportador |
-| `EmTransporte` → `Recebido` | `industria_confirm_recebimento(peso_recebido_g, ts_pesagem?)` | indústria | com `ts_pesagem`, exige a pesagem Ed25519 de uma balança da indústria. Se o peso divergir além da tolerância, vai **direto para `EmDisputa`** (`DivergenciaPeso`). O asset vai para a indústria. |
-| `Recebido` → `Reciclado` | `intermediador_confirm_liberacao(liberacao_ref_hash)` | intermediador | atesta que liberou o escrow à cooperativa (consumo total do lote de venda) |
-| `Vendido`/`EmTransporte`/`Recebido` → `EmDisputa` | `parte_open_disputa(motivo)` | cooperativa, indústria ou transportador do lote | não pode reabrir disputa numa etapa já julgada com "prosseguir" |
-| `Vendido`/`EmTransporte` → `EmDisputa` | `public_crank_prazo_expirado` | qualquer um | prazo de entrega vencido; só em modo `Normal` e depois de 48 h de carência se o programa saiu de uma pausa |
-| `EmDisputa` → origem / `Reciclado` / `Reembolsado` | `arbitro_resolve_disputa(decisao)` | árbitro (+ intermediador quando há dinheiro) | ver decisões abaixo |
-| `Reciclado` → `Agregado` | `credito_mark_agregado(credito)` | PDA `["autoridade_credito"]` do `ecol_credito` (CPI) | — |
-| `Agregado` → `Reciclado` | `credito_mark_desagregado(credito)` | idem (CPI) | lote pertence a esse crédito e o crédito foi rejeitado ou abandonado |
+| (source lot) | `cooperativa_register_entrega(dados)` | cooperative + payer | `dados`: `entrega_id`, `origem`, `origem_ref` (non-null), active material, `peso_g`, `ts_pesagem`. The **cooperative's own active scale** signs `(domain, Entrega, entrega, weight, ts)` in the preceding Ed25519 instruction. |
+| → `EmMontagem` | `cooperativa_create_lote(lote_id, material, evidencias_hash)` | cooperative + payer | material registered and **active**; no weighing and no asset yet |
+| (assembly, in `EmMontagem`) | `cooperativa_add_entregas` | cooperative | up to 10 source lots per transaction in `remaining_accounts` (writable): from the same cooperative, of the same material and not yet linked. Updates the count, the sum of weights, `peso_sem_coletor_g` and `entregas_hash = sha256(h ‖ entrega ‖ peso_g)`. |
+| `EmMontagem` → `Criado` | `cooperativa_fechar_lote(peso_g, ts_pesagem, uri)` | cooperative + payer | at least one source lot; Ed25519 weighing of the **consolidated** lot by the cooperative's active scale (timestamp at most 15 min old); weight between **sum − 10%** and **sum + 2%** (`PesoConsolidadoForaDaFaixa`; limits in `GlobalConfig`). Creates the frozen, burnable Core asset in the cooperative's name. |
+| `EmMontagem`/`Criado`/`SemLance` → `EmDesmontagem` → `Desfeito` | `cooperativa_desmontar_lote` | cooperative | up to 10 source lots per transaction in `remaining_accounts`, which become available again. With the last one, the lot goes to `Desfeito` and the Core asset is burned. Never after the sale. |
+| `Criado`/`SemLance` → `Anunciado` | `cooperativa_list_lote(prazo_leilao, preco_minimo_centavos)` | cooperative | price > 0; deadline in the future and at most 90 days out |
+| `Anunciado` → `SemLance` | `cooperativa_cancel_anuncio` | cooperative | at any time (to reprice or withdraw) |
+| `Anunciado` → `SemLance` | `operador_close_leilao_sem_lance` | operator | only after `prazo_leilao` |
+| `Anunciado` → `Vendido` | `industria_accept_venda(valor_centavos, escrow_ref_hash, lances_root)` | **industry + operator + payment intermediary** | amount ≥ minimum price; the operator attests the winner and the Merkle root of the bids; the payment intermediary attests the escrow deposit. Locks in the delivery deadline and weight tolerance in effect. |
+| `Vendido` → `EmTransporte` | `transportador_pickup_lote` | **carrier + cooperative** | custody handover; the Core asset goes to the carrier |
+| `EmTransporte` → `Recebido` | `industria_confirm_recebimento(peso_recebido_g, ts_pesagem?)` | industry | with `ts_pesagem`, requires the Ed25519 weighing from one of the industry's scales. If the weight diverges beyond the tolerance, it goes **straight to `EmDisputa`** (`DivergenciaPeso`). The asset goes to the industry. |
+| `Recebido` → `Reciclado` | `intermediador_confirm_liberacao(liberacao_ref_hash)` | payment intermediary | attests that it released the escrow to the cooperative (full consumption of the sale lot) |
+| `Vendido`/`EmTransporte`/`Recebido` → `EmDisputa` | `parte_open_disputa(motivo)` | the lot's cooperative, industry or carrier | cannot reopen a dispute at a stage already ruled on with "proceed" |
+| `Vendido`/`EmTransporte` → `EmDisputa` | `public_crank_prazo_expirado` | anyone | delivery deadline passed; only in `Normal` mode, and after a 48 h grace period if the program has come out of a pause |
+| `EmDisputa` → prior stage / `Reciclado` / `Reembolsado` | `arbitro_resolve_disputa(decisao)` | arbiter (+ payment intermediary when money is involved) | see decisions below |
+| `Reciclado` → `Agregado` | `credito_mark_agregado(credito)` | `ecol_credito`'s `["autoridade_credito"]` PDA (CPI) | — |
+| `Agregado` → `Reciclado` | `credito_mark_desagregado(credito)` | same (CPI) | the lot belongs to that credit and the credit was rejected or abandoned |
 
-**Decisões do árbitro (`DecisaoDisputa`):**
-- `Prosseguir { novo_peso_g }`: volta à etapa de origem, opcionalmente reclassificando o peso. Renova o prazo se a disputa foi antes da entrega. Essa etapa não pode ser disputada de novo.
-- `Liberar { valor_liberado_centavos, novo_peso_g, ref_hash }`: só para disputa aberta no recebimento. Encerra liberando `valor_liberado_centavos` à cooperativa (total ou parcial) e reembolsando o restante à indústria. O intermediador co-assina.
-- `Reembolsar { ref_hash }`: encerra em `Reembolsado`. O intermediador co-assina atestando a devolução.
+**Arbiter decisions (`DecisaoDisputa`):**
+- `Prosseguir { novo_peso_g }`: returns to the prior stage, optionally reclassifying the weight. Renews the deadline if the dispute was opened before delivery. That stage cannot be disputed again.
+- `Liberar { valor_liberado_centavos, novo_peso_g, ref_hash }`: only for a dispute opened at receipt. Closes by releasing `valor_liberado_centavos` to the cooperative (full or partial) and refunding the remainder to the industry. The payment intermediary co-signs.
+- `Reembolsar { ref_hash }`: closes in `Reembolsado`. The payment intermediary co-signs, attesting the refund.
 
-**Motivos de disputa:** `DivergenciaPeso`, `ClassificacaoContestada`, `FalhaEntrega`, `PrazoExpirado`, `Outro`.
+**Dispute reasons:** `DivergenciaPeso`, `ClassificacaoContestada`, `FalhaEntrega`, `PrazoExpirado`, `Outro`.
 
-#### Cadastro e administração
+#### Registration and administration
 
-| Instrução | Quem assina | Efeito |
+| Instruction | Who signs | Effect |
 |---|---|---|
-| `admin_init_global(admin, params)` | payer + upgrade authority | cria o `GlobalConfig` |
-| `admin_update_global(params)` | admin | altera árbitro, operador, intermediador, `credito_autoridade`, prazo de entrega (≤ 180 dias) e tolerância de peso (≤ 20%) |
-| `admin_set_modo(modo)` | admin | `Normal`, `SomenteDisputas` (só disputas, crank, árbitro, liberação do escrow e desagregação) ou `Pausado` (nenhuma transição de lote) |
-| `admin_set_tolerancia_montagem(perda_bps, excesso_bps)` | admin | faixa aceita no fechamento do lote de venda (cada limite > 0 e ≤ 30%) |
-| `admin_set_guardiao(guardiao)` / `guardiao_pausar(modo)` | admin / guardião | pausa de emergência (seção 13) |
-| `admin_propose_admin` / `admin_accept_admin` | admin / novo admin | troca de admin em dois passos |
-| `operador_register_participante(carteira, papel, kyc_hash, nome)` | operador + payer | cadastra a carteira com um papel e um nome |
-| `operador_set_participante_nome(nome)` | operador | preenche ou corrige o nome (cadastros anteriores ao campo ficam sem nome) |
-| `operador_set_participante_ativo(ativo)` | operador | participante inativo não assume novos compromissos |
-| `operador_register_balanca(dispositivo, nome)` | operador + payer | balança de uma cooperativa ou indústria ativa |
-| `operador_set_balanca_nome(nome)` | operador | preenche ou corrige o nome da balança |
-| `operador_set_balanca_ativa(ativa)` | operador | desativa equipamento trocado, chave comprometida ou aferição vencida |
-| `operador_create_material(codigo, nome)` | operador + payer | cadastra um tipo de material; o código é único e não muda |
-| `operador_update_material(nome, ativo)` | operador | renomeia, ativa ou desativa um material |
+| `admin_init_global(admin, params)` | payer + upgrade authority | creates the `GlobalConfig` |
+| `admin_update_global(params)` | admin | changes the arbiter, operator, payment intermediary, `credito_autoridade`, delivery deadline (≤ 180 days) and weight tolerance (≤ 20%) |
+| `admin_set_modo(modo)` | admin | `Normal`, `SomenteDisputas` (only disputes, crank, arbiter, escrow release and disaggregation) or `Pausado` (no lot transitions) |
+| `admin_set_tolerancia_montagem(perda_bps, excesso_bps)` | admin | range accepted when closing the sale lot (each limit > 0 and ≤ 30%) |
+| `admin_set_guardiao(guardiao)` / `guardiao_pausar(modo)` | admin / guardian | emergency pause (section 13) |
+| `admin_propose_admin` / `admin_accept_admin` | admin / new admin | two-step admin change |
+| `operador_register_participante(carteira, papel, kyc_hash, nome)` | operator + payer | registers the wallet with a role and a name |
+| `operador_set_participante_nome(nome)` | operator | fills in or corrects the name (registrations made before the field existed have no name) |
+| `operador_set_participante_ativo(ativo)` | operator | an inactive participant cannot take on new commitments |
+| `operador_register_balanca(dispositivo, nome)` | operator + payer | scale belonging to an active cooperative or industry |
+| `operador_set_balanca_nome(nome)` | operator | fills in or corrects the scale's name |
+| `operador_set_balanca_ativa(ativa)` | operator | deactivates replaced equipment, a compromised key or an expired calibration |
+| `operador_create_material(codigo, nome)` | operator + payer | registers a material type; the code is unique and never changes |
+| `operador_update_material(nome, ativo)` | operator | renames, activates or deactivates a material |
 
-#### Core asset (recibo)
+#### Core asset (receipt)
 
-- Criado no **fechamento do lote de venda** com `PermanentFreezeDelegate` (congelado), `PermanentTransferDelegate` e `PermanentBurnDelegate`, todos com a PDA `["autoridade_asset"]` como autoridade. Os lotes de origem não têm asset (só PDAs, mais baratos).
-- **O dono não consegue transferir.** Só o programa move o asset, acompanhando a custódia: cooperativa → transportador (retirada) → indústria (recebimento).
-- Ao desfazer a união, o programa queima o asset (funciona mesmo congelado). Lotes fechados antes da ADR 0010 não têm o plugin de queima (`asset_queimavel = false`).
-- Sem plugin `Attributes`: o estado fica na PDA `Lote`.
+- Created at **sale lot closing** with `PermanentFreezeDelegate` (frozen), `PermanentTransferDelegate` and `PermanentBurnDelegate`, all with the `["autoridade_asset"]` PDA as authority. Source lots have no asset (only PDAs, which are cheaper).
+- **The owner cannot transfer it.** Only the program moves the asset, following custody: cooperative → carrier (pickup) → industry (receipt).
+- When the combination is undone, the program burns the asset (this works even while frozen). Lots closed before ADR 0010 do not have the burn plugin (`asset_queimavel = false`).
+- No `Attributes` plugin: the state lives in the `Lote` PDA.
 
 ### 3.2 `ecol_credito`
 
-Registra o crédito de carbono e a ligação dele com os lotes físicos. **Não tokeniza.**
+Records the carbon credit and its link to the physical lots. **It does not tokenize.**
 
-#### Contas (PDAs)
+#### Accounts (PDAs)
 
-| Conta | Seeds | Conteúdo |
+| Account | Seeds | Contents |
 |---|---|---|
-| `CreditoConfig` | `["credito_config"]` | admin, operador, registrador, intermediador, pausado |
-| `Credito` | `["credito", credito_id (u64 LE)]` | padrão (Verra, GoldStandard), material, vintage, hash da metodologia, quantidade e peso dos lotes, `peso_sem_coletor_g`, `lotes_hash`, tCO2e × 1000, comprador, valor, hash do pagamento, prazo de formação, prova de aposentadoria, serial, estado, `seq` |
-| `SerialRegistro` | `["serial", padrão, sha256(serial)]` | garante que um serial do registro é usado por um único crédito (**contra dupla contagem**) |
-| Autoridade | `["autoridade_credito"]` | PDA que assina as CPIs no `ecol_lote`. Deve ser igual à `credito_autoridade` do `GlobalConfig`. |
+| `CreditoConfig` | `["credito_config"]` | admin, operator, registrar, payment intermediary, paused |
+| `Credito` | `["credito", credito_id (u64 LE)]` | standard (Verra, GoldStandard), material, vintage, methodology hash, lot count and weight, `peso_sem_coletor_g`, `lotes_hash`, tCO2e × 1000, buyer, amount, payment hash, formation deadline, retirement proof, serial, state, `seq` |
+| `SerialRegistro` | `["serial", padrão, sha256(serial)]` | ensures that a registry serial is used by a single credit (**prevents double counting**) |
+| Authority | `["autoridade_credito"]` | PDA that signs the CPIs into `ecol_lote`. Must equal the `credito_autoridade` in `GlobalConfig`. |
 
-#### Máquina de estados do crédito
+#### Credit state machine
 
 ```
 EmFormacao ──► EmValidacao ──► Emitido ──► Vendido ──► Aposentado
     │                │
     ▼                ▼
-Abandonado       Rejeitado          (nesses dois estados os lotes podem ser liberados)
+Abandonado       Rejeitado          (in these two states the lots can be released)
 ```
 
-| Transição | Instrução | Quem assina | Condições |
+| Transition | Instruction | Who signs | Conditions |
 |---|---|---|---|
-| → `EmFormacao` | `operador_create_credito(credito_id, padrao, material, vintage, metodologia_hash)` | operador + payer | material cadastrado e ativo; vintage ≥ 2000; prazo de formação = agora + 180 dias |
-| (adiciona lotes) | `operador_add_lotes` | operador | até **10 lotes por transação** em `remaining_accounts` (graváveis), todos `Reciclado` e **do mesmo material** do crédito. Cada lote vira `Agregado` via CPI. Atualiza `lotes_hash = sha256(h ‖ lote ‖ peso_g)` e soma o peso sem coletor de cada lote, proporcional ao peso consolidado: `floor(peso_g × peso_sem_coletor_g / peso_entregas_g)`. |
-| `EmFormacao` → `EmValidacao` | `operador_submit_credito` | operador | pelo menos 1 lote |
-| `EmValidacao` → `Emitido` | `registrador_record_emissao(serial, serial_hash, tco2e_milli)` | registrador + payer | serial ≤ 64 bytes, `serial_hash = sha256(serial)`, tCO2e > 0; cria o `SerialRegistro` |
-| `EmValidacao` → `Rejeitado` | `registrador_record_rejeicao(motivo_hash)` | registrador | — |
-| `Emitido` → `Vendido` | `operador_record_venda(valor_centavos, pagamento_ref_hash)` | **operador + comprador + intermediador** | o intermediador atesta o recebimento do valor, que é a base da repartição |
-| `Vendido` → `Aposentado` | `registrador_record_aposentadoria(prova_hash)` | registrador | aposentado no registro em nome do comprador |
-| `EmFormacao` → `Abandonado` e liberação | `public_release_lotes` | qualquer um | se o crédito está `EmFormacao` há mais de 180 dias, é declarado `Abandonado`. Em `Rejeitado`/`Abandonado`, devolve os lotes passados em `remaining_accounts` a `Reciclado` via CPI. Assim a EcolChain não consegue prender lotes indefinidamente. |
+| → `EmFormacao` | `operador_create_credito(credito_id, padrao, material, vintage, metodologia_hash)` | operator + payer | material registered and active; vintage ≥ 2000; formation deadline = now + 180 days |
+| (adds lots) | `operador_add_lotes` | operator | up to **10 lots per transaction** in `remaining_accounts` (writable), all `Reciclado` and **of the same material** as the credit. Each lot becomes `Agregado` via CPI. Updates `lotes_hash = sha256(h ‖ lote ‖ peso_g)` and adds each lot's collector-free weight, proportional to the consolidated weight: `floor(peso_g × peso_sem_coletor_g / peso_entregas_g)`. |
+| `EmFormacao` → `EmValidacao` | `operador_submit_credito` | operator | at least 1 lot |
+| `EmValidacao` → `Emitido` | `registrador_record_emissao(serial, serial_hash, tco2e_milli)` | registrar + payer | serial ≤ 64 bytes, `serial_hash = sha256(serial)`, tCO2e > 0; creates the `SerialRegistro` |
+| `EmValidacao` → `Rejeitado` | `registrador_record_rejeicao(motivo_hash)` | registrar | — |
+| `Emitido` → `Vendido` | `operador_record_venda(valor_centavos, pagamento_ref_hash)` | **operator + buyer + payment intermediary** | the payment intermediary attests receipt of the amount, which is the basis for the revenue split |
+| `Vendido` → `Aposentado` | `registrador_record_aposentadoria(prova_hash)` | registrar | retired in the registry on behalf of the buyer |
+| `EmFormacao` → `Abandonado` and release | `public_release_lotes` | anyone | if the credit has been `EmFormacao` for more than 180 days, it is declared `Abandonado`. In `Rejeitado`/`Abandonado`, returns the lots passed in `remaining_accounts` to `Reciclado` via CPI. This way EcolChain cannot hold lots indefinitely. |
 
-**Administração:** `admin_init_config(admin, operador, registrador, intermediador)`, `admin_update_config(operador, registrador, intermediador)`, `admin_set_pausado`, `admin_propose_admin` / `admin_accept_admin`.
+**Administration:** `admin_init_config(admin, operador, registrador, intermediador)`, `admin_update_config(operador, registrador, intermediador)`, `admin_set_pausado`, `admin_propose_admin` / `admin_accept_admin`.
 
 ### 3.3 `ecol_reparticao`
 
-Para cada crédito vendido, publica **quanto cada participante tem direito a receber** e registra cada resgate em cupons.
+For each credit sold, publishes **how much each participant is entitled to receive** and records each redemption in coupons.
 
-#### Contas (PDAs)
+#### Accounts (PDAs)
 
-| Conta | Seeds | Conteúdo |
+| Account | Seeds | Contents |
 |---|---|---|
-| `ReparticaoConfig` | `["rep_config"]` | admin, operador, zupy, intermediador, percentuais (bps), pausado |
-| `Distribuicao` | `["dist", credito]` | receita, cópia dos percentuais, % da indústria, **teto por papel**, resgatado por papel, parte da EcolChain, raiz Merkle, nº de folhas, estado, hashes dos repasses, bitmap de resgates |
+| `ReparticaoConfig` | `["rep_config"]` | admin, operator, zupy, payment intermediary, percentages (bps), paused |
+| `Distribuicao` | `["dist", credito]` | revenue, copy of the percentages, industry %, **cap per role**, amount redeemed per role, EcolChain's share, Merkle root, number of leaves, state, payout hashes, redemption bitmap |
 
-**Percentuais (basis points, 10.000 = 100%):** coletor 500, cooperativa 1.000, transportador 500, indústria de 6.500 a 7.900. A config é validada on-chain: os três fixos precisam ser maiores que zero, e `fixos + indústria_max + 1%` não pode passar de 100%, ou seja, a EcolChain nunca fica abaixo de 1%. Mudar os percentuais **não afeta distribuições já criadas**, porque cada uma guarda uma cópia.
+**Percentages (basis points, 10,000 = 100%):** collector 500, cooperative 1,000, carrier 500, industry from 6,500 to 7,900. The config is validated on-chain: the three fixed ones must be greater than zero, and `fixos + indústria_max + 1%` cannot exceed 100%, meaning EcolChain never gets less than 1%. Changing the percentages **does not affect distributions already created**, because each one keeps a copy.
 
-#### Cálculo dos tetos
+#### Cap calculation
 
 ```
-teto(papel)   = floor(receita × bps(papel) / 10.000)     para cooperativa, transportador, indústria
+teto(papel)   = floor(receita × bps(papel) / 10.000)     for cooperative, carrier, industry
 teto(coletor) = floor(receita × bps(coletor) × (peso_total − peso_sem_coletor) / (10.000 × peso_total))
-EcolChain     = receita − soma dos 4 tetos                  (inclui o resíduo de arredondamento)
+EcolChain     = receita − sum of the 4 caps                (includes the rounding remainder)
 ```
 
-O teto dos coletores vale só sobre o peso que veio de coletores; a parte do material sem coletor (triagem, doação, compra, avulso) fica com a EcolChain. Créditos sem pesos (anteriores à ADR 0010) mantêm a fórmula integral.
+The collectors' cap applies only to the weight that came from collectors; the share for material without a collector (sorting, donation, purchase, one-off) stays with EcolChain. Credits without weights (prior to ADR 0010) keep the full formula.
 
-A soma sempre fecha exatamente com a receita. Isso é verificado por testes de propriedade com 5.000 casos.
+The sum always adds up exactly to the revenue. This is verified by property-based tests with 5,000 cases.
 
-#### Estados e instruções
+#### States and instructions
 
 `Pendente → Financiada`
 
-| Instrução | Quem assina | Efeito |
+| Instruction | Who signs | Effect |
 |---|---|---|
-| `operador_create_distribuicao(bps_industria, merkle_root, num_folhas)` | operador + payer | exige crédito `Vendido`; a receita vem do próprio `Credito`. Calcula os tetos. Máximo de 4.096 folhas. |
-| `intermediador_record_repasse(zupy_ref_hash, ecolchain_ref_hash)` | intermediador | atesta que repassou a parte dos cupons à Zupy e a parte da EcolChain → `Financiada` |
-| `zupy_record_resgate(indice, papel, valor_centavos, prova, recibo_hash)` | **Zupy + beneficiário** | só em `Financiada`. A folha é provada contra a raiz (até 16 níveis). O beneficiário precisa estar cadastrado no `ecol_lote` **com o papel da folha**. Cada folha resgata uma vez (bitmap) e o total do papel não passa do teto. |
+| `operador_create_distribuicao(bps_industria, merkle_root, num_folhas)` | operator + payer | requires a `Vendido` credit; the revenue comes from the `Credito` itself. Calculates the caps. Maximum of 4,096 leaves. |
+| `intermediador_record_repasse(zupy_ref_hash, ecolchain_ref_hash)` | payment intermediary | attests that it transferred the coupon share to Zupy and EcolChain's share → `Financiada` |
+| `zupy_record_resgate(indice, papel, valor_centavos, prova, recibo_hash)` | **Zupy + beneficiary** | only in `Financiada`. The leaf is proven against the root (up to 16 levels). The beneficiary must be registered in `ecol_lote` **with the leaf's role**. Each leaf is redeemed once (bitmap) and the role's total does not exceed the cap. |
 
-**Administração:** `admin_init_config(admin, params)`, `admin_update_config(params)`, `admin_set_pausado`, `admin_propose_admin` / `admin_accept_admin`.
+**Administration:** `admin_init_config(admin, params)`, `admin_update_config(params)`, `admin_set_pausado`, `admin_propose_admin` / `admin_accept_admin`.
 
 ---
 
-## 4. Papéis e chaves
+## 4. Roles and keys
 
-| Papel | Onde está configurado | O que faz |
+| Role | Where it is configured | What it does |
 |---|---|---|
-| **admin** | as 3 configs | altera configs, pausa, troca papéis. Na devnet é o **vault 0** do Squads. |
-| **árbitro** | `GlobalConfig` | julga disputas de lote. Na devnet é o **vault 1** do Squads. |
-| **guardião** | as 3 configs | **só pausa**, na hora, sem timelock. É o vault de um segundo Squads **1 de 5** com os mesmos membros: qualquer pessoa da EcolChain pausa sozinha. Não despausa nem muda nada. |
-| **operador** | as 3 configs | **administração do dia a dia** (menu "Administração" na interface): cadastra participantes, balanças e materiais, encerra leilões, monta créditos, registra vendas, publica árvores de direitos. Uma chave só |
-| **intermediador** | as 3 configs | intermediador de pagamento: atesta depósito, liberação e reembolso de escrow, recebimento da venda do crédito e repasses |
-| **registrador** | `CreditoConfig` | atesta o que aconteceu no registro oficial: emissão, rejeição, aposentadoria |
-| **zupy** | `ReparticaoConfig` | plataforma de cupons: co-assina os resgates |
-| **credito_autoridade** | `GlobalConfig` | PDA `["autoridade_credito"]` do `ecol_credito` |
-| Coletor, Cooperativa, Clean Tech, Transportador, Indústria, Importador | `Participante` | participantes cadastrados, identificados pela carteira titular; outras carteiras (`Carteira`, com nome) podem assinar por eles (ADR 0011) |
-| Balança | `Balanca` | equipamento com keypair Ed25519 próprio, que assina cada pesagem |
-| payer | — | paga taxas e rent; separado de quem assina o ato (a EcolChain pode pagar por todos) |
+| **admin** | the 3 configs | changes configs, pauses, swaps roles. On devnet it is Squads **vault 0**. |
+| **arbiter** | `GlobalConfig` | rules on lot disputes. On devnet it is Squads **vault 1**. |
+| **guardian** | the 3 configs | **only pauses**, immediately, with no timelock. It is the vault of a second **1-of-5** Squads with the same members: anyone at EcolChain can pause on their own. It cannot unpause or change anything. |
+| **operator** | the 3 configs | **day-to-day administration** ("Administration" menu in the UI): registers participants, scales and materials, closes auctions, assembles credits, records sales, publishes entitlement trees. A single key |
+| **payment intermediary** | the 3 configs | payment intermediary: attests escrow deposit, release and refund, receipt of the credit sale proceeds, and payouts |
+| **registrar** | `CreditoConfig` | attests what happened in the official registry: issuance, rejection, retirement |
+| **zupy** | `ReparticaoConfig` | coupon platform: co-signs redemptions |
+| **credito_autoridade** | `GlobalConfig` | `ecol_credito`'s `["autoridade_credito"]` PDA |
+| Collector, Cooperative, Clean Tech, Carrier, Industry, Importer | `Participante` | registered participants, identified by their primary wallet; other wallets (`Carteira`, with a name) can sign on their behalf (ADR 0011) |
+| Scale | `Balanca` | device with its own Ed25519 keypair, which signs each weighing |
+| payer | — | pays fees and rent; separate from whoever signs the act (EcolChain can pay for everyone) |
 
 ---
 
-## 5. Fluxo completo, passo a passo
+## 5. Complete flow, step by step
 
-Esse é o ciclo que o E2E (`onchain/clients/e2e/ciclo-completo.test.ts`) executa no Surfpool.
+This is the cycle that the E2E test (`onchain/clients/e2e/ciclo-completo.test.ts`) runs on Surfpool.
 
-**Preparação (uma vez)**
-1. Deploy dos 3 programas e `admin_init_*` de cada um (feito pelo script de deploy).
-2. `operador_register_participante` para cada cooperativa, transportador, indústria e coletor.
-3. `operador_register_balanca` para as balanças das cooperativas e indústrias.
-4. `operador_create_material` para cada tipo de material aceito.
+**Setup (once)**
+1. Deploy the 3 programs and run each one's `admin_init_*` (done by the deploy script).
+2. `operador_register_participante` for each cooperative, carrier, industry and collector.
+3. `operador_register_balanca` for the cooperatives' and industries' scales.
+4. `operador_create_material` for each accepted material type.
 
-Na interface web, os passos 2 a 4 ficam no menu **Administração** (Participantes, Balanças, Materiais).
+In the web interface, steps 2 to 4 are under the **Administration** menu (Participants, Scales, Materials).
 
-**Lotes de origem**
-5. O material chega à cooperativa: de um coletor (que recebe em R$ via Pix, fora da blockchain, e mostra o QR Code da carteira na interface), de triagem própria, doação, compra ou catador avulso. A balança pesa e assina `(domínio, Entrega, entrega, peso_g, ts)`; o cliente monta `[Ed25519, cooperativa_register_entrega]`. Cada pesagem é um lote de origem.
+**Source lots**
+5. Material arrives at the cooperative: from a collector (who is paid in R$ via Pix, off the blockchain, and shows their wallet's QR Code in the interface), from the cooperative's own sorting, a donation, a purchase or an independent waste picker. The scale weighs it and signs `(domínio, Entrega, entrega, peso_g, ts)`; the client builds `[Ed25519, cooperativa_register_entrega]`. Each weighing is a source lot.
 
-**Lote de venda**
-6. `cooperativa_create_lote` abre o lote de venda em `EmMontagem`.
-7. `cooperativa_add_entregas` vincula os lotes de origem do mesmo material (até 10 por transação). A balança pesa o consolidado e assina `(domínio, Origem, lote, peso_g, ts)`; `[Ed25519, cooperativa_fechar_lote]` fecha o lote (`Criado`) e cria o asset. Até a venda, `cooperativa_desmontar_lote` desfaz a união.
-8. `cooperativa_list_lote`. Estado: `Anunciado`.
-9. O leilão é apurado off-chain. `industria_accept_venda` com as três assinaturas (indústria, operador e intermediador). Na interface, cada um assina no seu aparelho, e o código passa por QR ou copiar e colar; a transação usa um nonce durável do operador, então não expira enquanto circula. Estado: `Vendido`.
-10. `transportador_pickup_lote`, assinado pela cooperativa e pelo transportador. Na interface, a cooperativa assina e mostra um QR Code; o aparelho do transportador remonta a transação, confere a assinatura, assina e envia. Estado: `EmTransporte`, com o asset passando para o transportador.
-11. `industria_confirm_recebimento`, com pesagem assinada pela balança da indústria. Estado: `Recebido` (ou `EmDisputa` se o peso divergir), com o asset passando para a indústria.
-12. `intermediador_confirm_liberacao`. Estado: `Reciclado`.
+**Sale lot**
+6. `cooperativa_create_lote` opens the sale lot in `EmMontagem`.
+7. `cooperativa_add_entregas` links source lots of the same material (up to 10 per transaction). The scale weighs the consolidated load and signs `(domínio, Origem, lote, peso_g, ts)`; `[Ed25519, cooperativa_fechar_lote]` closes the lot (`Criado`) and creates the asset. Until the sale, `cooperativa_desmontar_lote` undoes the combination.
+8. `cooperativa_list_lote`. State: `Anunciado`.
+9. The auction is settled off-chain. `industria_accept_venda` with the three signatures (industry, operator and payment intermediary). In the interface, each party signs on their own device, and the code is passed along by QR or copy and paste; the transaction uses a durable nonce owned by the operator, so it does not expire while it circulates. State: `Vendido`.
+10. `transportador_pickup_lote`, signed by the cooperative and the carrier. In the interface, the cooperative signs and shows a QR Code; the carrier's device rebuilds the transaction, checks the signature, signs and submits it. State: `EmTransporte`, with the asset passing to the carrier.
+11. `industria_confirm_recebimento`, with a weighing signed by the industry's scale. State: `Recebido` (or `EmDisputa` if the weight diverges), with the asset passing to the industry.
+12. `intermediador_confirm_liberacao`. State: `Reciclado`.
 
-**Crédito**
-13. `operador_create_credito`, depois `operador_add_lotes` (em lotes de até 10) e `operador_submit_credito`.
-14. `registrador_record_emissao`. Estado: `Emitido`.
-15. `operador_record_venda` (operador + comprador + intermediador). Estado: `Vendido`.
-16. `registrador_record_aposentadoria`. Estado: `Aposentado`.
+**Credit**
+13. `operador_create_credito`, then `operador_add_lotes` (in batches of up to 10) and `operador_submit_credito`.
+14. `registrador_record_emissao`. State: `Emitido`.
+15. `operador_record_venda` (operator + buyer + payment intermediary). State: `Vendido`.
+16. `registrador_record_aposentadoria`. State: `Aposentado`.
 
-**Repartição**
-17. O backend gera a árvore de direitos com `montarDireitos` (`clients/src/arvore.ts`) e chama `operador_create_distribuicao`.
-18. O intermediador repassa os valores à Zupy e à EcolChain e chama `intermediador_record_repasse`. Estado: `Financiada`.
-19. Cada beneficiário resgata com a Zupy: `zupy_record_resgate` com a prova Merkle.
+**Revenue split**
+17. The backend builds the entitlements tree with `montarDireitos` (`clients/src/arvore.ts`) and calls `operador_create_distribuicao`.
+18. The payment intermediary transfers the amounts to Zupy and EcolChain and calls `intermediador_record_repasse`. State: `Financiada`.
+19. Each beneficiary redeems with Zupy: `zupy_record_resgate` with the Merkle proof.
 
 ---
 
-## 6. Formatos off-chain que precisam bater com o on-chain
+## 6. Off-chain formats that must match on-chain
 
-### Mensagem assinada pela balança (Ed25519)
+### Message signed by the scale (Ed25519)
 
-66 bytes, assinados pela chave do equipamento:
+66 bytes, signed by the device's key:
 
-| Bytes | Campo |
+| Bytes | Field |
 |---|---|
-| 0..17 | domínio `"ECOLCHAIN:PESO:v1"` |
-| 17 | tipo: `0` = Origem (lote de venda consolidado, no fechamento), `1` = Recebimento (indústria), `2` = Entrega (lote de origem, cooperativa) |
-| 18..50 | endereço do `Lote` (ou da `Entrega`, no tipo 2) |
+| 0..17 | domain `"ECOLCHAIN:PESO:v1"` |
+| 17 | type: `0` = `Origem` (consolidated sale lot, at closing), `1` = `Recebimento` (industry), `2` = `Entrega` (source lot, cooperative) |
+| 18..50 | address of the `Lote` (or of the `Entrega`, for type 2) |
 | 50..58 | `peso_g` (u64 LE) |
 | 58..66 | `ts` (i64 LE, unix) |
 
-A instrução do programa Ed25519 (uma assinatura, dados dentro da própria instrução) deve vir **imediatamente antes** da instrução do `ecol_lote`. O timestamp precisa estar a no máximo 15 min do relógio do cluster, para mais ou para menos. Implementação no cliente: `onchain/clients/src/pesagem.ts`.
+The Ed25519 program instruction (one signature, data inside the instruction itself) must come **immediately before** the `ecol_lote` instruction. The timestamp must be within 15 min of the cluster clock, either way. Client implementation: `onchain/clients/src/pesagem.ts`.
 
-### Árvore Merkle de direitos
+### Entitlements Merkle tree
 
 ```
 folha = sha256(0x00 ‖ indice (u32 LE) ‖ beneficiario (32) ‖ papel (u8) ‖ valor_centavos (u64 LE))
-nó    = sha256(0x01 ‖ menor ‖ maior)            (pares ordenados: a prova não precisa de bits de direção)
-nível ímpar: o último nó sobe sem par
+nó    = sha256(0x01 ‖ menor ‖ maior)            (sorted pairs: the proof needs no direction bits)
+odd level: the last node moves up without a pair
 papel: 0 = Coletor, 1 = Cooperativa, 2 = Transportador, 3 = Indústria
 ```
 
 - **Rust:** `ecol_reparticao::merkle`
-- **TypeScript:** `onchain/clients/src/arvore.ts` (há um vetor de teste compartilhado que garante hashes iguais)
+- **TypeScript:** `onchain/clients/src/arvore.ts` (a shared test vector guarantees identical hashes)
 
-**Divisão dentro de cada papel (`montarDireitos`):** coletores na proporção do peso dos **lotes de origem com coletor** vinculados aos lotes do crédito; cooperativa, transportador e indústria na proporção do peso dos **lotes**. Arredonda para baixo e distribui os centavos restantes pelo maior resto; no empate, vence o endereço menor. As folhas são ordenadas por papel e endereço, então qualquer auditor reconstrói a raiz a partir dos lotes, dos lotes de origem e do mapeamento `origem_ref → carteira` dos coletores.
+**Split within each role (`montarDireitos`):** collectors in proportion to the weight of the **source lots with a collector** linked to the credit's lots; cooperative, carrier and industry in proportion to the weight of the **lots**. It rounds down and distributes the remaining cents by largest remainder; on a tie, the lower address wins. Leaves are sorted by role and address, so any auditor can rebuild the root from the lots, the source lots and the collectors' `origem_ref → carteira` mapping.
 
-### Referência da origem (lote de origem) e do lote de venda
+### Source reference (source lot) and sale lot reference
 
-Implementação: `onchain/clients/src/coletor.ts`.
+Implementation: `onchain/clients/src/coletor.ts`.
 
-- **Com coletor:** `origem_ref = sha256("ECOLCHAIN:COLETOR:v1" ‖ carteira_do_coletor)` (`coletorRef`). Determinística: a repartição liga cada lote de origem à carteira que recebe os cupons sem tabela extra. O cadastro do coletor (nome civil, CPF) fica off-chain, com só o hash do KYC no `Participante`. A carteira é pseudônima e já apareceria de qualquer forma nos resgates.
-- **Sem coletor (doação, compra, triagem, avulso):** `origem_ref = sha256("ECOLCHAIN:ORIGEM:v1" ‖ texto normalizado)` (`origemRef`), onde o texto é a nota, o recibo ou o CNPJ em maiúsculas, sem espaços nas pontas e com espaços internos únicos. Sem texto, a interface usa `<tipo>:<cooperativa>:<id>`.
-- **Lote de venda:** com nota fiscal ou recibo, `evidencias_hash = origemRef(texto)`, o mesmo formato.
+- **With a collector:** `origem_ref = sha256("ECOLCHAIN:COLETOR:v1" ‖ carteira_do_coletor)` (`coletorRef`). Deterministic: the revenue split links each source lot to the wallet that receives the coupons without an extra table. The collector's registration data (legal name, CPF) stays off-chain, with only the KYC hash in the `Participante`. The wallet is pseudonymous and would appear in the redemptions anyway.
+- **Without a collector (donation, purchase, sorting, independent):** `origem_ref = sha256("ECOLCHAIN:ORIGEM:v1" ‖ texto normalizado)` (`origemRef`), where the text is the invoice, the receipt or the CNPJ in uppercase, trimmed at both ends and with single internal spaces. With no text, the interface uses `<tipo>:<cooperativa>:<id>`.
+- **Sale lot:** with an invoice or receipt, `evidencias_hash = origemRef(texto)`, the same format.
 
-O texto nunca vai on-chain. Quem o tem (o doador, com o recibo) recalcula o hash e encontra o lote na trilha pública, por `memcmp` em `Entrega.origem_ref` (offset 48) ou `Lote.evidencias_hash` (offset 110).
+The text never goes on-chain. Whoever holds it (the donor, with the receipt) recomputes the hash and finds the lot in the public trail, via `memcmp` on `Entrega.origem_ref` (offset 48) or `Lote.evidencias_hash` (offset 110).
 
-### Hash encadeado das entregas do lote
+### Chained hash of the lot's deliveries
 
-`entregas_hash` começa em zero e, a cada entrega vinculada, vira `sha256(entregas_hash ‖ endereço_da_entrega ‖ peso_g (u64 LE))`. Dá para reconstruir a partir dos eventos `EntregaNoLote`. O lote guarda também `peso_entregas_g` (soma dos lotes de origem) ao lado de `peso_g` (pesagem do consolidado); a diferença mostra perdas na triagem e é limitada pela faixa do fechamento. Ao desfazer a união, cada origem devolvida emite `EntregaDevolvida`.
+`entregas_hash` starts at zero and, for each linked delivery, becomes `sha256(entregas_hash ‖ endereço_da_entrega ‖ peso_g (u64 LE))`. It can be rebuilt from the `EntregaNoLote` events. The lot also stores `peso_entregas_g` (sum of the source lots) alongside `peso_g` (weighing of the consolidated load); the difference shows sorting losses and is bounded by the closing range. When the grouping is undone, each returned source emits `EntregaDevolvida`.
 
-### Hash encadeado dos lotes do crédito
+### Chained hash of the credit's lots
 
-`lotes_hash` começa em zero e, a cada lote agregado, vira `sha256(lotes_hash ‖ endereço_do_lote ‖ peso_g (u64 LE))`. Dá para reconstruir a partir dos eventos `LoteAgregado`.
+`lotes_hash` starts at zero and, for each aggregated lot, becomes `sha256(lotes_hash ‖ endereço_do_lote ‖ peso_g (u64 LE))`. It can be rebuilt from the `LoteAgregado` events.
 
 ---
 
-## 7. Estrutura do repositório
+## 7. Repository structure
 
 ```
-README.md                       este arquivo
-CONTINUATION.md                 contexto, decisões e histórico das sessões
+README.md                       this file
+CONTINUATION.md                 context, decisions and session history
 docs/
-  Proposta_03.excalidraw        diagrama original
-  Proposta_04.excalidraw        diagrama com as decisões de 2026-09-28 (abrir em https://excalidraw.com)
-  adr/                          10 decisões de arquitetura
-  security-audit-2026-09-28.md  auditoria (checklists do solana-ai-kit) e achados corrigidos
-onchain/                        workspace Anchor
-  Anchor.toml                   program IDs (localnet e devnet)
+  Proposta_03.excalidraw        original diagram
+  Proposta_04.excalidraw        diagram with the 2026-09-28 decisions (open at https://excalidraw.com)
+  adr/                          10 architecture decisions
+  security-audit-2026-09-28.md  audit (solana-ai-kit checklists) and fixed findings
+onchain/                        Anchor workspace
+  Anchor.toml                   program IDs (localnet and devnet)
   rust-toolchain.toml           Rust 1.89.0
   programs/
     ecol_lote/src/
-      lib.rs                    ponto de entrada (instruções)
-      state/                    GlobalConfig, Participante, Balanca, Material, Entrega, Lote (+ testes da máquina de estados)
-      instructions/             admin, participantes, balancas, materiais, entregas, lote_criacao (abrir, fechar, desfazer), marketplace, logistica, disputa, credito
-      pesagem.rs                verificação da assinatura Ed25519 da balança
-      ativo.rs                  Core asset (criar, transferir e queimar)
+      lib.rs                    entry point (instructions)
+      state/                    GlobalConfig, Participante, Balanca, Material, Entrega, Lote (+ state machine tests)
+      instructions/             admin, participantes, balancas, materiais, entregas, lote_criacao (open, close, undo), marketplace, logistica, disputa, credito
+      pesagem.rs                verification of the scale's Ed25519 signature
+      ativo.rs                  Core asset (create, transfer and burn)
       events.rs, error.rs, constants.rs
-      tests/                    testes LiteSVM
-    ecol_credito/               state/, instructions/ (admin, agregacao, ciclo), tests/ (+ tests/cenario/mod.rs reutilizável)
+      tests/                    LiteSVM tests
+    ecol_credito/               state/, instructions/ (admin, agregacao, ciclo), tests/ (+ reusable tests/cenario/mod.rs)
     ecol_reparticao/            state/, instructions/ (admin, direitos), merkle.rs, tests/
-  tests/fixtures/mpl_core.so    programa Metaplex Core carregado nos testes LiteSVM
-  clients/                      clientes TypeScript (ver seção 10)
-    src/generated/              clientes gerados pelo Codama (não editar)
+  tests/fixtures/mpl_core.so    Metaplex Core program loaded in the LiteSVM tests
+  clients/                      TypeScript clients (see section 10)
+    src/generated/              Codama-generated clients (do not edit)
     src/pdas.ts, pesagem.ts, arvore.ts, coletor.ts, nome.ts
-    scripts/gerar-clientes.ts   geração Codama
-    scripts/init-devnet.ts      inicialização das configs na devnet
-    scripts/cadastrar-participante.ts   cadastro de uma carteira na devnet
-    scripts/rede-local.ts       rede local de demonstração (Surfpool) para testar a interface
-    test/                       testes do gerador da árvore
-    e2e/                        ciclo completo no Surfpool
-  ops/                          operação da devnet (SDK do Squads, web3.js v1 isolado aqui)
-    comum.ts                    chaves de teste, RPC
-    chaves-devnet.ts            gera ou reaproveita as chaves de teste
-    squads-devnet.ts            cria o multisig
+    scripts/gerar-clientes.ts   Codama generation
+    scripts/init-devnet.ts      config initialization on devnet
+    scripts/cadastrar-participante.ts   registers a wallet on devnet
+    scripts/rede-local.ts       local demo network (Surfpool) for testing the interface
+    test/                       tree generator tests
+    e2e/                        full cycle on Surfpool
+  ops/                          devnet operations (Squads SDK, web3.js v1 isolated here)
+    comum.ts                    test keys, RPC
+    chaves-devnet.ts            generates or reuses the test keys
+    squads-devnet.ts            creates the multisig
     proposta.ts, propor-upgrade.ts, trocar-operador.ts, pausar.ts, retomar.ts, ...
-  scripts/deploy-devnet.sh      deploy verificável completo
-  .devnet/                      chaves de teste e squads.json (FORA DO GIT)
-  target/deploy/*-keypair.json  keypairs dos programas (FORA DO GIT)
-web/                            interface web: repositório próprio (FORA DESTE GIT)
+  scripts/deploy-devnet.sh      full verifiable deploy
+  .devnet/                      test keys and squads.json (NOT IN GIT)
+  target/deploy/*-keypair.json  program keypairs (NOT IN GIT)
+web/                            web interface: separate repository (NOT IN THIS GIT REPO)
 ```
 
 ---
 
-## 8. Ambiente de desenvolvimento
+## 8. Development environment
 
-| Ferramenta | Versão usada | Instalação / observação |
+| Tool | Version used | Installation / notes |
 |---|---|---|
-| Rust | 1.89.0 | fixado em `onchain/rust-toolchain.toml` (o `rustup` instala sozinho) |
+| Rust | 1.89.0 | pinned in `onchain/rust-toolchain.toml` (`rustup` installs it automatically) |
 | Solana CLI (Agave) | 3.1.10 | `sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"` |
 | Anchor CLI | 1.1.2 | via `avm` |
-| Node.js | ≥ 20.18 (testado com 24.10) | clientes e scripts de operação |
-| Surfpool | 1.6.0 | só para o E2E (o pacote npm `@solana/surfpool` embarca o binário) |
-| Docker | 29.x testado | necessário para `anchor build --verifiable` |
+| Node.js | ≥ 20.18 (tested with 24.10) | clients and operations scripts |
+| Surfpool | 1.6.0 | only for the E2E (the `@solana/surfpool` npm package bundles the binary) |
+| Docker | 29.x tested | required for `anchor build --verifiable` |
 | `solana-verify` | — | `cargo install solana-verify` |
 
-**WSL:** o Docker Desktop precisa da integração ativada para a distro: *Settings → Resources → WSL integration*.
+**WSL:** Docker Desktop needs integration enabled for the distro: *Settings → Resources → WSL integration*.
 
-**Carteira local:** `~/.config/solana/id.json` (crie com `solana-keygen new` se não existir). Para ver o endereço, use `solana address`.
+**Local wallet:** `~/.config/solana/id.json` (create it with `solana-keygen new` if it does not exist). To see the address, use `solana address`.
 
-**Carteira dos participantes (interface web): use a [Solflare](https://solflare.com).** Ela assina sem alterar a transação e permite assinar sem enviar, o que a retirada do lote exige: a cooperativa e o transportador assinam a mesma transação em aparelhos diferentes. Carteiras que acrescentam instruções ao assinar invalidam a assinatura da outra parte. Detalhes no README do [repositório da web](https://github.com/ECOLchain/ecolchain-core-web3).
+**Participants' wallet (web interface): use [Solflare](https://solflare.com).** It signs without altering the transaction and allows signing without sending, which the lot pickup requires: the cooperative and the carrier sign the same transaction on different devices. Wallets that add instructions when signing invalidate the other party's signature. Details in the README of the [web repository](https://github.com/ECOLchain/ecolchain-core-web3).
 
-A variável `NO_DNA=1` usada nos comandos do Anchor só desliga a telemetria e as mensagens interativas do CLI.
+The `NO_DNA=1` variable used in the Anchor commands only turns off the CLI's telemetry and interactive prompts.
 
 ---
 
-## 9. Build e testes
+## 9. Build and tests
 
 ```bash
 cd onchain
 
-NO_DNA=1 anchor build                        # compila os 3 programas; IDLs em target/idl, .so em target/deploy
+NO_DNA=1 anchor build                        # compiles the 3 programs; IDLs in target/idl, .so in target/deploy
 NO_DNA=1 anchor test                         # = cargo test (skip_local_validator = true)
-cargo test -p ecol_lote                      # só um programa
-cargo test -p ecol_credito -- venda          # filtrar por nome
-cargo clippy --all-targets -- -D warnings    # lint estrito (deve ficar limpo)
+cargo test -p ecol_lote                      # a single program
+cargo test -p ecol_credito -- venda          # filter by name
+cargo clippy --all-targets -- -D warnings    # strict lint (must stay clean)
 cargo fmt --check
 ```
 
-Os testes LiteSVM carregam os `.so` de `target/deploy` e o `tests/fixtures/mpl_core.so`, então **rode `anchor build` antes**.
+The LiteSVM tests load the `.so` files from `target/deploy` and `tests/fixtures/mpl_core.so`, so **run `anchor build` first**.
 
-| Tipo | Onde | O que cobre |
+| Type | Where | What it covers |
 |---|---|---|
-| Unitários | `programs/*/src/state/*.rs` | matriz completa de transições (todo par estado × transição), divergência de peso na fronteira, exemplo US$ 50, resíduo de arredondamento, bitmap e teto |
-| Propriedade (proptest, 5.000 casos) | idem | sequências aleatórias respeitam o grafo de estados; tolerância simétrica e monotônica; repartição sempre fecha e respeita os percentuais |
-| Integração LiteSVM | `programs/*/tests/` | fluxo, autorização (cada papel errado falha), pesagem Ed25519 e asset, regressões da auditoria, compute units, CPI entre os 3 programas, tempo via `Clock` |
-| TS | `clients/test/` | gerador da árvore (vetor compartilhado com o Rust) |
-| E2E | `clients/e2e/` | ciclo completo no Surfpool, com time travel e crank |
+| Unit | `programs/*/src/state/*.rs` | full transition matrix (every state × transition pair), weight divergence at the boundary, US$ 50 example, rounding remainder, bitmap and cap |
+| Property (proptest, 5,000 cases) | same | random sequences respect the state graph; symmetric and monotonic tolerance; the revenue split always balances and respects the percentages |
+| LiteSVM integration | `programs/*/tests/` | flow, authorization (every wrong role fails), Ed25519 weighing and asset, audit regressions, compute units, CPI among the 3 programs, time via `Clock` |
+| TS | `clients/test/` | tree generator (vector shared with Rust) |
+| E2E | `clients/e2e/` | full cycle on Surfpool, with time travel and crank |
 
-Total atual: **165 testes Rust, 6 TS e 2 E2E**.
+Current total: **165 Rust tests, 6 TS and 2 E2E**.
 
 ---
 
-## 10. Clientes TypeScript
+## 10. TypeScript clients
 
-Clientes `@solana/kit` 8 gerados pelo [Codama](https://github.com/codama-idl/codama) a partir das IDLs.
+`@solana/kit` 8 clients generated by [Codama](https://github.com/codama-idl/codama) from the IDLs.
 
 ```bash
 cd onchain/clients
 npm install
-npm run gerar       # regenera src/generated a partir de ../target/idl (rodar após anchor build)
+npm run gerar       # regenerates src/generated from ../target/idl (run after anchor build)
 npm run typecheck
-npm test            # gerador da árvore
-npm run e2e         # Surfpool embarcado: lote → crédito → repartição → resgates
+npm test            # tree generator
+npm run e2e         # embedded Surfpool: lot → credit → revenue split → redemptions
 ```
 
-| Módulo | Uso |
+| Module | Use |
 |---|---|
-| `src/generated/<programa>` | builders de instrução, decoders de conta e tipos (não editar) |
-| `src/pdas.ts` | derivação de todas as PDAs (espelha as seeds do Rust) |
-| `src/pesagem.ts` | monta a instrução Ed25519 da balança e anexa as contas graváveis |
-| `src/arvore.ts` | totais por papel (`calcularTotais`, com o teto proporcional dos coletores) e árvore de direitos (`montarDireitos`) |
-| `src/coletor.ts` | referências da origem: `coletorRef`, `origemRef`, `normalizarReferencia` |
-| `src/nome.ts` | nome fixo de 32 bytes do participante e da balança (`bytesDoNome`, `lerNomeFixo`) |
+| `src/generated/<programa>` | instruction builders, account decoders and types (do not edit) |
+| `src/pdas.ts` | derivation of all PDAs (mirrors the Rust seeds) |
+| `src/pesagem.ts` | builds the scale's Ed25519 instruction and appends the writable accounts |
+| `src/arvore.ts` | totals per role (`calcularTotais`, with the collectors' proportional cap) and entitlements tree (`montarDireitos`) |
+| `src/coletor.ts` | source references: `coletorRef`, `origemRef`, `normalizarReferencia` |
+| `src/nome.ts` | fixed 32-byte name of the participant and the scale (`bytesDoNome`, `lerNomeFixo`) |
 
-**Transações v0:** o `@solana/kit-plugin-rpc` 0.18, exigido pelo `@solana/surfpool` 1.6, ainda não monta v1. Quando ele passar a montar, dá para migrar para v1.
+**v0 transactions:** `@solana/kit-plugin-rpc` 0.18, required by `@solana/surfpool` 1.6, cannot build v1 yet. Once it can, we can migrate to v1.
 
-**Após mudar um programa:** rode `anchor build`, depois `npm run gerar`, `npm run typecheck` e os testes.
+**After changing a program:** run `anchor build`, then `npm run gerar`, `npm run typecheck` and the tests.
 
 ---
 
-## 11. Deploy na devnet
+## 11. Devnet deploy
 
-O script `onchain/scripts/deploy-devnet.sh` faz o deploy completo e aborta na primeira falha (`set -euo pipefail`).
+The `onchain/scripts/deploy-devnet.sh` script performs the full deploy and aborts on the first failure (`set -euo pipefail`).
 
-### O que o script faz, em ordem
+### What the script does, in order
 
-| # | Etapa | Detalhe |
+| # | Step | Detail |
 |---|---|---|
-| 1 | Checagens | recusa RPC com "mainnet"; exige Docker, `solana-verify`, carteira e **≥ 11 SOL** |
-| 2 | Confirmação | pergunta `Publicar na devnet? [s/N]` (pule com `CONFIRMAR=1`) |
-| 3 | Build verificável | `anchor build --verifiable` na imagem `quay.io/ottersec/anchor:v1.1.2` → `target/verifiable/*.so` |
-| 4 | Chaves de teste | `ops/chaves-devnet.ts`: operador, intermediador, registrador, zupy e 5 membros do Squads em `onchain/.devnet/` |
-| 5 | Squads | `ops/squads-devnet.ts`: multisig v4, 5 membros, quórum 3, chaves da EcolChain, **sem config authority** (mudar membros também exige 3 de 5), timelock 0 (ADR 0009) |
-| 6 | Deploy | `solana program deploy` dos 3 `.so` verificáveis |
-| 7 | Configs | `clients/scripts/init-devnet.ts`: `admin_init_*` dos 3 programas, **antes** de transferir a upgrade authority (a inicialização exige a assinatura dela) |
-| 8 | Verificação | hash do executável on-chain = hash do build verificável, para cada programa |
-| 9 | Upgrade authority | `solana program set-upgrade-authority` dos 3 para o vault 0 |
+| 1 | Checks | refuses an RPC containing "mainnet"; requires Docker, `solana-verify`, a wallet and **≥ 11 SOL** |
+| 2 | Confirmation | asks `Publicar na devnet? [s/N]` ("Publish to devnet?"; "s" = yes; skip with `CONFIRMAR=1`) |
+| 3 | Verifiable build | `anchor build --verifiable` in the `quay.io/ottersec/anchor:v1.1.2` image → `target/verifiable/*.so` |
+| 4 | Test keys | `ops/chaves-devnet.ts`: operator, payment intermediary, registrar, zupy and 5 Squads members in `onchain/.devnet/` |
+| 5 | Squads | `ops/squads-devnet.ts`: v4 multisig, 5 members, threshold 3, EcolChain keys, **no config authority** (changing members also requires 3 of 5), timelock 0 (ADR 0009) |
+| 6 | Deploy | `solana program deploy` of the 3 verifiable `.so` files |
+| 7 | Configs | `clients/scripts/init-devnet.ts`: `admin_init_*` of the 3 programs, **before** transferring the upgrade authority (initialization requires its signature) |
+| 8 | Verification | on-chain executable hash = verifiable build hash, for each program |
+| 9 | Upgrade authority | `solana program set-upgrade-authority` of the 3 to vault 0 |
 
-Os passos 4, 5 e 7 são **idempotentes**: se o script parar no meio, dá para rodar de novo. Mas, depois do passo 9, um novo deploy com esse script falha, porque a carteira local deixou de ser upgrade authority. Upgrades passam a ser feitos pelo Squads (seção 13).
+Steps 4, 5 and 7 are **idempotent**: if the script stops midway, you can run it again. But after step 9, a new deploy with this script fails, because the local wallet is no longer the upgrade authority. From then on, upgrades go through Squads (section 13).
 
-### Parâmetros iniciais das configs (devnet)
+### Initial config parameters (devnet)
 
-| Config | Valor |
+| Config | Value |
 |---|---|
-| `admin` (3 programas) | vault 0 do Squads |
-| `arbitro` | vault 1 do Squads |
-| `credito_autoridade` | PDA `["autoridade_credito"]` do `ecol_credito` |
-| prazo de entrega | 7 dias |
-| tolerância de peso | 200 bps (2%) |
-| percentuais | coletor 500, cooperativa 1.000, transportador 500, indústria 6.500 a 7.900 |
+| `admin` (3 programs) | Squads vault 0 |
+| `arbitro` | Squads vault 1 |
+| `credito_autoridade` | PDA `["autoridade_credito"]` of `ecol_credito` |
+| delivery deadline | 7 days |
+| weight tolerance | 200 bps (2%) |
+| percentages | collector 500, cooperative 1,000, carrier 500, industry 6,500 to 7,900 |
 
-### Como rodar
+### How to run
 
 ```bash
-# 1. saldo da carteira que paga o deploy (padrão: ~/.config/solana/id.json)
-solana balance -u devnet                   # precisa de ≥ 11 SOL
-# faucet: https://faucet.solana.com  (ou: solana airdrop 2 -u devnet, que tem limite de pedidos)
+# 1. balance of the wallet that pays for the deploy (default: ~/.config/solana/id.json)
+solana balance -u devnet                   # needs ≥ 11 SOL
+# faucet: https://faucet.solana.com  (or: solana airdrop 2 -u devnet, which is rate-limited)
 
-# 2. backup das keypairs dos programas (definem os endereços; fora do git)
+# 2. back up the program keypairs (they define the addresses; not in git)
 mkdir -p ~/backup-ecolchain && cp onchain/target/deploy/*-keypair.json ~/backup-ecolchain/
 
-# 3. deploy (num terminal interativo, respondendo "s")
+# 3. deploy (in an interactive terminal, answering "s" = yes)
 cd onchain
 scripts/deploy-devnet.sh
 
-# ou sem a pergunta (ex.: dentro do Claude Code com "!", que não tem teclado)
+# or without the prompt (e.g. inside Claude Code with "!", which has no keyboard)
 CONFIRMAR=1 scripts/deploy-devnet.sh
 ```
 
-| Variável | Padrão | Uso |
+| Variable | Default | Use |
 |---|---|---|
-| `RPC_DEVNET` | `https://api.devnet.solana.com` | RPC da devnet. Um RPC dedicado (Helius, Triton...) evita limites de taxa. |
-| `CARTEIRA` | `~/.config/solana/id.json` | pagador e upgrade authority inicial |
-| `CONFIRMAR` | — | `1` pula a pergunta de confirmação |
+| `RPC_DEVNET` | `https://api.devnet.solana.com` | Devnet RPC. A dedicated RPC (Helius, Triton...) avoids rate limits. |
+| `CARTEIRA` | `~/.config/solana/id.json` | payer and initial upgrade authority |
+| `CONFIRMAR` | — | `1` skips the confirmation prompt |
 
-A primeira execução baixa a imagem Docker (alguns GB) e leva de 5 a 15 minutos.
+The first run downloads the Docker image (a few GB) and takes 5 to 15 minutes.
 
 ---
 
-## 12. Implantação atual na devnet
+## 12. Current devnet deployment
 
-Deploy inicial em **2026-09-28**; upgrades pelo Squads no mesmo dia (materiais, guardião, entregas, nomes de participante e balança, a ADR 0010 nas propostas #15 a #17, a ADR 0011 na #18, em 2026-10-07, a ADR 0012 na #19, em 2026-10-08, a ADR 0013 na #20 e a ADR 0014 na #21, ambas em 2026-10-09), todos com build verificável e hashes conferidos.
+Initial deploy on **2026-09-28**; upgrades through Squads on the same day (materials, guardian, deliveries, participant and scale names, ADR 0010 in proposals #15 to #17, ADR 0011 in #18 on 2026-10-07, ADR 0012 in #19 on 2026-10-08, ADR 0013 in #20 and ADR 0014 in #21, both on 2026-10-09), all with a verifiable build and checked hashes.
 
-### Programas
+### Programs
 
-| Programa | Program ID | Hash do executável | Tamanho |
+| Program | Program ID | Executable hash | Size |
 |---|---|---|---|
-| `ecol_lote` | [`AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD`](https://explorer.solana.com/address/AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD?cluster=devnet) | `9d99a79e947be4a66f728b5771a05a06d31a79a2aec29112fbfc582b032efc01` | 846.296 bytes |
-| `ecol_credito` | [`FZtf8txpz79i4dcXcwP1NqqSMJUoZJKwjJSfjD3Y1doQ`](https://explorer.solana.com/address/FZtf8txpz79i4dcXcwP1NqqSMJUoZJKwjJSfjD3Y1doQ?cluster=devnet) | `4b73d878ce5ce3bf261637a486ba18a0556b94c33bd93230b5ba1cc7cee67332` | 484.456 bytes |
-| `ecol_reparticao` | [`HTLtLauuXt9PqBzJfHaWPpeJUdtWpDcAa5ZsMSnP8k8K`](https://explorer.solana.com/address/HTLtLauuXt9PqBzJfHaWPpeJUdtWpDcAa5ZsMSnP8k8K?cluster=devnet) | `0fe26d24fef78369defdecb436548be095ceb0ac61be291754fc79a05ae5d62f` | 390.496 bytes |
+| `ecol_lote` | [`AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD`](https://explorer.solana.com/address/AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD?cluster=devnet) | `9d99a79e947be4a66f728b5771a05a06d31a79a2aec29112fbfc582b032efc01` | 846,296 bytes |
+| `ecol_credito` | [`FZtf8txpz79i4dcXcwP1NqqSMJUoZJKwjJSfjD3Y1doQ`](https://explorer.solana.com/address/FZtf8txpz79i4dcXcwP1NqqSMJUoZJKwjJSfjD3Y1doQ?cluster=devnet) | `4b73d878ce5ce3bf261637a486ba18a0556b94c33bd93230b5ba1cc7cee67332` | 484,456 bytes |
+| `ecol_reparticao` | [`HTLtLauuXt9PqBzJfHaWPpeJUdtWpDcAa5ZsMSnP8k8K`](https://explorer.solana.com/address/HTLtLauuXt9PqBzJfHaWPpeJUdtWpDcAa5ZsMSnP8k8K?cluster=devnet) | `0fe26d24fef78369defdecb436548be095ceb0ac61be291754fc79a05ae5d62f` | 390,496 bytes |
 
 ### Configs
 
-| Config | Endereço |
+| Config | Address |
 |---|---|
 | `GlobalConfig` (`ecol_lote`) | `4LWZsMqmTujQiJeFcCczwfbm1WTfPi4pVXnmRUCfvpzm` |
 | `CreditoConfig` (`ecol_credito`) | `5XK3ybpnPy6dpWZoSdN6Ryv9XmvSoi15v67btdCiCoKu` |
 | `ReparticaoConfig` (`ecol_reparticao`) | `Da2rhTSvZvX94pGFswBApMcqqeUnXzKUJQyxfVLwQcif` |
 
-### Governança (Squads v4)
+### Governance (Squads v4)
 
-| Item | Endereço |
+| Item | Address |
 |---|---|
-| Multisig (3 de 5, chaves da EcolChain, timelock 0) | `9W2HFHrGQ4sTtCaRCSeZ2ydiyuGAzg1Exb5jYFw3ZFjd` |
-| **Vault 0**: upgrade authority dos 3 programas + `admin` das 3 configs | `5QLoaHGatRQnhiJxFBXhvkJ9GdDbzhCvySXwNCKiwXHj` |
+| Multisig (3 of 5, EcolChain keys, timelock 0) | `9W2HFHrGQ4sTtCaRCSeZ2ydiyuGAzg1Exb5jYFw3ZFjd` |
+| **Vault 0**: upgrade authority of the 3 programs + `admin` of the 3 configs | `5QLoaHGatRQnhiJxFBXhvkJ9GdDbzhCvySXwNCKiwXHj` |
 | **Vault 1**: `arbitro` | `BKgC9T4fCyMA1AMe3fNJTquQjvufgjQcdCkXjjV1yh7G` |
 
-Membros (todos da EcolChain; na devnet são chaves **de teste**, em `onchain/.devnet/`):
+Members (all from EcolChain; on devnet these are **test** keys, in `onchain/.devnet/`):
 
-| Membro | Endereço |
+| Member | Address |
 |---|---|
 | ecolchain-diretoria | `HU6fB42zKw1aooH7AG6g7d6RhheEwmJaPP7GeBF7gjuX` |
 | ecolchain-tecnologia | `3gTZMLVADFd4zmPd1KxoUYtD7vRCYgWJ7ZaUjP73zkQU` |
@@ -656,222 +656,222 @@ Membros (todos da EcolChain; na devnet são chaves **de teste**, em `onchain/.de
 | ecolchain-financeiro | `6fHCPsYdKQFevbTcmW4ct8SAGFdHE7wAVDxF3yyuCi9W` |
 | ecolchain-reserva | `7bePYaoQiyqmjqD7Y5gyCCU8zbFkcCt963dJcbmn2UPL` |
 
-### Chaves de papel (teste)
+### Role keys (test)
 
-| Papel | Endereço |
+| Role | Address |
 |---|---|
-| operador (administração) | `EhY5n8NeRo8j3F8RsV2oZeC9HyzdMib9SXS475P6ec8X` (Solflare do responsável; até 2026-09-28 era a chave de teste `AURz…5ZGa`) |
-| intermediador | `39J3HAavjhvt2vFLnTGNjh6L6F5PtD3UupKuveRq82Ez` |
-| registrador | `p2e29Efu4TcPGqjeA9gzhW6mTqCtF8MzmZQjeiBYmYz` |
+| operator (administration) | `EhY5n8NeRo8j3F8RsV2oZeC9HyzdMib9SXS475P6ec8X` (the owner's Solflare; until 2026-09-28 it was the test key `AURz…5ZGa`) |
+| payment intermediary | `39J3HAavjhvt2vFLnTGNjh6L6F5PtD3UupKuveRq82Ez` |
+| registrar | `p2e29Efu4TcPGqjeA9gzhW6mTqCtF8MzmZQjeiBYmYz` |
 | zupy | `GTKWcFhronTQFAyE6sBwgtdFd12VJX4gjBAYE6RCH9cb` |
 
-### Conferir o estado on-chain
+### Checking the on-chain state
 
 ```bash
-solana program show AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD -u devnet   # Authority deve ser o vault 0
+solana program show AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD -u devnet   # Authority must be vault 0
 solana-verify get-program-hash -u devnet AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD
 cat onchain/.devnet/squads.json
 ```
 
 ---
 
-## 13. Governança e operação com o Squads
+## 13. Governance and operation with Squads
 
-Depois do deploy, **nenhuma chave individual** altera os programas ou as configs. Toda mudança de governança é uma proposta no Squads, aprovada por 3 dos 5 membros e executada depois do timelock (0 na devnet, 24 h na mainnet). **Os 5 membros são chaves da própria EcolChain** (ADR 0009): cooperativas e indústrias são clientes e não votam; a confiança delas vem da transparência on-chain e do build verificável. A operação do dia a dia não passa por aí: fica com a carteira de operador.
+After the deploy, **no individual key** can change the programs or the configs. Every governance change is a Squads proposal, approved by 3 of the 5 members and executed after the timelock (0 on devnet, 24 h on mainnet). **All 5 members are EcolChain's own keys** (ADR 0009): cooperatives and industries are customers and do not vote; their trust comes from on-chain transparency and the verifiable build. Day-to-day operation does not go through Squads: it is handled by the operator wallet.
 
-Interface web: app do Squads v4 (https://app.squads.so) com a carteira de um membro, apontando para a devnet. Também dá para usar o SDK `@sqds/multisig` em `onchain/ops/`.
+Web interface: the Squads v4 app (https://app.squads.so) with a member's wallet, pointed at devnet. You can also use the `@sqds/multisig` SDK in `onchain/ops/`.
 
-### O que passa pelo Squads e o que não passa
+### What goes through Squads and what does not
 
-| Tipo de ação | Quem assina | Espera |
+| Type of action | Who signs | Wait |
 |---|---|---|
-| **Dia a dia**: cadastrar participantes, balanças e materiais, encerrar leilões, montar créditos, publicar a repartição | carteira de **operador** (menu Administração da interface), uma assinatura | nenhuma: vale na hora |
-| **Governança**: upgrade dos programas, percentuais da repartição, prazos e tolerâncias, troca de operador, intermediador, registrador ou árbitro, pausa | **Squads**: 3 das 5 chaves da EcolChain aprovam | **timelock** (0 na devnet, 24 h na mainnet) |
-| **Disputas de lote**: `arbitro_resolve_disputa` | vault 1 do Squads (3 de 5) | timelock |
+| **Day to day**: registering participants, scales and materials, closing auctions, assembling credits, publishing the revenue split | **operator** wallet (Administration menu in the interface), a single signature | none: takes effect immediately |
+| **Governance**: program upgrades, revenue split percentages, deadlines and tolerances, replacing the operator, payment intermediary, registrar or arbiter, pausing | **Squads**: 3 of the 5 EcolChain keys approve | **timelock** (0 on devnet, 24 h on mainnet) |
+| **Lot disputes**: `arbitro_resolve_disputa` | Squads vault 1 (3 of 5) | timelock |
 
-### Timelock: o que é e por que existe
+### Timelock: what it is and why it exists
 
-O timelock é um **prazo de espera obrigatório entre a aprovação e a execução** de uma proposta. Mesmo com os 3 votos, a transação só pode ser executada depois que esse prazo passar, contado a partir da última aprovação.
+The timelock is a **mandatory waiting period between approval and execution** of a proposal. Even with the 3 votes, the transaction can only be executed after this period has elapsed, counted from the last approval.
 
-**Ciclo de uma proposta:**
+**Lifecycle of a proposal:**
 
 ```
-criada ──► ativa ──► aprovada (3 de 5) ──[ timelock ]──► executável ──► executada
+created ──► active ──► approved (3 of 5) ──[ timelock ]──► executable ──► executed
                  │                           │
-                 └──► rejeitada              └──► cancelada (os membros desistem antes de executar)
+                 └──► rejected               └──► cancelled (members back out before executing)
 ```
 
-**Por que existe.** A aprovação 3 de 5 impede que **uma** pessoa da EcolChain aja sozinha, mas não protege se **três chaves forem comprometidas** (roubo, vazamento) ou se três pessoas combinarem algo indevido. O timelock cobre esse caso: toda mudança aprovada fica **pública on-chain** antes de valer, e nesse intervalo:
+**Why it exists.** The 3-of-5 approval prevents **one** person at EcolChain from acting alone, but it offers no protection if **three keys are compromised** (theft, leak) or if three people collude on something improper. The timelock covers that case: every approved change becomes **public on-chain** before it takes effect, and during that window:
 
-- as outras pessoas da EcolChain, as cooperativas, as indústrias e os auditores podem ver exatamente o que vai mudar;
-- se for indevida, os membros **cancelam** a proposta antes da execução;
-- quem discordar de uma regra nova (ex.: percentuais da repartição) tem tempo de se retirar antes de ela valer.
+- other people at EcolChain, the cooperatives, the industries and the auditors can see exactly what is going to change;
+- if it is improper, the members **cancel** the proposal before execution;
+- anyone who disagrees with a new rule (e.g. revenue split percentages) has time to withdraw before it takes effect.
 
-Exemplo: alguém rouba 3 chaves e aprova um upgrade que desvia a repartição. Sem timelock, o upgrade vale no mesmo segundo. Com timelock, há uma janela para detectar e cancelar.
+Example: someone steals 3 keys and approves an upgrade that diverts the revenue split. Without a timelock, the upgrade takes effect the same second. With a timelock, there is a window to detect and cancel it.
 
-**O custo.** Toda mudança de governança leva no mínimo o tempo do timelock. Isso é intencional e afeta só as ações raras e sensíveis; o dia a dia (tabela acima) não espera.
+**The cost.** Every governance change takes at least the timelock duration. This is intentional and only affects rare, sensitive actions; day-to-day operations (table above) do not wait.
 
-**Valores:**
+**Values:**
 
-| Rede | Timelock | Motivo |
+| Network | Timelock | Reason |
 |---|---|---|
-| devnet | **0** (era 1 h até 2026-09-28) | os programas ainda mudam com frequência; a proteção fica na aprovação 3 de 5 |
-| mainnet | **24 h** | toda mudança aprovada fica pública um dia antes de valer |
+| devnet | **0** (was 1 h until 2026-09-28) | the programs still change frequently; protection comes from the 3-of-5 approval |
+| mainnet | **24 h** | every approved change is public one day before it takes effect |
 
-**Como acompanhar.** `npx tsx proposta.ts status` (em `onchain/ops/`) lista cada proposta, a situação e **a partir de quando pode ser executada**. Uma proposta aprovada **não executa sozinha**: depois do prazo, alguém precisa rodar `npx tsx proposta.ts executar <índice>` (ou executar pelo app do Squads).
+**How to track it.** `npx tsx proposta.ts status` (in `onchain/ops/`) lists each proposal, its status and **from when it can be executed**. An approved proposal **does not execute by itself**: after the waiting period, someone must run `npx tsx proposta.ts executar <índice>` (or execute it from the Squads app).
 
-**Como cancelar.** Enquanto não for executada, uma proposta aprovada pode ser cancelada pelos membros (3 de 5) no app do Squads (`proposalCancel` no SDK).
+**How to cancel.** Until it is executed, an approved proposal can be cancelled by the members (3 of 5) in the Squads app (`proposalCancel` in the SDK).
 
-**Como mudar o timelock.** O multisig foi criado **sem config authority**, então nem o timelock muda sem votação: é uma *config transaction* do Squads (`npx tsx proposta.ts timelock <segundos>`), aprovada por 3 de 5 e sujeita ao timelock **atual** (a mudança só vale depois de esperar o prazo vigente uma última vez). Foi assim que a devnet passou de 1 h para 0 em 2026-09-28. Na devnet, sem timelock, não se testa o "esperar e cancelar"; isso fica para a mainnet.
+**How to change the timelock.** The multisig was created **without a config authority**, so not even the timelock changes without a vote: it is a Squads *config transaction* (`npx tsx proposta.ts timelock <segundos>`), approved by 3 of 5 and subject to the **current** timelock (the change only takes effect after waiting out the current period one last time). This is how devnet went from 1 h to 0 on 2026-09-28. On devnet, without a timelock, "wait and cancel" cannot be tested; that is left for mainnet.
 
-### Guardião: pausa de emergência por qualquer membro
+### Guardian: emergency pause by any member
 
-Com timelock na mainnet (24 h), até uma pausa esperaria um dia. Por isso existe um segundo caminho, só para **pausar**:
+With a timelock on mainnet (24 h), even a pause would wait a day. That is why there is a second path, only for **pausing**:
 
-| | Squads principal (admin) | Squads do guardião |
+| | Main Squads (admin) | Guardian Squads |
 |---|---|---|
-| Membros | as 5 chaves da EcolChain | **as mesmas 5** |
-| Quórum | 3 de 5 | **1 de 5** |
+| Members | the 5 EcolChain keys | **the same 5** |
+| Threshold | 3 of 5 | **1 of 5** |
 | Timelock | 0 (devnet) / 24 h (mainnet) | **0** |
-| Pode | tudo (upgrade, configs, papéis, pausar e **despausar**) | **só pausar** (`guardiao_pausar`) |
+| Can | everything (upgrade, configs, roles, pause and **unpause**) | **only pause** (`guardiao_pausar`) |
 
-- Os programas guardam o vault do Squads do guardião no campo `guardiao` das configs. `guardiao_pausar` só aceita deixar o modo **mais restritivo**; qualquer outra coisa é recusada (`GuardiaoSoRestringe`, `NaoEhGuardiao`).
-- Um guardião comprometido, no pior caso, pausa a plataforma: incômodo, mas sem perda de fundos nem de dados, e o admin (3 de 5) desfaz.
-- A lista de membros do Squads do guardião deve acompanhar a do principal. Ele também não tem config authority: com quórum 1, qualquer membro altera os membros, então essa troca deve ser combinada internamente.
+- The programs store the guardian Squads vault in the `guardiao` field of the configs. `guardiao_pausar` only accepts making the mode **more restrictive**; anything else is rejected (`GuardiaoSoRestringe`, `NaoEhGuardiao`).
+- A compromised guardian, in the worst case, pauses the platform: a nuisance, but with no loss of funds or data, and the admin (3 of 5) reverts it.
+- The guardian Squads member list must track the main one. It also has no config authority: with a threshold of 1, any member can change the members, so such a change must be agreed internally.
 
 ```bash
 cd onchain/ops
-npx tsx pausar.ts ecolchain-tecnologia            # qualquer membro: pausa os 3 programas na hora
-npx tsx pausar.ts ecolchain-tecnologia --somente-disputas   # ecol_lote em SomenteDisputas (disputas e escrow seguem)
-npx tsx retomar.ts                                # proposta do admin (3 de 5) para tirar a pausa
+npx tsx pausar.ts ecolchain-tecnologia            # any member: pauses the 3 programs immediately
+npx tsx pausar.ts ecolchain-tecnologia --somente-disputas   # ecol_lote in SomenteDisputas (disputes and escrow keep working)
+npx tsx retomar.ts                                # admin proposal (3 of 5) to lift the pause
 npx tsx proposta.ts executar <índice>
 ```
 
-Na devnet: Squads do guardião `6JpBi3MouEaouoUKH4HwBttREpWMvCNf2srDBUkTYYsq`, vault (guardião) `7tyuT6DDGUrTARsPzjgfPUEdEkV6SQVkwCRNs52B9GWz`. Criado por `ops/guardiao-devnet.ts` e definido nos programas por `ops/definir-guardiao.ts`.
+On devnet: guardian Squads `6JpBi3MouEaouoUKH4HwBttREpWMvCNf2srDBUkTYYsq`, vault (guardian) `7tyuT6DDGUrTARsPzjgfPUEdEkV6SQVkwCRNs52B9GWz`. Created by `ops/guardiao-devnet.ts` and set in the programs by `ops/definir-guardiao.ts`.
 
-### Scripts de proposta (devnet)
+### Proposal scripts (devnet)
 
-Na devnet, as 5 chaves de membro estão nesta máquina, então os scripts em `onchain/ops/` criam **e aprovam** (3 de 5) as propostas sozinhos; só falta esperar o timelock e executar:
+On devnet, the 5 member keys are on this machine, so the scripts in `onchain/ops/` create **and approve** (3 of 5) the proposals on their own; all that remains is to wait for the timelock and execute:
 
 ```bash
 cd onchain/ops
-npx tsx proposta.ts status                  # propostas, situação e quando podem ser executadas
-npx tsx trocar-operador.ts <carteira>       # troca o operador (administração) nos 3 programas
-npx tsx propor-upgrade.ts <programa>=<buffer> [...]   # upgrade (amplia a conta do programa se preciso)
-npx tsx proposta.ts executar <índice>       # depois do timelock
+npx tsx proposta.ts status                  # proposals, status and when they can be executed
+npx tsx trocar-operador.ts <carteira>       # replaces the operator (administration) in the 3 programs
+npx tsx propor-upgrade.ts <programa>=<buffer> [...]   # upgrade (extends the program account if needed)
+npx tsx proposta.ts executar <índice>       # after the timelock
 ```
 
-O membro que cria a proposta paga o rent dela (~0,0035 SOL), então precisa de um pouco de saldo.
+The member who creates the proposal pays its rent (~0.0035 SOL), so it needs a little balance.
 
-**Programa maior que o espaço reservado.** Se o binário novo for maior, a conta do programa precisa ser ampliada antes do upgrade. Essa ampliação **não pode ir dentro da proposta**: o runtime recusa `ExtendProgram`/`ExtendProgramChecked` chamados pelo Squads (erro `not supported by inner instructions`). Como o `ExtendProgram` simples é permissionless (mínimo de 10.240 bytes), o `propor-upgrade.ts` amplia a conta **antes**, pagando com a carteira local, e a proposta leva só o `Upgrade`, que o Squads pode executar. Buffers que sobrarem de uma proposta que não será executada são devolvidos com `npx tsx fechar-buffers.ts <buffer> [...]`.
+**Program larger than the reserved space.** If the new binary is larger, the program account must be extended before the upgrade. This extension **cannot go inside the proposal**: the runtime rejects `ExtendProgram`/`ExtendProgramChecked` invoked by Squads (error `not supported by inner instructions`). Since plain `ExtendProgram` is permissionless (minimum of 10,240 bytes), `propor-upgrade.ts` extends the account **beforehand**, paid by the local wallet, and the proposal carries only the `Upgrade`, which Squads can execute. Buffers left over from a proposal that will not be executed are reclaimed with `npx tsx fechar-buffers.ts <buffer> [...]`.
 
-### Upgrade de um programa
+### Upgrading a program
 
 ```bash
 cd onchain
 NO_DNA=1 anchor build --verifiable
 
-# 1. envia o novo binário para um buffer (pago pela carteira local)
+# 1. upload the new binary to a buffer (paid by the local wallet)
 solana program write-buffer target/verifiable/ecol_lote.so -u devnet
-#    → anota o endereço do BUFFER
+#    → note the BUFFER address
 
-# 2. entrega o buffer ao vault 0 (é ele quem assina o upgrade)
+# 2. hand the buffer over to vault 0 (it is the one that signs the upgrade)
 solana program set-buffer-authority <BUFFER> \
   --new-buffer-authority 5QLoaHGatRQnhiJxFBXhvkJ9GdDbzhCvySXwNCKiwXHj -u devnet
 
-# 3. no Squads: nova proposta de upgrade do programa usando o <BUFFER>;
-#    3 membros aprovam; depois do timelock, qualquer membro executa
+# 3. in Squads: new program upgrade proposal using the <BUFFER>;
+#    3 members approve; after the timelock, any member executes
 
-# 4. conferir
+# 4. verify
 solana-verify get-executable-hash target/verifiable/ecol_lote.so
 solana-verify get-program-hash -u devnet AGAi3h9KqSCzx7KTiejyEKHb1kVPPUQ2nKzjSUrGSvdD
 ```
 
-### Mudar uma config, pausar ou trocar papéis
+### Changing a config, pausing or replacing roles
 
-1. Monte a instrução com o cliente gerado (ex.: `getAdminSetModoInstruction` do `ecol_lote`), usando o **vault 0** como `admin`.
-2. Crie uma proposta de transação no Squads (vault 0) com essa instrução.
-3. Três membros aprovam e, depois do timelock, a proposta é executada.
+1. Build the instruction with the generated client (e.g. `getAdminSetModoInstruction` from `ecol_lote`), using **vault 0** as `admin`.
+2. Create a transaction proposal in Squads (vault 0) with that instruction.
+3. Three members approve and, after the timelock, the proposal is executed.
 
-### Emergência
+### Emergency
 
-- **Qualquer membro da EcolChain**: `npx tsx pausar.ts <membro>` pausa os 3 programas na hora, pelo Squads do guardião (1 de 5, sem timelock).
-- Pelo admin (3 de 5, com timelock): `admin_set_modo(SomenteDisputas | Pausado)` no `ecol_lote` e `admin_set_pausado(true)` no `ecol_credito` e no `ecol_reparticao`.
-- Tirar a pausa é **sempre** do admin: `npx tsx retomar.ts`.
-- Mesmo em `SomenteDisputas`, disputas, liberação do escrow e desagregação continuam funcionando, para não travar dinheiro retido.
-- Ao voltar para `Normal`, o crank de prazo expirado espera **48 h** antes de derrubar lotes.
+- **Any EcolChain member**: `npx tsx pausar.ts <membro>` pauses the 3 programs immediately, through the guardian Squads (1 of 5, no timelock).
+- Through the admin (3 of 5, with timelock): `admin_set_modo(SomenteDisputas | Pausado)` in `ecol_lote` and `admin_set_pausado(true)` in `ecol_credito` and `ecol_reparticao`.
+- Lifting the pause is **always** done by the admin: `npx tsx retomar.ts`.
+- Even in `SomenteDisputas`, disputes, escrow release and disaggregation keep working, so that withheld money is not locked.
+- When returning to `Normal`, the expired-deadline crank waits **48 h** before dropping lots.
 
-### Resolver uma disputa (árbitro = vault 1)
+### Resolving a dispute (arbiter = vault 1)
 
-1. Monte `arbitro_resolve_disputa` com o **vault 1** como `arbitro`.
-2. Se a decisão for `Liberar` ou `Reembolsar`, o intermediador também assina, então a proposta precisa incluir a assinatura dele.
-3. Aprovação 3 de 5 e execução.
-
----
-
-## 14. Verificação independente (auditores)
-
-- **Código = binário:** qualquer pessoa pode recompilar com `anchor build --verifiable` (mesma imagem Docker) e comparar `solana-verify get-executable-hash` com `solana-verify get-program-hash`. Com o repositório no GitHub, `solana-verify verify-from-repo` pode automatizar isso (exige acesso público ao repositório).
-- **Trilha:** todo evento carrega `seq`, e uma lacuna indica evento perdido.
-- **Crédito × lotes:** reconstrua `lotes_hash` a partir dos eventos `LoteAgregado` e compare com a conta `Credito`.
-- **Repartição:** reconstrua a raiz Merkle com `montarDireitos` a partir dos pesos dos lotes e do mapeamento `origem_ref → carteira` dos coletores. Os tetos por papel estão na conta `Distribuicao` e a soma fecha com a receita.
-- **Pesagens:** cada lote de origem e cada lote de venda guardam a balança e o `ts_pesagem` assinados por ela.
+1. Build `arbitro_resolve_disputa` with **vault 1** as `arbitro`.
+2. If the decision is `Liberar` or `Reembolsar`, the payment intermediary also signs, so the proposal must include its signature.
+3. 3-of-5 approval and execution.
 
 ---
 
-## 15. Custos
+## 14. Independent verification (auditors)
 
-| Item | Valor |
+- **Code = binary:** anyone can recompile with `anchor build --verifiable` (same Docker image) and compare `solana-verify get-executable-hash` with `solana-verify get-program-hash`. With the repository on GitHub, `solana-verify verify-from-repo` can automate this (requires public access to the repository).
+- **Trail:** every event carries `seq`, and a gap indicates a lost event.
+- **Credit × lots:** rebuild `lotes_hash` from the `LoteAgregado` events and compare it with the `Credito` account.
+- **Revenue split:** rebuild the Merkle root with `montarDireitos` from the lot weights and the collectors' `origem_ref → carteira` mapping. The per-role caps are in the `Distribuicao` account and the sum matches the revenue.
+- **Weighings:** each source lot and each sale lot store the scale and the `ts_pesagem` signed by it.
+
+---
+
+## 15. Costs
+
+| Item | Value |
 |---|---|
-| Deploy dos 3 programas + Squads + configs (devnet) | ≈ 7,5 SOL, quase todo em rent dos programas |
-| Por lote (PDA `Lote` + Core asset + transações) | ≈ 0,0084 SOL (medido; ver ADR 0003) |
-| Taxa por assinatura | 5.000 lamports (transações multi-assinatura custam mais) |
+| Deploy of the 3 programs + Squads + configs (devnet) | ≈ 7.5 SOL, almost all of it program rent |
+| Per lot (`Lote` PDA + Core asset + transactions) | ≈ 0.0084 SOL (measured; see ADR 0003) |
+| Fee per signature | 5,000 lamports (multi-signature transactions cost more) |
 
-O rent é um depósito recuperável, não uma despesa, se as contas forem fechadas (ver achado 13 na seção 18). A taxa do Metaplex Core (~0,0015 SOL por asset) ainda precisa ser confirmada.
-
----
-
-## 16. Segurança
-
-- **Nunca versionar:** `onchain/.devnet/` (chaves de teste e `squads.json`), `onchain/target/` (inclui as keypairs dos programas) e `~/.config/solana/id.json`. Os dois primeiros estão no `.gitignore`.
-- **Backup das keypairs dos programas:** `onchain/target/deploy/*-keypair.json` definem os endereços dos programas. Hoje há uma cópia em `~/backup-ecolchain/`; guarde outra fora da máquina.
-- **As chaves do Squads na devnet são de teste**, todas na mesma máquina. Na mainnet, as 5 chaves continuam sendo da EcolChain, mas com **pessoas e locais de guarda diferentes** (de preferência hardware wallets, uma delas offline), e timelock de 24 h.
-- **SDK do Squads isolado:** `@sqds/multisig` depende de `@solana/web3.js` v1, que tem 4 vulnerabilidades altas transitivas no `npm audit`. Por isso fica só em `onchain/ops/` (uso operacional) e nunca entra nos clientes nem no backend.
-- **Práticas seguidas** ([solana-ai-kit](https://github.com/solanabr/solana-ai-kit)): aritmética checada, sem `unwrap` em produção, sem `init_if_needed`, validação de owner, discriminator e seeds, e auditoria antes de fechar cada fase. Achados e correções em [`docs/security-audit-2026-09-28.md`](docs/security-audit-2026-09-28.md).
+Rent is a recoverable deposit, not an expense, if the accounts are closed (see finding 13 in section 18). The Metaplex Core fee (~0.0015 SOL per asset) still needs to be confirmed.
 
 ---
 
-## 17. Solução de problemas
+## 16. Security
 
-| Sintoma | Causa / solução |
+- **Never commit:** `onchain/.devnet/` (test keys and `squads.json`), `onchain/target/` (includes the program keypairs) and `~/.config/solana/id.json`. The first two are in `.gitignore`.
+- **Back up the program keypairs:** `onchain/target/deploy/*-keypair.json` define the program addresses. There is currently a copy in `~/backup-ecolchain/`; keep another one off the machine.
+- **The Squads keys on devnet are test keys**, all on the same machine. On mainnet, the 5 keys are still EcolChain's, but with **different people and storage locations** (preferably hardware wallets, one of them offline), and a 24 h timelock.
+- **Isolated Squads SDK:** `@sqds/multisig` depends on `@solana/web3.js` v1, which has 4 transitive high-severity vulnerabilities in `npm audit`. That is why it stays only in `onchain/ops/` (operational use) and never goes into the clients or the backend.
+- **Practices followed** ([solana-ai-kit](https://github.com/solanabr/solana-ai-kit)): checked arithmetic, no `unwrap` in production, no `init_if_needed`, owner, discriminator and seed validation, and an audit before closing each phase. Findings and fixes in [`docs/security-audit-2026-09-28.md`](docs/security-audit-2026-09-28.md).
+
+---
+
+## 17. Troubleshooting
+
+| Symptom | Cause / solution |
 |---|---|
-| `Docker indisponível no WSL` | Docker Desktop → Settings → Resources → WSL integration → ative a distro e reinicie o terminal |
+| `Docker indisponível no WSL` | Docker Desktop → Settings → Resources → WSL integration → enable the distro and restart the terminal |
 | `instale o solana-verify` | `cargo install solana-verify` |
-| `saldo X SOL < 11 SOL` | complete em https://faucet.solana.com |
-| Script sai logo depois de listar os programas | a pergunta `[s/N]` não recebeu resposta (ex.: `!` no Claude Code). Use `CONFIRMAR=1`. |
-| Build verificável demora muito na primeira vez | download da imagem `quay.io/ottersec/anchor:v1.1.2`; as próximas execuções usam o cache |
-| `hash on-chain ≠ build` | o `.so` publicado não é o de `target/verifiable/`. Refaça o build verificável e o upgrade. |
-| Testes LiteSVM falham ao carregar o programa | falta `anchor build` (os testes leem `target/deploy/*.so`) |
-| Cliente TS com tipos desatualizados | `anchor build && cd clients && npm run gerar` |
-| `ProgramaPausado` | o modo não é `Normal` (ou a config está pausada); veja a config on-chain |
-| `EmCarencia` no crank | o programa voltou ao modo `Normal` há menos de 48 h |
-| Erro de pesagem no `register_entrega` ou no `fechar_lote` | a instrução Ed25519 não está imediatamente antes, a balança está inativa ou é de outro dono, ou o timestamp está fora da janela de 15 min |
-| `PesoConsolidadoForaDaFaixa` | o peso do lote de venda está fora de soma − 10% a soma + 2% dos lotes de origem; confira a pesagem ou desfaça a união |
-| `airdrop` falha | limite do faucet público; use o site ou outro RPC |
-| Deploy de novo depois do primeiro falha | a upgrade authority agora é o vault 0; faça o upgrade pelo Squads (seção 13) |
+| `saldo X SOL < 11 SOL` | top up at https://faucet.solana.com |
+| Script exits right after listing the programs | the `[s/N]` prompt received no answer (e.g. `!` in Claude Code). Use `CONFIRMAR=1`. |
+| Verifiable build takes very long the first time | download of the `quay.io/ottersec/anchor:v1.1.2` image; subsequent runs use the cache |
+| `hash on-chain ≠ build` | the published `.so` is not the one in `target/verifiable/`. Redo the verifiable build and the upgrade. |
+| LiteSVM tests fail to load the program | `anchor build` is missing (the tests read `target/deploy/*.so`) |
+| TS client with outdated types | `anchor build && cd clients && npm run gerar` |
+| `ProgramaPausado` | the mode is not `Normal` (or the config is paused); check the on-chain config |
+| `EmCarencia` in the crank | the program returned to `Normal` mode less than 48 h ago |
+| Weighing error in `register_entrega` or `fechar_lote` | the Ed25519 instruction is not immediately before it, the scale is inactive or belongs to another owner, or the timestamp is outside the 15 min window |
+| `PesoConsolidadoForaDaFaixa` | the sale lot weight is outside the range of sum − 10% to sum + 2% of the source lots; check the weighing or undo the combination |
+| `airdrop` fails | public faucet limit; use the website or another RPC |
+| Deploying again after the first one fails | the upgrade authority is now vault 0; do the upgrade through Squads (section 13) |
 
 ---
 
-## 18. Pendências antes da mainnet
+## 18. Open items before mainnet
 
-| # | Pendência |
+| # | Open item |
 |---|---|
-| Achado 13 | `close` das contas em estado terminal (recuperar o rent) |
-| R1 | **reduzido:** os coletores são divididos pelo peso dos lotes de origem registrados on-chain; a árvore continua sendo publicada pelo operador e verificada off-chain (reproduzível por qualquer auditor). |
-| R2 | o percentual da indústria (`bps_industria`) é informado só pelo operador |
-| R3 | direitos não resgatados não expiram |
-| Custos | confirmar a taxa do Metaplex Core (~0,0015 SOL) |
-| CI | repositório no GitHub desde 2026-09-28; falta a CI com build, testes, clippy e `solana-verify verify-from-repo` |
-| Governança | definir quais pessoas da EcolChain guardam as 5 chaves da mainnet (quórum 3 de 5, timelock de 24 h e guardião 1 de 5 já decididos, ADR 0009) |
-| Regulatório | enquadramento de cupons, créditos de carbono e LGPD |
-| Diagrama | redesenhar a faixa blockchain do `Proposta_04.excalidraw` com a máquina de estados |
+| Finding 13 | `close` accounts in a terminal state (recover the rent) |
+| R1 | **reduced:** collectors are split by the weight of the source lots registered on-chain; the tree is still published by the operator and verified off-chain (reproducible by any auditor). |
+| R2 | the industry percentage (`bps_industria`) is provided by the operator alone |
+| R3 | unredeemed entitlements do not expire |
+| Costs | confirm the Metaplex Core fee (~0.0015 SOL) |
+| CI | repository on GitHub since 2026-09-28; CI with build, tests, clippy and `solana-verify verify-from-repo` is still missing |
+| Governance | decide which people at EcolChain hold the 5 mainnet keys (3-of-5 threshold, 24 h timelock and 1-of-5 guardian already decided, ADR 0009) |
+| Regulatory | classification of coupons, carbon credits and LGPD |
+| Diagram | redraw the blockchain lane of `Proposta_04.excalidraw` with the state machine |
